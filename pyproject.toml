@@ -1,0 +1,29 @@
+[project]
+name = "stac-auth-proxy"
+version = "0.1.0"
+description = "STAC authentication proxy with FastAPI"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {file = "LICENSE"}
+authors = [{name = "Your Name", email = "your.email@example.com"}]
+keywords = ["STAC", "FastAPI", "Authentication", "Proxy"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "License :: OSI Approved :: MIT License",
+]
+
+[tool.coverage.run]
+branch = true
+
+[tool.isort]
+profile = "black"
+known_first_party = ["stac_auth_proxy"]
+
+[tool.ruff]
+select = ["D", "E", "F"]
+ignore = ["E501"]
+
+[build-system]
+requires = ["hatchling>=1.12.0"]
+build-backend = "hatchling.build"

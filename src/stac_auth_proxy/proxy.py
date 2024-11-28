@@ -24,7 +24,7 @@ class Proxy:
             timeout=httpx.Timeout(timeout=15.0),
         )
 
-    async def route(self, request: Request):
+    async def passthrough(self, request: Request):
         headers = MutableHeaders(request.headers)
         headers["Host"] = urlparse(self.upstream).hostname
 

@@ -37,9 +37,9 @@ for path, methods in {
 }.items():
     app.add_api_route(
         path,
-        proxy.route,
+        proxy.passthrough,
         methods=methods,
         dependencies=[Depends(open_id_connect_scheme)],
     )
 # Catchall proxy
-app.add_route("/{path:path}", proxy.route)
+app.add_route("/{path:path}", proxy.passthrough)

@@ -1,4 +1,0 @@
-fastapi
-httpx
-authlib
-uvicorn

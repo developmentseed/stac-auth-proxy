@@ -1,29 +1,40 @@
 [project]
-name = "stac-auth-proxy"
-version = "0.1.0"
+authors = [{name = "Your Name", email = "your.email@example.com"}]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "License :: OSI Approved :: MIT License",
+]
+dependencies = [
+  "authlib>=1.3.2",
+  "fastapi>=0.115.5",
+  "httpx>=0.28.0",
+  "uvicorn>=0.32.1",
+]
 description = "STAC authentication proxy with FastAPI"
+keywords = ["STAC", "FastAPI", "Authentication", "Proxy"]
+license = {file = "LICENSE"}
+name = "stac-auth-proxy"
 readme = "README.md"
 requires-python = ">=3.8"
-license = {file = "LICENSE"}
-authors = [{name = "Your Name", email = "your.email@example.com"}]
-keywords = ["STAC", "FastAPI", "Authentication", "Proxy"]
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "License :: OSI Approved :: MIT License",
-]
+version = "0.1.0"
 
 [tool.coverage.run]
 branch = true
 
 [tool.isort]
-profile = "black"
 known_first_party = ["stac_auth_proxy"]
+profile = "black"
 
 [tool.ruff]
-select = ["D", "E", "F"]
 ignore = ["E501"]
+select = ["D", "E", "F"]
 
 [build-system]
-requires = ["hatchling>=1.12.0"]
 build-backend = "hatchling.build"
+requires = ["hatchling>=1.12.0"]
+
+[dependency-groups]
+dev = [
+  "pre-commit>=3.5.0",
+]

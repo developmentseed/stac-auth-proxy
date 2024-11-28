@@ -32,9 +32,16 @@ open_id_connect_scheme = OpenIdConnect(
 
 proxy = Proxy(upstream=STAC_API_URL)
 
+# Transactions Extension Endpoins
 for path, methods in {
+    # https://github.com/stac-api-extensions/collection-transaction/blob/v1.0.0-beta.1/README.md#methods
+    "/collections": ["POST"],
+    "/collections/{collection_id}": ["PUT", "PATCH", "DELETE"],
+    # https://github.com/stac-api-extensions/transaction/blob/v1.0.0-rc.3/README.md#methods
     "/collections/{collection_id}/items": ["POST"],
     "/collections/{collection_id}/items/{item_id}": ["PUT", "PATCH", "DELETE"],
+    # https://stac-utils.github.io/stac-fastapi/api/stac_fastapi/extensions/third_party/bulk_transactions/#bulktransactionextension
+    "/collections/{collection_id}/bulk_items": ["POST"],
 }.items():
     app.add_api_route(
         path,
@@ -42,5 +49,6 @@ for path, methods in {
         methods=methods,
         dependencies=[Depends(open_id_connect_scheme)],
     )
+
 # Catchall proxy
 app.add_route("/{path:path}", proxy.passthrough)

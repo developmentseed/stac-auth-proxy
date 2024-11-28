@@ -15,7 +15,8 @@ from .proxy import Proxy
 app = FastAPI()
 
 STAC_API_URL = os.environ.get(
-    "STAC_AUTH_PROXY_UPSTREAM_API", "https://earth-search.aws.element84.com/v1"
+    "STAC_AUTH_PROXY_UPSTREAM_API",
+    "https://earth-search.aws.element84.com/v1",
 )
 
 AUTH_PROVIDER_URL = os.environ.get(

@@ -46,7 +46,7 @@ services:
     build:
       context: .
     environment:
-      STAC_AUTH_PROXY_UPSTREAM_URL: http://stac:8001
+      STAC_AUTH_PROXY_UPSTREAM_URL: ${STAC_AUTH_PROXY_UPSTREAM_URL:-http://stac:8001}
       STAC_AUTH_PROXY_OIDC_DISCOVERY_URL: ${STAC_AUTH_PROXY_OIDC_DISCOVERY_URL}
     ports:
       - "8000:8000"

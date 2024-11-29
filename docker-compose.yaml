@@ -1,0 +1,61 @@
+services:
+  stac:
+    image: ghcr.io/stac-utils/stac-fastapi-pgstac
+    environment:
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8001
+      RELOAD: true
+      ENVIRONMENT: local
+      POSTGRES_USER: username
+      POSTGRES_PASS: password
+      POSTGRES_DBNAME: postgis
+      POSTGRES_HOST_READER: database
+      POSTGRES_HOST_WRITER: database
+      POSTGRES_PORT: 5432
+      WEB_CONCURRENCY: 10
+      VSI_CACHE: TRUE
+      GDAL_HTTP_MERGE_CONSECUTIVE_RANGES: YES
+      GDAL_DISABLE_READDIR_ON_OPEN: EMPTY_DIR
+      DB_MIN_CONN_SIZE: 1
+      DB_MAX_CONN_SIZE: 1
+      USE_API_HYDRATE: ${USE_API_HYDRATE:-false}
+    ports:
+      - "8001:8001"
+    depends_on:
+      - database
+    command: bash -c "./scripts/wait-for-it.sh database:5432 && python -m stac_fastapi.pgstac.app"
+
+  database:
+    image: ghcr.io/stac-utils/pgstac:v0.8.5
+    environment:
+      POSTGRES_USER: username
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgis
+      PGUSER: username
+      PGPASSWORD: password
+      PGDATABASE: postgis
+    ports:
+      - "${MY_DOCKER_IP:-127.0.0.1}:5439:5432"
+    command: postgres -N 500
+    volumes:
+      - ./.pgdata:/var/lib/postgresql/data
+
+  proxy:
+    depends_on:
+      - stac
+    build:
+      context: .
+    environment:
+      STAC_AUTH_PROXY_UPSTREAM_URL: http://stac:8001
+      STAC_AUTH_PROXY_OIDC_DISCOVERY_URL: ${STAC_AUTH_PROXY_OIDC_DISCOVERY_URL}
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./src:/app/src
+
+networks:
+  default:
+    name: eoapi-network

@@ -2,35 +2,25 @@
 
 This module defines the FastAPI application for the STAC Auth Proxy, which handles
 authentication, authorization, and proxying of requests to some internal STAC API.
-
 """
 
-import os
 from fastapi import Depends, FastAPI
 from fastapi.security import OpenIdConnect
 
 from .proxy import Proxy
+from .config import Settings
 
 
 app = FastAPI()
-
-STAC_API_URL = os.environ.get(
-    "STAC_AUTH_PROXY_UPSTREAM_API",
-    "https://earth-search.aws.element84.com/v1",
-)
-
-AUTH_PROVIDER_URL = os.environ.get(
-    "STAC_AUTH_PROXY_AUTH_PROVIDER",
-    "https://your-openid-connect-provider.com/.well-known/openid-configuration",
-)
+settings = Settings()
 
 open_id_connect_scheme = OpenIdConnect(
-    openIdConnectUrl=AUTH_PROVIDER_URL,
+    openIdConnectUrl=str(settings.oidc_discovery_url),
     scheme_name="OpenID Connect",
     description="OpenID Connect authentication for STAC API access",
 )
 
-proxy = Proxy(upstream=STAC_API_URL)
+proxy = Proxy(upstream=str(settings.upstream_url))
 
 # Transactions Extension Endpoins
 for path, methods in {

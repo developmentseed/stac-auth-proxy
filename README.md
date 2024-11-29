@@ -8,7 +8,7 @@ Set up connection to upstream STAC API and the OpenID Connect provider by settin
 
 ```bash
 export STAC_AUTH_PROXY_UPSTREAM_URL="https://some.url"
-export STAC_AUTH_PROXY_AUTH_PROVIDER="https://your-openid-connect-provider.com/.well-known/openid-configuration"
+export STAC_AUTH_PROXY_OIDC_DISCOVERY_URL="https://your-openid-connect-provider.com/.well-known/openid-configuration"
 ```
 
 Install software:

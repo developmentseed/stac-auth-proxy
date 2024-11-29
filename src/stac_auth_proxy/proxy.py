@@ -28,7 +28,6 @@ class Proxy:
         """Transparently proxy a request to the upstream STAC API."""
 
         headers = MutableHeaders(request.headers)
-        headers["Host"] = urlparse(self.upstream).hostname
 
         # https://github.com/fastapi/fastapi/discussions/7382#discussioncomment-5136466
         rp_req = self.client.build_request(

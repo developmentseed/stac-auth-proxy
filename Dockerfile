@@ -6,10 +6,12 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y gcc libpq-dev
 
-COPY . .
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
 
 ENV PYTHONUNBUFFERED=1
 
-CMD ["uvicorn", "src.stac_auth_proxy.main:app", "--host", "0.0.0.0", "--port", "8000"]
+RUN uv sync --no-dev --locked
+
+CMD ["uv", "run", "--locked", "python", "-m", "stac_auth_proxy"]

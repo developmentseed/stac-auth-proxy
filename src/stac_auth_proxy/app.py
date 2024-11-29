@@ -9,7 +9,7 @@ from typing import Optional
 from fastapi import Depends, FastAPI
 from fastapi.security import OpenIdConnect
 
-from .proxy import Proxy
+from .proxy import ReverseProxy
 from .config import Settings
 
 
@@ -24,7 +24,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         description="OpenID Connect authentication for STAC API access",
     )
 
-    proxy = Proxy(upstream=str(settings.upstream_url))
+    proxy = ReverseProxy(upstream=str(settings.upstream_url))
 
     # Transactions Extension Endpoins
     for path, methods in {

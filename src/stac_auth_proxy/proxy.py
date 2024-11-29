@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class Proxy:
+class ReverseProxy:
     upstream: str
     client: httpx.AsyncClient = None
 

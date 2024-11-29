@@ -16,7 +16,7 @@ from .config import Settings
 def create_app(settings: Optional[Settings] = None) -> FastAPI:
     settings = settings or Settings()
 
-    app = FastAPI()
+    app = FastAPI(openapi_url=None)
 
     open_id_connect_scheme = OpenIdConnect(
         openIdConnectUrl=str(settings.oidc_discovery_url),

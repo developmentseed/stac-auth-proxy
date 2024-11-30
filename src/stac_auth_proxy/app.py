@@ -11,12 +11,14 @@ from fastapi.security import OpenIdConnect
 
 from .proxy import ReverseProxy
 from .config import Settings
+from .middleware import AddProcessTimeHeaderMiddleware
 
 
 def create_app(settings: Optional[Settings] = None) -> FastAPI:
     settings = settings or Settings()
 
     app = FastAPI(openapi_url=None)
+    app.add_middleware(AddProcessTimeHeaderMiddleware)
 
     open_id_connect_scheme = OpenIdConnect(
         openIdConnectUrl=str(settings.oidc_discovery_url),

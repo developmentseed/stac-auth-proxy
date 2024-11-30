@@ -21,7 +21,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     app = FastAPI(openapi_url=None)
     app.add_middleware(AddProcessTimeHeaderMiddleware)
 
-    open_id_connect_scheme = OpenIdConnect(
+    auth_scheme = OpenIdConnect(
         openIdConnectUrl=str(settings.oidc_discovery_url),
         scheme_name="OpenID Connect",
         description="OpenID Connect authentication for STAC API access",
@@ -29,17 +29,17 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     proxy = ReverseProxy(upstream=str(settings.upstream_url))
 
-    # Transactions Extension Endpoins
-    for path, methods in {
-        # https://github.com/stac-api-extensions/collection-transaction/blob/v1.0.0-beta.1/README.md#methods
-        "/collections": ["POST"],
-        "/collections/{collection_id}": ["PUT", "PATCH", "DELETE"],
-        # https://github.com/stac-api-extensions/transaction/blob/v1.0.0-rc.3/README.md#methods
-        "/collections/{collection_id}/items": ["POST"],
-        "/collections/{collection_id}/items/{item_id}": ["PUT", "PATCH", "DELETE"],
-        # https://stac-utils.github.io/stac-fastapi/api/stac_fastapi/extensions/third_party/bulk_transactions/#bulktransactionextension
-        "/collections/{collection_id}/bulk_items": ["POST"],
-    }.items():
+    # Endpoints that are explicitely marked private
+    for path, methods in settings.private_endpoints.items():
+        app.add_api_route(
+            path,
+            proxy.stream,
+            methods=methods,
+            dependencies=[Depends(auth_scheme)],
+        )
+
+    # Endpoints that are explicitely marked as public
+    for path, methods in settings.public_endpoints.items():
         app.add_api_route(
             path,
             proxy.stream,
@@ -56,7 +56,12 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             methods=["GET"],
         )
 
-    # Catchall proxy
-    app.add_route("/{path:path}", proxy.stream)
+    # Catchall for remainder of the endpoints
+    app.add_api_route(
+        "/{path:path}",
+        proxy.stream,
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+        dependencies=([] if settings.default_public else [Depends(auth_scheme)]),
+    )
 
     return app

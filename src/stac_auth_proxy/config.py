@@ -1,6 +1,5 @@
 from typing import Optional, TypeAlias
 
-from pydantic import Json
 from pydantic.networks import HttpUrl
 from pydantic_settings import BaseSettings
 

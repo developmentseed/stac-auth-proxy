@@ -1,4 +1,5 @@
 import logging
+import time
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
@@ -41,10 +42,14 @@ class ReverseProxy:
         )
         logger.debug(f"Proxying request to {rp_req.url}")
 
+        start_time = time.perf_counter()
         rp_resp = await self.client.send(rp_req, stream=True)
+        proxy_time = time.perf_counter() - start_time
+
         logger.debug(
-            f"Received response status {rp_resp.status_code!r} from {rp_req.url}"
+            f"Received response status {rp_resp.status_code!r} from {rp_req.url} in {proxy_time:.3f}s"
         )
+        rp_resp.headers["X-Upstream-Time"] = f"{proxy_time:.3f}"
 
         return StreamingResponse(
             rp_resp.aiter_raw(),

@@ -1,10 +1,10 @@
+"""Utility functions."""
+
 from httpx import Headers
 
 
 def safe_headers(headers: Headers) -> dict[str, str]:
-    """
-    Scrub headers that should not be proxied to the client.
-    """
+    """Scrub headers that should not be proxied to the client."""
     excluded_headers = [
         "content-length",
         "content-encoding",

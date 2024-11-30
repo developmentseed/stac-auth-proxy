@@ -4,10 +4,9 @@ from dataclasses import dataclass
 
 import httpx
 from fastapi import Request
+from starlette.background import BackgroundTask
 from starlette.datastructures import MutableHeaders
 from starlette.responses import StreamingResponse
-from starlette.background import BackgroundTask
-
 
 logger = logging.getLogger(__name__)
 

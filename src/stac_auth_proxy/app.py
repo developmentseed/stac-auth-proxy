@@ -9,10 +9,10 @@ from typing import Optional
 from fastapi import Depends, FastAPI
 from fastapi.security import OpenIdConnect
 
-from .proxy import ReverseProxy
 from .config import Settings
-from .middleware import AddProcessTimeHeaderMiddleware
 from .handlers import OpenApiSpecHandler
+from .middleware import AddProcessTimeHeaderMiddleware
+from .proxy import ReverseProxy
 
 
 def create_app(settings: Optional[Settings] = None) -> FastAPI:

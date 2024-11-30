@@ -1,7 +1,6 @@
 import uvicorn
 from uvicorn.config import LOGGING_CONFIG
 
-
 LOGGING_CONFIG["loggers"][__package__] = {
     "level": "DEBUG",
     "handlers": ["default"],

@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 
 from fastapi import Request, Response
 from fastapi.routing import APIRoute
@@ -17,8 +17,7 @@ class OpenApiSpecHandler:
     auth_scheme_name: str = "oidcAuth"
 
     async def dispatch(self, req: Request, res: Response):
-        """
-        Proxy the OpenAPI spec from the upstream STAC API, updating it with OIDC security
+        """Proxy the OpenAPI spec from the upstream STAC API, updating it with OIDC security
         requirements.
         """
         oidc_spec_response = await self.proxy.proxy_request(req)

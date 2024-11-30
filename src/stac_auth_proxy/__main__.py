@@ -1,4 +1,4 @@
-"""Main module for the STAC Auth Proxy."""
+"""Entry point for running the module without customized code."""
 
 import uvicorn
 from uvicorn.config import LOGGING_CONFIG

@@ -12,6 +12,7 @@ from fastapi.security import OpenIdConnect
 from .proxy import ReverseProxy
 from .config import Settings
 from .middleware import AddProcessTimeHeaderMiddleware
+from .handlers import OpenApiSpecHandler
 
 
 def create_app(settings: Optional[Settings] = None) -> FastAPI:
@@ -41,12 +42,21 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     }.items():
         app.add_api_route(
             path,
-            proxy.passthrough,
+            proxy.stream,
             methods=methods,
-            dependencies=[Depends(open_id_connect_scheme)],
+        )
+
+    # Endpoint with special OpenAPI transformation functionality
+    if settings.openapi_spec_endpoint:
+        app.add_api_route(
+            settings.openapi_spec_endpoint,
+            OpenApiSpecHandler(
+                proxy=proxy, oidc_config_url=str(settings.oidc_discovery_url)
+            ).dispatch,
+            methods=["GET"],
         )
 
     # Catchall proxy
-    app.add_route("/{path:path}", proxy.passthrough)
+    app.add_route("/{path:path}", proxy.stream)
 
     return app

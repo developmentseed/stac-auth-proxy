@@ -1,15 +1,13 @@
 import logging
 import time
 from dataclasses import dataclass
-from urllib.parse import urlparse
 
+import httpx
 from fastapi import Request
-
 from starlette.datastructures import MutableHeaders
 from starlette.responses import StreamingResponse
 from starlette.background import BackgroundTask
 
-import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +23,7 @@ class ReverseProxy:
             timeout=httpx.Timeout(timeout=15.0),
         )
 
-    async def passthrough(self, request: Request):
-        """Transparently proxy a request to the upstream STAC API."""
-
+    async def proxy_request(self, request: Request, *, stream=False) -> httpx.Response:
         headers = MutableHeaders(request.headers)
 
         # https://github.com/fastapi/fastapi/discussions/7382#discussioncomment-5136466
@@ -43,14 +39,18 @@ class ReverseProxy:
         logger.debug(f"Proxying request to {rp_req.url}")
 
         start_time = time.perf_counter()
-        rp_resp = await self.client.send(rp_req, stream=True)
+        rp_resp = await self.client.send(rp_req, stream=stream)
         proxy_time = time.perf_counter() - start_time
 
         logger.debug(
             f"Received response status {rp_resp.status_code!r} from {rp_req.url} in {proxy_time:.3f}s"
         )
         rp_resp.headers["X-Upstream-Time"] = f"{proxy_time:.3f}"
+        return rp_resp
 
+    async def stream(self, request: Request) -> StreamingResponse:
+        """Transparently proxy a request to the upstream STAC API."""
+        rp_resp = await self.proxy_request(request, stream=True)
         return StreamingResponse(
             rp_resp.aiter_raw(),
             status_code=rp_resp.status_code,

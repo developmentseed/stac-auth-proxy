@@ -1,3 +1,5 @@
+"""Custom request handlers."""
+
 import logging
 from dataclasses import dataclass
 
@@ -12,14 +14,14 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class OpenApiSpecHandler:
+    """Handler for OpenAPI spec requests."""
+
     proxy: ReverseProxy
     oidc_config_url: str
     auth_scheme_name: str = "oidcAuth"
 
     async def dispatch(self, req: Request, res: Response):
-        """Proxy the OpenAPI spec from the upstream STAC API, updating it with OIDC security
-        requirements.
-        """
+        """Proxy the OpenAPI spec from the upstream STAC API, updating it with OIDC security requirements."""
         oidc_spec_response = await self.proxy.proxy_request(req)
         openapi_spec = oidc_spec_response.json()
 

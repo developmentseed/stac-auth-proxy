@@ -1,3 +1,5 @@
+"""Configuration for the STAC Auth Proxy."""
+
 from typing import Optional, TypeAlias
 
 from pydantic.networks import HttpUrl
@@ -7,7 +9,9 @@ EndpointMethods: TypeAlias = dict[str, list[str]]
 
 
 class Settings(BaseSettings):
-    upstream_url: HttpUrl = "https://earth-search.aws.element84.com/v1"
+    """Configuration settings for the STAC Auth Proxy."""
+
+    upstream_url: HttpUrl = HttpUrl(url="https://earth-search.aws.element84.com/v1")
     oidc_discovery_url: HttpUrl
 
     # Endpoints
@@ -26,4 +30,6 @@ class Settings(BaseSettings):
     openapi_spec_endpoint: Optional[str] = None
 
     class Config:
+        """Pydantic configuration."""
+
         env_prefix = "STAC_AUTH_PROXY_"

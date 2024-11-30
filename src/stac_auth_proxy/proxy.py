@@ -1,3 +1,5 @@
+"""Tooling to manage the reverse proxying of requests to an upstream STAC API."""
+
 import logging
 import time
 from dataclasses import dataclass
@@ -13,16 +15,20 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ReverseProxy:
+    """Reverse proxy functionality."""
+
     upstream: str
     client: httpx.AsyncClient = None
 
     def __post_init__(self):
+        """Initialize the HTTP client."""
         self.client = self.client or httpx.AsyncClient(
             base_url=self.upstream,
             timeout=httpx.Timeout(timeout=15.0),
         )
 
     async def proxy_request(self, request: Request, *, stream=False) -> httpx.Response:
+        """Proxy a request to the upstream STAC API."""
         headers = MutableHeaders(request.headers)
 
         # https://github.com/fastapi/fastapi/discussions/7382#discussioncomment-5136466

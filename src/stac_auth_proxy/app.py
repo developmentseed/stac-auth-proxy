@@ -1,4 +1,5 @@
-"""STAC Auth Proxy API.
+"""
+STAC Auth Proxy API.
 
 This module defines the FastAPI application for the STAC Auth Proxy, which handles
 authentication, authorization, and proxying of requests to some internal STAC API.
@@ -16,6 +17,7 @@ from .proxy import ReverseProxy
 
 
 def create_app(settings: Optional[Settings] = None) -> FastAPI:
+    """FastAPI Application Factory."""
     settings = settings or Settings()
 
     app = FastAPI(openapi_url=None)

@@ -1,3 +1,5 @@
+"""Utility functions."""
+
 from httpx import Headers
 
 

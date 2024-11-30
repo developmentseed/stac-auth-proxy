@@ -46,5 +46,11 @@ def source_api_server(source_api):
 @pytest.fixture
 def proxy_app(source_api_server: str) -> FastAPI:
     """Fixture for the proxy app, pointing to the source API."""
-    test_app_settings = Settings(upstream_url=source_api_server, default_public=False)
+    test_app_settings = Settings(
+        upstream_url=source_api_server,
+        oidc_discovery_url="https://samples.auth0.com/.well-known/openid-configuration",
+        default_public=False,
+        _env_file=".env.test",
+    )
+    print(f"{test_app_settings=}")
     return create_app(test_app_settings)

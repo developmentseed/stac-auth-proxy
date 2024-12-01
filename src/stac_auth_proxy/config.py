@@ -26,7 +26,7 @@ class Settings(BaseSettings):
         # https://stac-utils.github.io/stac-fastapi/api/stac_fastapi/extensions/third_party/bulk_transactions/#bulktransactionextension
         "/collections/{collection_id}/bulk_items": ["POST"],
     }
-    public_endpoints: EndpointMethods = {"/api.html": ["GET"]}
+    public_endpoints: EndpointMethods = {"/api.html": ["GET"], "/api": ["GET"]}
     openapi_spec_endpoint: Optional[str] = None
 
     model_config = SettingsConfigDict(env_prefix="STAC_AUTH_PROXY_")

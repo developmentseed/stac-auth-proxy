@@ -3,7 +3,7 @@
 from typing import Optional, TypeAlias
 
 from pydantic.networks import HttpUrl
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 EndpointMethods: TypeAlias = dict[str, list[str]]
 
@@ -29,7 +29,4 @@ class Settings(BaseSettings):
     public_endpoints: EndpointMethods = {"/api.html": ["GET"]}
     openapi_spec_endpoint: Optional[str] = None
 
-    class Config:
-        """Pydantic configuration."""
-
-        env_prefix = "STAC_AUTH_PROXY_"
+    model_config = SettingsConfigDict(env_prefix="STAC_AUTH_PROXY_")

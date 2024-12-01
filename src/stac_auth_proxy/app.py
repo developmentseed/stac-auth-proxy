@@ -31,11 +31,19 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     proxy = ReverseProxy(upstream=str(settings.upstream_url))
 
+    openapi_handler = OpenApiSpecHandler(
+        proxy=proxy, oidc_config_url=str(settings.oidc_discovery_url)
+    ).dispatch
+
     # Endpoints that are explicitely marked private
     for path, methods in settings.private_endpoints.items():
         app.add_api_route(
             path,
-            proxy.stream,
+            (
+                proxy.stream
+                if not path == settings.openapi_spec_endpoint
+                else openapi_handler
+            ),
             methods=methods,
             dependencies=[Depends(auth_scheme)],
         )
@@ -44,18 +52,12 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     for path, methods in settings.public_endpoints.items():
         app.add_api_route(
             path,
-            proxy.stream,
+            (
+                proxy.stream
+                if not path == settings.openapi_spec_endpoint
+                else openapi_handler
+            ),
             methods=methods,
-        )
-
-    # Endpoint with special OpenAPI transformation functionality
-    if settings.openapi_spec_endpoint:
-        app.add_api_route(
-            settings.openapi_spec_endpoint,
-            OpenApiSpecHandler(
-                proxy=proxy, oidc_config_url=str(settings.oidc_discovery_url)
-            ).dispatch,
-            methods=["GET"],
         )
 
     # Catchall for remainder of the endpoints

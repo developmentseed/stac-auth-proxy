@@ -17,7 +17,7 @@ jobs:
         with:
           path: ~/.cache/pre-commit
           key: ${{ hashFiles('.pre-commit-config.yaml') }}
-      - run: uv run pre-commit
+      - run: uv run pre-commit run --all-files
 
   test:
     runs-on: ubuntu-latest

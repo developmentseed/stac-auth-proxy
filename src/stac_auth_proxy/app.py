@@ -41,7 +41,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             path,
             (
                 proxy.stream
-                if not path == settings.openapi_spec_endpoint
+                if path != settings.openapi_spec_endpoint
                 else openapi_handler
             ),
             methods=methods,
@@ -54,7 +54,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             path,
             (
                 proxy.stream
-                if not path == settings.openapi_spec_endpoint
+                if path != settings.openapi_spec_endpoint
                 else openapi_handler
             ),
             methods=methods,

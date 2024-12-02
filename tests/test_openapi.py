@@ -26,7 +26,6 @@ def test_no_edit_openapi_spec(source_api_server):
     assert "oidcAuth" not in openapi.get("components", {}).get("securitySchemes", {})
 
 
-# @pytest.mark.skip(reason="This test is failing")
 def test_oidc_in_openapi_spec(source_api: FastAPI, source_api_server: str):
     """
     When OpenAPI spec endpoint is set, the proxied OpenAPI spec is augmented with oidc details.

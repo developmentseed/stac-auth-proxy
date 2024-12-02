@@ -7,8 +7,8 @@ authentication, authorization, and proxying of requests to some internal STAC AP
 
 from typing import Optional
 
+from eoapi.auth_utils import OpenIdConnectAuth
 from fastapi import Depends, FastAPI
-from fastapi.security import OpenIdConnect
 
 from .config import Settings
 from .handlers import OpenApiSpecHandler
@@ -21,13 +21,12 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     settings = settings or Settings()
 
     app = FastAPI(openapi_url=None)
+
     app.add_middleware(AddProcessTimeHeaderMiddleware)
 
-    auth_scheme = OpenIdConnect(
-        openIdConnectUrl=str(settings.oidc_discovery_url),
-        scheme_name="OpenID Connect",
-        description="OpenID Connect authentication for STAC API access",
-    )
+    auth_scheme = OpenIdConnectAuth(
+        openid_configuration_url=str(settings.oidc_discovery_url)
+    ).valid_token_dependency
 
     proxy = ReverseProxy(upstream=str(settings.upstream_url))
 

@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from fastapi import Request, Response
 from fastapi.routing import APIRoute
 
-from .proxy import ReverseProxy
-from .utils import safe_headers
+from .reverse_proxy import ReverseProxyHandler
+from ..utils import safe_headers
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class OpenApiSpecHandler:
     """Handler for OpenAPI spec requests."""
 
-    proxy: ReverseProxy
+    proxy: ReverseProxyHandler
     oidc_config_url: str
     auth_scheme_name: str = "oidcAuth"
 

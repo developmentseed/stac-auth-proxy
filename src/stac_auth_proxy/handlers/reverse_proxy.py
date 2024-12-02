@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class ReverseProxy:
+class ReverseProxyHandler:
     """Reverse proxy functionality."""
 
     upstream: str

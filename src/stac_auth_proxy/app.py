@@ -11,9 +11,8 @@ from eoapi.auth_utils import OpenIdConnectAuth
 from fastapi import Depends, FastAPI
 
 from .config import Settings
-from .handlers import OpenApiSpecHandler
 from .middleware import AddProcessTimeHeaderMiddleware
-from .proxy import ReverseProxy
+from .handlers import ReverseProxyHandler, OpenApiSpecHandler
 
 
 def create_app(settings: Optional[Settings] = None) -> FastAPI:
@@ -21,27 +20,25 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     settings = settings or Settings()
 
     app = FastAPI(openapi_url=None)
-
     app.add_middleware(AddProcessTimeHeaderMiddleware)
 
     auth_scheme = OpenIdConnectAuth(
         openid_configuration_url=str(settings.oidc_discovery_url)
     ).valid_token_dependency
 
-    proxy = ReverseProxy(upstream=str(settings.upstream_url))
-
+    proxy_handler = ReverseProxyHandler(upstream=str(settings.upstream_url))
     openapi_handler = OpenApiSpecHandler(
-        proxy=proxy, oidc_config_url=str(settings.oidc_discovery_url)
-    ).dispatch
+        proxy=proxy_handler, oidc_config_url=str(settings.oidc_discovery_url)
+    )
 
     # Endpoints that are explicitely marked private
     for path, methods in settings.private_endpoints.items():
         app.add_api_route(
             path,
             (
-                proxy.stream
+                proxy_handler.stream
                 if path != settings.openapi_spec_endpoint
-                else openapi_handler
+                else openapi_handler.dispatch
             ),
             methods=methods,
             dependencies=[Depends(auth_scheme)],
@@ -52,9 +49,9 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         app.add_api_route(
             path,
             (
-                proxy.stream
+                proxy_handler.stream
                 if path != settings.openapi_spec_endpoint
-                else openapi_handler
+                else openapi_handler.dispatch
             ),
             methods=methods,
         )
@@ -62,7 +59,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     # Catchall for remainder of the endpoints
     app.add_api_route(
         "/{path:path}",
-        proxy.stream,
+        proxy_handler.stream,
         methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         dependencies=([] if settings.default_public else [Depends(auth_scheme)]),
     )

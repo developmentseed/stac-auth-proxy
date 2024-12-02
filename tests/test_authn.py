@@ -2,9 +2,7 @@
 
 import pytest
 from fastapi.testclient import TestClient
-
 from utils import AppFactory
-
 
 app_factory = AppFactory(
     oidc_discovery_url="https://samples.auth0.com/.well-known/openid-configuration",
@@ -38,9 +36,7 @@ app_factory = AppFactory(
     ],
 )
 def test_default_public_false(source_api_server, path, method, token_builder):
-    """
-    Private endpoints permit access with a valid token.
-    """
+    """Private endpoints permit access with a valid token."""
     test_app = app_factory(upstream_url=source_api_server)
     valid_auth_token = token_builder({})
 

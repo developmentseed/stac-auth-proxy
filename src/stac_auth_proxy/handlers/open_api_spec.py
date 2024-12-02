@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from fastapi import Request, Response
 from fastapi.routing import APIRoute
 
-from .reverse_proxy import ReverseProxyHandler
 from ..utils import safe_headers
+from .reverse_proxy import ReverseProxyHandler
 
 logger = logging.getLogger(__name__)
 

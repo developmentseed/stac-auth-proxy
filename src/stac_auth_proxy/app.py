@@ -11,8 +11,8 @@ from eoapi.auth_utils import OpenIdConnectAuth
 from fastapi import Depends, FastAPI
 
 from .config import Settings
+from .handlers import OpenApiSpecHandler, ReverseProxyHandler
 from .middleware import AddProcessTimeHeaderMiddleware
-from .handlers import ReverseProxyHandler, OpenApiSpecHandler
 
 
 def create_app(settings: Optional[Settings] = None) -> FastAPI:

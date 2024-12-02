@@ -2,18 +2,18 @@
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from utils import AppFactory
 
-from stac_auth_proxy import Settings, create_app
+app_factory = AppFactory(
+    oidc_discovery_url="https://samples.auth0.com/.well-known/openid-configuration"
+)
 
 
 def test_no_edit_openapi_spec(source_api_server):
     """When no OpenAPI spec endpoint is set, the proxied OpenAPI spec is unaltered."""
-    app = create_app(
-        Settings(
-            upstream_url=source_api_server,
-            oidc_discovery_url="https://samples.auth0.com/.well-known/openid-configuration",
-            openapi_spec_endpoint=None,
-        )
+    app = app_factory(
+        upstream_url=source_api_server,
+        openapi_spec_endpoint=None,
     )
     client = TestClient(app)
     response = client.get("/api")
@@ -27,12 +27,9 @@ def test_no_edit_openapi_spec(source_api_server):
 
 def test_oidc_in_openapi_spec(source_api: FastAPI, source_api_server: str):
     """When OpenAPI spec endpoint is set, the proxied OpenAPI spec is augmented with oidc details."""
-    app = create_app(
-        Settings(
-            upstream_url=source_api_server,
-            oidc_discovery_url="https://samples.auth0.com/.well-known/openid-configuration",
-            openapi_spec_endpoint=source_api.openapi_url,
-        )
+    app = app_factory(
+        upstream_url=source_api_server,
+        openapi_spec_endpoint=source_api.openapi_url,
     )
     client = TestClient(app)
     response = client.get(source_api.openapi_url)

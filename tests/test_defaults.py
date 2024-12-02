@@ -1,24 +1,12 @@
 """Basic test cases for the proxy app."""
 
 import pytest
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from utils import AppFactory
 
-from stac_auth_proxy import Settings, create_app
-
-
-@pytest.fixture(scope="module")
-def test_app(source_api_server: str) -> FastAPI:
-    """Fixture for the proxy app, pointing to the source API."""
-    return create_app(
-        Settings.model_validate(
-            {
-                "upstream_url": source_api_server,
-                "oidc_discovery_url": "https://samples.auth0.com/.well-known/openid-configuration",
-                "default_public": False,
-            },
-        )
-    )
+app_factory = AppFactory(
+    oidc_discovery_url="https://samples.auth0.com/.well-known/openid-configuration"
+)
 
 
 @pytest.mark.parametrize(
@@ -49,14 +37,17 @@ def test_default_public_true(source_api_server, path, method, expected_status):
     When default_public=true and private_endpoints aren't set, all endpoints should be
     public except for transaction endpoints.
     """
-    test_app = create_app(
-        Settings.model_validate(
-            {
-                "upstream_url": source_api_server,
-                "oidc_discovery_url": "https://samples.auth0.com/.well-known/openid-configuration",
-                "default_public": True,
-            },
-        )
+    test_app = app_factory(
+        upstream_url=source_api_server,
+        public_endpoints={},
+        private_endpoints={
+            "/collections": ["POST"],
+            "/collections/{collection_id}": ["PUT", "PATCH", "DELETE"],
+            "/collections/{collection_id}/items": ["POST"],
+            "/collections/{collection_id}/items/{item_id}": ["PUT", "PATCH", "DELETE"],
+            "/collections/{collection_id}/bulk_items": ["POST"],
+        },
+        default_public=True,
     )
     client = TestClient(test_app)
     response = client.request(method=method, url=path)
@@ -91,14 +82,11 @@ def test_default_public_false(source_api_server, path, method, expected_status):
     When default_public=false and private_endpoints aren't set, all endpoints should be
     public except for transaction endpoints.
     """
-    test_app = create_app(
-        Settings.model_validate(
-            {
-                "upstream_url": source_api_server,
-                "oidc_discovery_url": "https://samples.auth0.com/.well-known/openid-configuration",
-                "default_public": False,
-            },
-        )
+    test_app = app_factory(
+        upstream_url=source_api_server,
+        public_endpoints={"/api.html": ["GET"], "/api": ["GET"]},
+        private_endpoints={},
+        default_public=False,
     )
     client = TestClient(test_app)
     response = client.request(method=method, url=path)

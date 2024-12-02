@@ -13,6 +13,7 @@ def test_no_edit_openapi_spec(source_api_server):
         Settings(
             upstream_url=source_api_server,
             oidc_discovery_url="https://samples.auth0.com/.well-known/openid-configuration",
+            openapi_spec_endpoint=None,
         )
     )
     client = TestClient(app)
@@ -37,7 +38,6 @@ def test_oidc_in_openapi_spec(source_api: FastAPI, source_api_server: str):
             openapi_spec_endpoint=source_api.openapi_url,
         )
     )
-    print(f"{source_api.openapi_url=}")
     client = TestClient(app)
     response = client.get(source_api.openapi_url)
     assert response.status_code == 200

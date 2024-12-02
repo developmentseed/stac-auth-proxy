@@ -1,7 +1,6 @@
 """Pytest fixtures."""
 
 import threading
-from typing import Optional
 
 import pytest
 import uvicorn

@@ -1,4 +1,5 @@
-import pytest
+"""Tests for OpenAPI spec handling."""
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -6,9 +7,7 @@ from stac_auth_proxy import Settings, create_app
 
 
 def test_no_edit_openapi_spec(source_api_server):
-    """
-    When no OpenAPI spec endpoint is set, the proxied OpenAPI spec is unaltered.
-    """
+    """When no OpenAPI spec endpoint is set, the proxied OpenAPI spec is unaltered."""
     app = create_app(
         Settings(
             upstream_url=source_api_server,
@@ -27,9 +26,7 @@ def test_no_edit_openapi_spec(source_api_server):
 
 
 def test_oidc_in_openapi_spec(source_api: FastAPI, source_api_server: str):
-    """
-    When OpenAPI spec endpoint is set, the proxied OpenAPI spec is augmented with oidc details.
-    """
+    """When OpenAPI spec endpoint is set, the proxied OpenAPI spec is augmented with oidc details."""
     app = create_app(
         Settings(
             upstream_url=source_api_server,

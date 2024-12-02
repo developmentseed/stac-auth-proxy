@@ -29,7 +29,7 @@ known_first_party = ["stac_auth_proxy"]
 profile = "black"
 
 [tool.ruff]
-ignore = ["E501", "D203", "D212"]
+ignore = ["E501", "D205", "D212"]
 select = ["D", "E", "F"]
 
 [build-system]

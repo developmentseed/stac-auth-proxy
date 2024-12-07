@@ -1,4 +1,4 @@
-"""Tests for OpenAPI spec handling."""
+"""Tests for CEL guard."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -31,9 +31,7 @@ def test_guard_query_params(
         upstream_url=source_api_server,
         guard={
             "cls": "stac_auth_proxy.guards.cel",
-            "kwargs": {
-                "expression": '("foo" in req.query_params) && req.query_params.foo == "bar"'
-            },
+            "args": ('has(req.query_params.foo) && req.query_params.foo == "bar"',),
         },
     )
     client = TestClient(app, headers={"Authorization": f"Bearer {token_builder({})}"})
@@ -61,13 +59,12 @@ def test_guard_auth_token(
         upstream_url=source_api_server,
         guard={
             "cls": "stac_auth_proxy.guards.cel",
-            "kwargs": {
-                "expression": """
-                  ("collections" in token) 
-                  && ("collection_id" in req.path_params) 
-                  && (req.path_params.collection_id in token.collections) 
+            "args": (
                 """
-            },
+                has(req.path_params.collection_id) && has(token.collections) &&
+                req.path_params.collection_id in (token.collections)
+                """,
+            ),
         },
     )
     client = TestClient(

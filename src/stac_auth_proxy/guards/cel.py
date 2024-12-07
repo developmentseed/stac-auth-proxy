@@ -1,13 +1,12 @@
-from dataclasses import dataclass
-from typing import Any
-import re
-from urllib.parse import urlparse
+from typing import Any, Callable
 
 from fastapi import Request, Depends, HTTPException
 import celpy
 
+from ..utils import extract_variables
 
-def cel(expression: str, token_dependency: Any):
+
+def cel(expression: str, token_dependency: Callable[..., Any]):
     """Custom middleware."""
     env = celpy.Environment()
     ast = env.compile(expression)
@@ -42,11 +41,3 @@ def cel(expression: str, token_dependency: Any):
             raise HTTPException(status_code=403, detail="Forbidden (failed CEL check)")
 
     return check
-
-
-def extract_variables(url: str) -> dict:
-    path = urlparse(url).path
-    # This allows either /items or /bulk_items, with an optional item_id following.
-    pattern = r"^/collections/(?P<collection_id>[^/]+)(?:/(?:items|bulk_items)(?:/(?P<item_id>[^/]+))?)?/?$"
-    match = re.match(pattern, path)
-    return {k: v for k, v in match.groupdict().items() if v} if match else {}

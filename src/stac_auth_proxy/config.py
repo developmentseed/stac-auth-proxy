@@ -1,7 +1,7 @@
 """Configuration for the STAC Auth Proxy."""
 
 import importlib
-from typing import Optional, TypeAlias
+from typing import Optional, TypeAlias, Sequence
 
 from pydantic import BaseModel
 from pydantic.networks import HttpUrl
@@ -12,6 +12,7 @@ EndpointMethods: TypeAlias = dict[str, list[str]]
 
 class ClassInput(BaseModel):
     cls: str
+    args: Optional[Sequence[str]] = []
     kwargs: Optional[dict[str, str]] = {}
 
     def __call__(self, token_dependency):
@@ -19,7 +20,7 @@ class ClassInput(BaseModel):
         module_path, class_name = self.cls.rsplit(".", 1)
         module = importlib.import_module(module_path)
         cls = getattr(module, class_name)
-        return cls(**self.kwargs, token_dependency=token_dependency)
+        return cls(*self.args, **self.kwargs, token_dependency=token_dependency)
 
 
 class Settings(BaseSettings):

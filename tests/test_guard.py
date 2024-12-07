@@ -10,31 +10,15 @@ app_factory = AppFactory(
 )
 
 
-import pytest
-from unittest.mock import patch, MagicMock
-
-
-# Fixture to patch OpenIdConnectAuth and mock valid_token_dependency
-@pytest.fixture
-def skip_auth():
-    with patch("eoapi.auth_utils.OpenIdConnectAuth") as MockClass:
-        # Create a mock instance
-        mock_instance = MagicMock()
-        # Set the return value of `valid_token_dependency`
-        mock_instance.valid_token_dependency.return_value = "constant"
-        # Assign the mock instance to the patched class's return value
-        MockClass.return_value = mock_instance
-
-        # Yield the mock instance for use in tests
-        yield mock_instance
-
-
 @pytest.mark.parametrize(
     "endpoint, expected_status_code",
     [
         ("/", 403),
         ("/?foo=xyz", 403),
+        ("/?bar=foo", 403),
         ("/?foo=bar", 200),
+        ("/?foo=xyz&foo=bar", 200),  # Only the last value is checked
+        ("/?foo=bar&foo=xyz", 403),  # Only the last value is checked
     ],
 )
 def test_guard_query_params(
@@ -43,7 +27,6 @@ def test_guard_query_params(
     endpoint,
     expected_status_code,
 ):
-    """When no OpenAPI spec endpoint is set, the proxied OpenAPI spec is unaltered."""
     app = app_factory(
         upstream_url=source_api_server,
         guard={
@@ -55,4 +38,40 @@ def test_guard_query_params(
     )
     client = TestClient(app, headers={"Authorization": f"Bearer {token_builder({})}"})
     response = client.get(endpoint)
+    assert response.status_code == expected_status_code
+
+
+@pytest.mark.parametrize(
+    "token, expected_status_code",
+    [
+        ({"foo": "bar"}, 403),
+        ({"collections": []}, 403),
+        ({"collections": ["foo", "bar"]}, 403),
+        ({"collections": ["xyz"]}, 200),
+        ({"collections": ["foo", "xyz"]}, 200),
+    ],
+)
+def test_guard_auth_token(
+    source_api_server,
+    token_builder,
+    token,
+    expected_status_code,
+):
+    app = app_factory(
+        upstream_url=source_api_server,
+        guard={
+            "cls": "stac_auth_proxy.guards.cel.Cel",
+            "kwargs": {
+                "expression": """
+                  ("collections" in token) 
+                  && ("collection_id" in req.path_params) 
+                  && (req.path_params.collection_id in token.collections) 
+                """
+            },
+        },
+    )
+    client = TestClient(
+        app, headers={"Authorization": f"Bearer {token_builder(token)}"}
+    )
+    response = client.get("/collections/xyz")
     assert response.status_code == expected_status_code

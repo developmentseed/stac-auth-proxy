@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from typing import Any
+import re
+from urllib.parse import urlparse
 
 from fastapi import Request, Depends, HTTPException
 import celpy
@@ -25,6 +27,7 @@ class Cel:
                 "path": request.url.path,
                 "method": request.method,
                 "query_params": dict(request.query_params),
+                "path_params": extract_variables(request.url.path),
                 "headers": dict(request.headers),
                 # Body may need to be read (await request.json()) or (await request.body()) if needed
                 "body": (
@@ -33,6 +36,8 @@ class Cel:
                     else (await request.body()).decode()
                 ),
             }
+
+            print(f"{request_data['path_params']=}")
 
             result = self.program.evaluate(
                 celpy.json_to_cel(
@@ -48,3 +53,11 @@ class Cel:
                 )
 
         self.check = check
+
+
+def extract_variables(url: str) -> dict:
+    path = urlparse(url).path
+    # This allows either /items or /bulk_items, with an optional item_id following.
+    pattern = r"^/collections/(?P<collection_id>[^/]+)(?:/(?:items|bulk_items)(?:/(?P<item_id>[^/]+))?)?/?$"
+    match = re.match(pattern, path)
+    return {k: v for k, v in match.groupdict().items() if v} if match else {}

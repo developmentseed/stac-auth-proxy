@@ -5,6 +5,7 @@ This module defines the FastAPI application for the STAC Auth Proxy, which handl
 authentication, authorization, and proxying of requests to some internal STAC API.
 """
 
+import logging
 from typing import Optional
 
 from eoapi.auth_utils import OpenIdConnectAuth
@@ -13,6 +14,8 @@ from fastapi import Depends, FastAPI
 from .config import Settings
 from .handlers import OpenApiSpecHandler, ReverseProxyHandler
 from .middleware import AddProcessTimeHeaderMiddleware
+
+logger = logging.getLogger(__name__)
 
 
 def create_app(settings: Optional[Settings] = None) -> FastAPI:
@@ -25,6 +28,10 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     auth_scheme = OpenIdConnectAuth(
         openid_configuration_url=str(settings.oidc_discovery_url)
     ).valid_token_dependency
+
+    if settings.guard:
+        logger.info("Wrapping auth scheme")
+        auth_scheme = settings.guard(auth_scheme).check
 
     proxy_handler = ReverseProxyHandler(upstream=str(settings.upstream_url))
     openapi_handler = OpenApiSpecHandler(

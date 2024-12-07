@@ -1,11 +1,25 @@
 """Configuration for the STAC Auth Proxy."""
 
+import importlib
 from typing import Optional, TypeAlias
 
+from pydantic import BaseModel
 from pydantic.networks import HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 EndpointMethods: TypeAlias = dict[str, list[str]]
+
+
+class ClassInput(BaseModel):
+    cls: str
+    kwargs: Optional[dict[str, str]] = {}
+
+    def __call__(self, token_dependency):
+        """Dynamically load a class and instantiate it with kwargs."""
+        module_path, class_name = self.cls.rsplit(".", 1)
+        module = importlib.import_module(module_path)
+        cls = getattr(module, class_name)
+        return cls(**self.kwargs, token_dependency=token_dependency)
 
 
 class Settings(BaseSettings):
@@ -30,3 +44,5 @@ class Settings(BaseSettings):
     openapi_spec_endpoint: Optional[str] = None
 
     model_config = SettingsConfigDict(env_prefix="STAC_AUTH_PROXY_")
+
+    guard: Optional[ClassInput] = None

@@ -30,7 +30,7 @@ def test_guard_query_params(
     app = app_factory(
         upstream_url=source_api_server,
         guard={
-            "cls": "stac_auth_proxy.guards.cel.Cel",
+            "cls": "stac_auth_proxy.guards.cel",
             "kwargs": {
                 "expression": '("foo" in req.query_params) && req.query_params.foo == "bar"'
             },
@@ -60,7 +60,7 @@ def test_guard_auth_token(
     app = app_factory(
         upstream_url=source_api_server,
         guard={
-            "cls": "stac_auth_proxy.guards.cel.Cel",
+            "cls": "stac_auth_proxy.guards.cel",
             "kwargs": {
                 "expression": """
                   ("collections" in token) 

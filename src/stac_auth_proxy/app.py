@@ -31,7 +31,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     if settings.guard:
         logger.info("Wrapping auth scheme")
-        auth_scheme = settings.guard(auth_scheme).check
+        auth_scheme = settings.guard(auth_scheme)
 
     proxy_handler = ReverseProxyHandler(upstream=str(settings.upstream_url))
     openapi_handler = OpenApiSpecHandler(

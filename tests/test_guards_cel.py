@@ -27,6 +27,7 @@ def test_guard_query_params(
     endpoint,
     expected_status_code,
 ):
+    """Test guard with query parameters."""
     app = app_factory(
         upstream_url=source_api_server,
         guard={
@@ -55,6 +56,7 @@ def test_guard_auth_token(
     token_payload,
     expected_status_code,
 ):
+    """Test guard with auth token."""
     app = app_factory(
         upstream_url=source_api_server,
         guard={

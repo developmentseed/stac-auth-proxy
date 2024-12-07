@@ -20,6 +20,10 @@ def safe_headers(headers: Headers) -> dict[str, str]:
 
 
 def extract_variables(url: str) -> dict:
+    """
+    Extract variables from a URL path. Being that we use a catch-all endpoint for the proxy,
+    we can't rely on the path parameters that FastAPI provides.
+    """
     path = urlparse(url).path
     # This allows either /items or /bulk_items, with an optional item_id following.
     pattern = r"^/collections/(?P<collection_id>[^/]+)(?:/(?:items|bulk_items)(?:/(?P<item_id>[^/]+))?)?/?$"

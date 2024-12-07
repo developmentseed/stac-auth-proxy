@@ -1,3 +1,5 @@
+"""Guard using CEL (Common Expression Language, https://cel.dev)."""
+
 from typing import Any, Callable
 
 import celpy
@@ -7,7 +9,7 @@ from ..utils import extract_variables
 
 
 def cel(expression: str, token_dependency: Callable[..., Any]):
-    """Custom middleware."""
+    """Cel check factory."""
     env = celpy.Environment()
     ast = env.compile(expression)
     program = env.program(ast)

@@ -11,6 +11,8 @@ EndpointMethods: TypeAlias = dict[str, list[str]]
 
 
 class ClassInput(BaseModel):
+    """Input model for dynamically loading a class or function."""
+
     cls: str
     args: Optional[Sequence[str]] = []
     kwargs: Optional[dict[str, str]] = {}

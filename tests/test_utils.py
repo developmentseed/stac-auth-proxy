@@ -17,4 +17,5 @@ from stac_auth_proxy.utils import extract_variables
     ),
 )
 def test_extract_variables(url, expected):
+    """Test extracting variables from a URL path."""
     assert extract_variables(url) == expected

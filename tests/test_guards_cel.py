@@ -40,7 +40,7 @@ def test_guard_query_params(
 
 
 @pytest.mark.parametrize(
-    "token, expected_status_code",
+    "token_payload, expected_status_code",
     [
         ({"foo": "bar"}, 403),
         ({"collections": []}, 403),
@@ -52,7 +52,7 @@ def test_guard_query_params(
 def test_guard_auth_token(
     source_api_server,
     token_builder,
-    token,
+    token_payload,
     expected_status_code,
 ):
     app = app_factory(
@@ -68,7 +68,7 @@ def test_guard_auth_token(
         },
     )
     client = TestClient(
-        app, headers={"Authorization": f"Bearer {token_builder(token)}"}
+        app, headers={"Authorization": f"Bearer {token_builder(token_payload)}"}
     )
     response = client.get("/collections/xyz")
     assert response.status_code == expected_status_code

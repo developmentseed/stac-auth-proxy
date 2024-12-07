@@ -1,7 +1,7 @@
 """Configuration for the STAC Auth Proxy."""
 
 import importlib
-from typing import Optional, TypeAlias, Sequence
+from typing import Optional, Sequence, TypeAlias
 
 from pydantic import BaseModel
 from pydantic.networks import HttpUrl

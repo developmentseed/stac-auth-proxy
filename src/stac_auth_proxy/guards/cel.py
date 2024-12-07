@@ -1,7 +1,7 @@
 from typing import Any, Callable
 
-from fastapi import Request, Depends, HTTPException
 import celpy
+from fastapi import Depends, HTTPException, Request
 
 from ..utils import extract_variables
 

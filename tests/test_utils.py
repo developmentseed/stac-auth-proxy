@@ -1,6 +1,7 @@
 """Tests for OpenAPI spec handling."""
 
 import pytest
+
 from stac_auth_proxy.utils import extract_variables
 
 

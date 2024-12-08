@@ -1,6 +1,7 @@
 """Pytest fixtures."""
 
 import json
+import os
 import threading
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -68,19 +69,42 @@ def source_api():
     app = FastAPI(docs_url="/api.html", openapi_url="/api")
 
     for path, methods in {
-        "/": ["GET"],
-        "/conformance": ["GET"],
-        "/queryables": ["GET"],
-        "/search": ["GET", "POST"],
-        "/collections": ["GET", "POST"],
-        "/collections/{collection_id}": ["GET", "PUT", "DELETE"],
-        "/collections/{collection_id}/items": ["GET", "POST"],
+        "/": [
+            "GET",
+        ],
+        "/conformance": [
+            "GET",
+        ],
+        "/queryables": [
+            "GET",
+        ],
+        "/search": [
+            "GET",
+            "POST",
+        ],
+        "/collections": [
+            "GET",
+            "POST",
+        ],
+        "/collections/{collection_id}": [
+            "GET",
+            "PUT",
+            "PATCH",
+            "DELETE",
+        ],
+        "/collections/{collection_id}/items": [
+            "GET",
+            "POST",
+        ],
         "/collections/{collection_id}/items/{item_id}": [
             "GET",
             "PUT",
+            "PATCH",
             "DELETE",
         ],
-        "/collections/{collection_id}/bulk_items": ["POST"],
+        "/collections/{collection_id}/bulk_items": [
+            "POST",
+        ],
     }.items():
         for method in methods:
             # NOTE: declare routes per method separately to avoid warning of "Duplicate Operation ID ... for function <lambda>"
@@ -109,3 +133,10 @@ def source_api_server(source_api):
     yield f"http://{host}:{port}"
     server.should_exit = True
     thread.join()
+
+
+@pytest.fixture(autouse=True, scope="module")
+def mock_env():
+    """Clear environment variables to avoid poluting configs from runtime env."""
+    with patch.dict(os.environ, clear=True):
+        yield

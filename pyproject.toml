@@ -42,5 +42,6 @@ requires = ["hatchling>=1.12.0"]
 dev = [
   "jwcrypto>=1.5.6",
   "pre-commit>=3.5.0",
+  "pytest-cov>=5.0.0",
   "pytest>=8.3.3",
 ]

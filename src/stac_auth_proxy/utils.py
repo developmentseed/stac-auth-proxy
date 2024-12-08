@@ -3,6 +3,7 @@
 import re
 from urllib.parse import urlparse
 
+from fastapi.dependencies.models import Dependant
 from httpx import Headers
 
 
@@ -29,3 +30,15 @@ def extract_variables(url: str) -> dict:
     pattern = r"^/collections/(?P<collection_id>[^/]+)(?:/(?:items|bulk_items)(?:/(?P<item_id>[^/]+))?)?/?$"
     match = re.match(pattern, path)
     return {k: v for k, v in match.groupdict().items() if v} if match else {}
+
+
+def has_any_security_requirements(dependency: Dependant) -> bool:
+    """
+    Recursively check if any dependency within the hierarchy has a non-empty
+    security_requirements list.
+    """
+    if dependency.security_requirements:
+        return True
+    return any(
+        has_any_security_requirements(sub_dep) for sub_dep in dependency.dependencies
+    )

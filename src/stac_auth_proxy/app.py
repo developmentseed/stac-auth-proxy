@@ -22,7 +22,9 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     """FastAPI Application Factory."""
     settings = settings or Settings()
 
-    app = FastAPI(openapi_url=None)
+    app = FastAPI(
+        openapi_url=None,
+    )
     app.add_middleware(AddProcessTimeHeaderMiddleware)
 
     auth_scheme = OpenIdConnectAuth(
@@ -32,6 +34,13 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     if settings.guard:
         logger.info("Wrapping auth scheme")
         auth_scheme = settings.guard(auth_scheme)
+
+    if settings.debug:
+        app.add_api_route(
+            "/_debug",
+            lambda: {"settings": settings},
+            methods=["GET"],
+        )
 
     proxy_handler = ReverseProxyHandler(upstream=str(settings.upstream_url))
     openapi_handler = OpenApiSpecHandler(
@@ -61,13 +70,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
                 else openapi_handler.dispatch
             ),
             methods=methods,
-        )
-
-    if settings.debug:
-        app.add_api_route(
-            "/_debug",
-            lambda: {"settings": settings},
-            methods=["GET"],
         )
 
     # Catchall for remainder of the endpoints

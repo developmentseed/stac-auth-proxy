@@ -34,12 +34,13 @@ class ReverseProxyHandler:
         headers.setdefault("X-Forwarded-Host", request.url.hostname)
 
         # https://github.com/fastapi/fastapi/discussions/7382#discussioncomment-5136466
+        url = httpx.URL(
+            path=request.url.path,
+            query=request.url.query.encode("utf-8"),
+        )
         rp_req = self.client.build_request(
             request.method,
-            url=httpx.URL(
-                path=request.url.path,
-                query=request.url.query.encode("utf-8"),
-            ),
+            url=url,
             headers=headers,
             content=request.stream(),
         )

@@ -3,7 +3,7 @@
 from typing import Any, Callable
 
 import celpy
-from fastapi import Depends, HTTPException, Request
+from fastapi import HTTPException, Request, Security
 
 from ..utils import extract_variables
 
@@ -16,7 +16,7 @@ def cel(expression: str, token_dependency: Callable[..., Any]):
 
     async def check(
         request: Request,
-        auth_token=Depends(token_dependency),
+        auth_token=Security(token_dependency),
     ):
         request_data = {
             "path": request.url.path,

@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from utils import AppFactory
 
 app_factory = AppFactory(
-    oidc_discovery_url="https://samples.auth0.com/.well-known/openid-configuration"
+    oidc_discovery_url="https://example-stac-api.com/.well-known/openid-configuration"
 )
 
 

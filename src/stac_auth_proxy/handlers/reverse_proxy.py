@@ -30,6 +30,8 @@ class ReverseProxyHandler:
     async def proxy_request(self, request: Request, *, stream=False) -> httpx.Response:
         """Proxy a request to the upstream STAC API."""
         headers = MutableHeaders(request.headers)
+        headers.setdefault("X-Forwarded-For", request.client.host)
+        headers.setdefault("X-Forwarded-Host", request.url.hostname)
 
         # https://github.com/fastapi/fastapi/discussions/7382#discussioncomment-5136466
         rp_req = self.client.build_request(

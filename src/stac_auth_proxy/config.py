@@ -28,6 +28,8 @@ class ClassInput(BaseModel):
 class Settings(BaseSettings):
     """Configuration settings for the STAC Auth Proxy."""
 
+    debug: bool = False
+
     upstream_url: HttpUrl = HttpUrl(url="https://earth-search.aws.element84.com/v1")
     oidc_discovery_url: HttpUrl
 

@@ -63,6 +63,13 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             methods=methods,
         )
 
+    if settings.debug:
+        app.add_api_route(
+            "/_debug",
+            lambda: {"settings": settings},
+            methods=["GET"],
+        )
+
     # Catchall for remainder of the endpoints
     app.add_api_route(
         "/{path:path}",

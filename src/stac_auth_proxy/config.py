@@ -48,4 +48,10 @@ class Settings(BaseSettings):
     public_endpoints: EndpointMethods = {"/api.html": ["GET"], "/api": ["GET"]}
     openapi_spec_endpoint: Optional[str] = None
 
+    collections_filter: Optional[ClassInput] = {
+        "cls": "stac_auth_proxy.filters.Template",
+        "args": ["""A_CONTAINEDBY(id, ( '{{ token.collections | join("', '") }}' ))"""],
+    }
+    items_filter: Optional[ClassInput] = None
+
     model_config = SettingsConfigDict(env_prefix="STAC_AUTH_PROXY_")

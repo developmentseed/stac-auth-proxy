@@ -49,5 +49,3 @@ class Settings(BaseSettings):
     openapi_spec_endpoint: Optional[str] = None
 
     model_config = SettingsConfigDict(env_prefix="STAC_AUTH_PROXY_")
-
-    guard: Optional[ClassInput] = None

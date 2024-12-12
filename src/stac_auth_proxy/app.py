@@ -31,10 +31,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         openid_configuration_url=str(settings.oidc_discovery_url)
     ).valid_token_dependency
 
-    if settings.guard:
-        logger.info("Wrapping auth scheme")
-        auth_scheme = settings.guard(auth_scheme)
-
     if settings.debug:
         app.add_api_route(
             "/_debug",

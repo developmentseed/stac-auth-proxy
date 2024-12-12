@@ -9,7 +9,6 @@ STAC Auth Proxy is a proxy API that mediates between the client and and some int
 
 - 🔐 Selectively apply OIDC auth to some or all endpoints & methods
 - 📖 Augments [OpenAPI](https://swagger.io/specification/) with auth information, keeping auto-generated docs (e.g. [Swagger UI](https://swagger.io/tools/swagger-ui/)) accurate
-- 💂‍♀️ Custom policies enforce complex access controls, defined with [Common Expression Language (CEL)](https://cel.dev/)
 
 ## Installation
 

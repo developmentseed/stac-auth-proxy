@@ -3,7 +3,7 @@
 import importlib
 from typing import Optional, Sequence, TypeAlias
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic.networks import HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -14,8 +14,8 @@ class ClassInput(BaseModel):
     """Input model for dynamically loading a class or function."""
 
     cls: str
-    args: Optional[Sequence[str]] = []
-    kwargs: Optional[dict[str, str]] = {}
+    args: Optional[Sequence[str]] = Field(default_factory=list)
+    kwargs: Optional[dict[str, str]] = Field(default_factory=dict)
 
     def __call__(self, token_dependency):
         """Dynamically load a class and instantiate it with kwargs."""

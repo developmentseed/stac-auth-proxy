@@ -14,8 +14,8 @@ class ClassInput(BaseModel):
     """Input model for dynamically loading a class or function."""
 
     cls: str
-    args: Optional[Sequence[str]] = Field(default_factory=list)
-    kwargs: Optional[dict[str, str]] = Field(default_factory=dict)
+    args: Sequence[str] = Field(default_factory=list)
+    kwargs: dict[str, str] = Field(default_factory=dict)
 
     def __call__(self, token_dependency):
         """Dynamically load a class and instantiate it with kwargs."""
@@ -48,10 +48,7 @@ class Settings(BaseSettings):
     public_endpoints: EndpointMethods = {"/api.html": ["GET"], "/api": ["GET"]}
     openapi_spec_endpoint: Optional[str] = None
 
-    collections_filter: Optional[ClassInput] = {
-        "cls": "stac_auth_proxy.filters.Template",
-        "args": ["""A_CONTAINEDBY(id, ( '{{ token.collections | join("', '") }}' ))"""],
-    }
+    collections_filter: Optional[ClassInput] = None
     items_filter: Optional[ClassInput] = None
 
     model_config = SettingsConfigDict(env_prefix="STAC_AUTH_PROXY_")

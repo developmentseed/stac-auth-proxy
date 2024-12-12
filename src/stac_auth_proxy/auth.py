@@ -1,3 +1,5 @@
+"""OIDC authentication module for validating JWTs."""
+
 import json
 import logging
 import urllib.request
@@ -7,29 +9,32 @@ from typing import Annotated, Any, Callable, Optional, Sequence
 import jwt
 from fastapi import HTTPException, Security, security, status
 from fastapi.security.base import SecurityBase
-from pydantic import AnyHttpUrl
-from starlette.exceptions import HTTPException
-from starlette.status import HTTP_403_FORBIDDEN
+from pydantic import HttpUrl
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class OpenIdConnectAuth:
-    openid_configuration_url: AnyHttpUrl
-    openid_configuration_internal_url: Optional[AnyHttpUrl] = None
+    """OIDC authentication class to generate auth handlers."""
+
+    openid_configuration_url: HttpUrl
+    openid_configuration_internal_url: Optional[HttpUrl] = None
     allowed_jwt_audiences: Optional[Sequence[str]] = None
 
     # Generated attributes
     auth_scheme: SecurityBase = field(init=False)
     jwks_client: jwt.PyJWKClient = field(init=False)
-    valid_token_dependency: Callable[..., Any] = field(init=False)
+    validated_user: Callable[..., Any] = field(init=False)
+    maybe_validated_user: Callable[..., Any] = field(init=False)
 
     def __post_init__(self):
+        """Initialize the OIDC authentication class."""
         logger.debug("Requesting OIDC config")
-        with urllib.request.urlopen(
-            str(self.openid_configuration_internal_url or self.openid_configuration_url)
-        ) as response:
+        origin_url = (
+            self.openid_configuration_internal_url or self.openid_configuration_url
+        )
+        with urllib.request.urlopen(origin_url) as response:
             if response.status != 200:
                 logger.error(
                     "Received a non-200 response when fetching OIDC config: %s",
@@ -45,10 +50,10 @@ class OpenIdConnectAuth:
             openIdConnectUrl=str(self.openid_configuration_url),
             auto_error=False,
         )
-        self.user_or_none = self.build(auto_error=False)
-        self.valid_token_dependency = self.build(auto_error=True)
+        self.validated_user = self._build(auto_error=True)
+        self.maybe_validated_user = self._build(auto_error=False)
 
-    def build(self, auto_error: bool = True):
+    def _build(self, auto_error: bool = True):
         """Build a dependency for validating an OIDC token."""
 
         def valid_token_dependency(
@@ -59,7 +64,8 @@ class OpenIdConnectAuth:
             if not auth_header:
                 if auto_error:
                     raise HTTPException(
-                        status_code=HTTP_403_FORBIDDEN, detail="Not authenticated"
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Not authenticated",
                     )
                 return None
 
@@ -111,4 +117,6 @@ class OpenIdConnectAuth:
 
 
 class OidcFetchError(Exception):
+    """Error fetching OIDC configuration."""
+
     pass

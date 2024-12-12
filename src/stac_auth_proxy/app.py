@@ -8,9 +8,9 @@ authentication, authorization, and proxying of requests to some internal STAC AP
 import logging
 from typing import Optional
 
-from eoapi.auth_utils import OpenIdConnectAuth
 from fastapi import Depends, FastAPI
 
+from .auth import OpenIdConnectAuth
 from .config import Settings
 from .handlers import OpenApiSpecHandler, ReverseProxyHandler
 from .middleware import AddProcessTimeHeaderMiddleware
@@ -40,7 +40,8 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     proxy_handler = ReverseProxyHandler(upstream=str(settings.upstream_url))
     openapi_handler = OpenApiSpecHandler(
-        proxy=proxy_handler, oidc_config_url=str(settings.oidc_discovery_url)
+        proxy=proxy_handler,
+        oidc_config_url=str(settings.oidc_discovery_url),
     )
 
     # Endpoints that are explicitely marked private

@@ -6,16 +6,16 @@ authentication, authorization, and proxying of requests to some internal STAC AP
 """
 
 import logging
-from typing import Optional, Annotated
+from typing import Optional
 
-from fastapi import FastAPI, Security, Request, Depends
-from cql2 import Expr
+from fastapi import FastAPI, Security
 
 from .auth import OpenIdConnectAuth
 from .config import Settings
 from .handlers import OpenApiSpecHandler, ReverseProxyHandler
 from .middleware import AddProcessTimeHeaderMiddleware
-from .utils import apply_filter
+
+# from .utils import apply_filter
 
 logger = logging.getLogger(__name__)
 

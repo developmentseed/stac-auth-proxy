@@ -3,16 +3,16 @@
 import logging
 import time
 from dataclasses import dataclass
-from typing import Optional, Annotated
+from typing import Annotated, Optional
 
-from cql2 import Expr
 import httpx
-from fastapi import Request, Depends
+from cql2 import Expr
+from fastapi import Depends, Request
 from starlette.background import BackgroundTask
 from starlette.datastructures import MutableHeaders
 from starlette.responses import StreamingResponse
 
-from ..utils import update_qs
+from .. import utils
 
 logger = logging.getLogger(__name__)
 
@@ -33,18 +33,18 @@ class ReverseProxyHandler:
             timeout=httpx.Timeout(timeout=15.0),
         )
 
-        self.proxy_request.__annotations__["collections_filter"] = Annotated[
-            Optional[Expr], Depends(self.collections_filter.dependency)
-        ]
-        self.stream.__annotations__["collections_filter"] = Annotated[
-            Optional[Expr], Depends(self.collections_filter.dependency)
-        ]
+        # Update annotations to support FastAPI's dependency injection
+        for endpoint in [self.proxy_request, self.stream]:
+            endpoint.__annotations__["collections_filter"] = Annotated[
+                Optional[Expr],
+                Depends(getattr(self.collections_filter, "dependency", lambda: None)),
+            ]
 
     async def proxy_request(
         self,
         request: Request,
         *,
-        collections_filter: Annotated[Optional[Expr], Depends(...)],
+        collections_filter: Annotated[Optional[Expr], Depends(...)] = None,
         stream=False,
     ) -> httpx.Response:
         """Proxy a request to the upstream STAC API."""
@@ -53,24 +53,22 @@ class ReverseProxyHandler:
         headers.setdefault("X-Forwarded-Host", request.url.hostname)
 
         path = request.url.path
-        query = request.url.query.encode("utf-8")
+        query = request.url.query
+
+        if utils.is_collection_endpoint(path) and collections_filter:
+            if request.method == "GET" and path == "/collections":
+                query = utils.insert_filter(qs=query, filter=collections_filter)
+        elif utils.is_item_endpoint(path) and self.items_filter:
+            if request.method == "GET":
+                query = utils.insert_filter(qs=query, filter=self.items_filter)
 
         # https://github.com/fastapi/fastapi/discussions/7382#discussioncomment-5136466
-        # TODO: Examine filters
-        if collections_filter:
-            if request.method == "GET" and path == "/collections":
-                query += b"&" + update_qs(
-                    request.query_params, filter=collections_filter.to_text()
-                )
-
-        url = httpx.URL(
-            path=path,
-            query=query,
-        )
-
         rp_req = self.client.build_request(
             request.method,
-            url=url,
+            url=httpx.URL(
+                path=path,
+                query=query.encode("utf-8"),
+            ),
             headers=headers,
             content=request.stream(),
         )

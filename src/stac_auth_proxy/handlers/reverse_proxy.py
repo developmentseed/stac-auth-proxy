@@ -3,7 +3,7 @@
 import logging
 import time
 from dataclasses import dataclass
-from typing import Annotated, Optional
+from typing import Annotated, Callable, Optional
 
 import httpx
 from cql2 import Expr
@@ -23,8 +23,8 @@ class ReverseProxyHandler:
 
     upstream: str
     client: httpx.AsyncClient = None
-    collections_filter: Optional[callable] = None
-    items_filter: Optional[callable] = None
+    collections_filter: Optional[Callable] = None
+    items_filter: Optional[Callable] = None
 
     def __post_init__(self):
         """Initialize the HTTP client."""

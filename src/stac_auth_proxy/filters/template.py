@@ -27,6 +27,8 @@ class Template:
         self.dependency = self.build()
 
     def build(self):
+        """Generate a dependency for rendering a CQL2 filter expression."""
+
         async def dependency(
             request: Request, auth_token=Security(self.token_dependency)
         ) -> Expr:

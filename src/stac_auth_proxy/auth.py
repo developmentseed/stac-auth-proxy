@@ -31,7 +31,7 @@ class OpenIdConnectAuth:
     def __post_init__(self):
         """Initialize the OIDC authentication class."""
         logger.debug("Requesting OIDC config")
-        origin_url = (
+        origin_url = str(
             self.openid_configuration_internal_url or self.openid_configuration_url
         )
         with urllib.request.urlopen(origin_url) as response:

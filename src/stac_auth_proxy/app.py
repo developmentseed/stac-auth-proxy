@@ -60,20 +60,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         oidc_config_url=str(settings.oidc_discovery_url),
     )
 
-    # @app.get("/collections")
-    # async def collections(
-    #     request: Request,
-    #     filter: Annotated[Optional[Expr], Depends(collections_filter.dependency)],
-    # ):
-    #     # if filter:
-    #     #     print(f"{request.receive=}")
-    #     #     request = await apply_filter(
-    #     #         request,
-    #     #         filter,
-    #     #     )
-    #     #     print(f"{request.receive=}")
-    #     return await proxy_handler.stream(request=request)
-
     # Endpoints that are explicitely marked private
     for path, methods in settings.private_endpoints.items():
         app.add_api_route(

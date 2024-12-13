@@ -4,7 +4,7 @@ import json
 import logging
 import urllib.request
 from dataclasses import dataclass, field
-from typing import Annotated, Any, Callable, Optional, Sequence
+from typing import Annotated, Optional, Sequence
 
 import jwt
 from fastapi import HTTPException, Security, security, status
@@ -25,8 +25,6 @@ class OpenIdConnectAuth:
     # Generated attributes
     auth_scheme: SecurityBase = field(init=False)
     jwks_client: jwt.PyJWKClient = field(init=False)
-    validated_user: Callable[..., Any] = field(init=False)
-    maybe_validated_user: Callable[..., Any] = field(init=False)
 
     def __post_init__(self):
         """Initialize the OIDC authentication class."""
@@ -50,70 +48,80 @@ class OpenIdConnectAuth:
             openIdConnectUrl=str(self.openid_configuration_url),
             auto_error=False,
         )
-        self.validated_user = self._build(auto_error=True)
-        self.maybe_validated_user = self._build(auto_error=False)
 
-    def _build(self, auto_error: bool = True):
-        """Build a dependency for validating an OIDC token."""
+        # Update annotations to support FastAPI's dependency injection
+        for endpoint in [self.validated_user, self.maybe_validated_user]:
+            endpoint.__annotations__["auth_header"] = Annotated[
+                str,
+                Security(self.auth_scheme),
+            ]
 
-        def valid_token_dependency(
-            auth_header: Annotated[str, Security(self.auth_scheme)],
-            required_scopes: security.SecurityScopes,
-        ):
-            """Dependency to validate an OIDC token."""
-            if not auth_header:
+    def maybe_validated_user(
+        self,
+        auth_header: Annotated[str, Security(...)],
+        required_scopes: security.SecurityScopes,
+    ):
+        """Dependency to validate an OIDC token."""
+        return self.validated_user(auth_header, required_scopes, auto_error=False)
+
+    def validated_user(
+        self,
+        auth_header: Annotated[str, Security(...)],
+        required_scopes: security.SecurityScopes,
+        auto_error: bool = True,
+    ):
+        """Dependency to validate an OIDC token."""
+        if not auth_header:
+            if auto_error:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not authenticated",
+                )
+            return None
+
+        # Extract token from header
+        token_parts = auth_header.split(" ")
+        if len(token_parts) != 2 or token_parts[0].lower() != "bearer":
+            logger.error(f"Invalid token: {auth_header}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        [_, token] = token_parts
+
+        # Parse & validate token
+        try:
+            key = self.jwks_client.get_signing_key_from_jwt(token).key
+            payload = jwt.decode(
+                token,
+                key,
+                algorithms=["RS256"],
+                # NOTE: Audience validation MUST match audience claim if set in token (https://pyjwt.readthedocs.io/en/stable/changelog.html?highlight=audience#id40)
+                audience=self.allowed_jwt_audiences,
+            )
+        except (jwt.exceptions.InvalidTokenError, jwt.exceptions.DecodeError) as e:
+            logger.exception(f"InvalidTokenError: {e=}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            ) from e
+
+        # Validate scopes (if required)
+        for scope in required_scopes.scopes:
+            if scope not in payload["scope"]:
                 if auto_error:
                     raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail="Not authenticated",
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Not enough permissions",
+                        headers={
+                            "WWW-Authenticate": f'Bearer scope="{required_scopes.scope_str}"'
+                        },
                     )
                 return None
 
-            # Extract token from header
-            token_parts = auth_header.split(" ")
-            if len(token_parts) != 2 or token_parts[0].lower() != "bearer":
-                logger.error(f"Invalid token: {auth_header}")
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Could not validate credentials",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
-            [_, token] = token_parts
-
-            # Parse & validate token
-            try:
-                key = self.jwks_client.get_signing_key_from_jwt(token).key
-                payload = jwt.decode(
-                    token,
-                    key,
-                    algorithms=["RS256"],
-                    # NOTE: Audience validation MUST match audience claim if set in token (https://pyjwt.readthedocs.io/en/stable/changelog.html?highlight=audience#id40)
-                    audience=self.allowed_jwt_audiences,
-                )
-            except (jwt.exceptions.InvalidTokenError, jwt.exceptions.DecodeError) as e:
-                logger.exception(f"InvalidTokenError: {e=}")
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Could not validate credentials",
-                    headers={"WWW-Authenticate": "Bearer"},
-                ) from e
-
-            # Validate scopes (if required)
-            for scope in required_scopes.scopes:
-                if scope not in payload["scope"]:
-                    if auto_error:
-                        raise HTTPException(
-                            status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Not enough permissions",
-                            headers={
-                                "WWW-Authenticate": f'Bearer scope="{required_scopes.scope_str}"'
-                            },
-                        )
-                    return None
-
-            return payload
-
-        return valid_token_dependency
+        return payload
 
 
 class OidcFetchError(Exception):

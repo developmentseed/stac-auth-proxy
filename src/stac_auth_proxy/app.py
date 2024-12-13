@@ -12,7 +12,7 @@ from fastapi import FastAPI, Security
 
 from .auth import OpenIdConnectAuth
 from .config import Settings
-from .handlers import OpenApiSpecHandler, ReverseProxyHandler
+from .handlers import ReverseProxyHandler, build_openapi_spec_handler
 from .middleware import AddProcessTimeHeaderMiddleware
 
 # from .utils import apply_filter
@@ -55,7 +55,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         collections_filter=collections_filter,
         items_filter=items_filter,
     )
-    openapi_handler = OpenApiSpecHandler(
+    openapi_handler = build_openapi_spec_handler(
         proxy=proxy_handler,
         oidc_config_url=str(settings.oidc_discovery_url),
     )
@@ -67,7 +67,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             (
                 proxy_handler.stream
                 if path != settings.openapi_spec_endpoint
-                else openapi_handler.dispatch
+                else openapi_handler
             ),
             methods=methods,
             dependencies=[Security(auth_scheme.validated_user)],
@@ -80,7 +80,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             (
                 proxy_handler.stream
                 if path != settings.openapi_spec_endpoint
-                else openapi_handler.dispatch
+                else openapi_handler
             ),
             methods=methods,
             dependencies=[Security(auth_scheme.maybe_validated_user)],

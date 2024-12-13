@@ -1,6 +1,6 @@
 """Generate CQL2 filter expressions via Jinja2 templating."""
 
-from typing import Any, Annotated, Callable
+from typing import Annotated, Any, Callable
 
 from cql2 import Expr
 from fastapi import Request, Security

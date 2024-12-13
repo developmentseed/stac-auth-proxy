@@ -1,7 +1,6 @@
 """Custom request handlers."""
 
 import logging
-from dataclasses import dataclass
 
 from fastapi import Request, Response
 from fastapi.routing import APIRoute
@@ -12,17 +11,16 @@ from .reverse_proxy import ReverseProxyHandler
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class OpenApiSpecHandler:
-    """Handler for OpenAPI spec requests."""
+def build_openapi_spec_handler(
+    proxy: ReverseProxyHandler,
+    oidc_config_url: str,
+    auth_scheme_name: str = "oidcAuth",
+):
+    """OpenAPI spec handler factory."""
 
-    proxy: ReverseProxyHandler
-    oidc_config_url: str
-    auth_scheme_name: str = "oidcAuth"
-
-    async def dispatch(self, req: Request, res: Response):
+    async def dispatch(req: Request, res: Response):
         """Proxy the OpenAPI spec from the upstream STAC API, updating it with OIDC security requirements."""
-        oidc_spec_response = await self.proxy.proxy_request(req)
+        oidc_spec_response = await proxy.proxy_request(req)
         openapi_spec = oidc_spec_response.json()
 
         # Pass along the response headers
@@ -45,10 +43,10 @@ class OpenApiSpecHandler:
 
         # Add the OIDC security scheme to the components
         openapi_spec.setdefault("components", {}).setdefault("securitySchemes", {})[
-            self.auth_scheme_name
+            auth_scheme_name
         ] = {
             "type": "openIdConnect",
-            "openIdConnectUrl": self.oidc_config_url,
+            "openIdConnectUrl": oidc_config_url,
         }
 
         # Update the paths with the specified security requirements
@@ -61,9 +59,9 @@ class OpenApiSpecHandler:
                     if match.name != "FULL":
                         continue
                     # Add the OIDC security requirement
-                    config.setdefault("security", []).append(
-                        {self.auth_scheme_name: []}
-                    )
+                    config.setdefault("security", []).append({auth_scheme_name: []})
                     break
 
         return openapi_spec
+
+    return dispatch

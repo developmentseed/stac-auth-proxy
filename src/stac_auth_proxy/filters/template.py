@@ -15,7 +15,7 @@ def Template(template_str: str, token_dependency: Callable[..., Any]):
 
     async def dependency(
         request: Request,
-        auth_token=Annotated[dict[str, Any], Security(token_dependency)],
+        auth_token: Annotated[dict[str, Any], Security(token_dependency)],
     ) -> Expr:
         """Render a CQL2 filter expression with the request and auth token."""
         # TODO: How to handle the case where auth_token is null?

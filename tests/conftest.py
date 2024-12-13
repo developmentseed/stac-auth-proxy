@@ -120,7 +120,7 @@ def source_api():
 @pytest.fixture(scope="session")
 def source_api_server(source_api):
     """Run the source API in a background thread."""
-    host, port = "127.0.0.1", 8000
+    host, port = "127.0.0.1", 9119
     server = uvicorn.Server(
         uvicorn.Config(
             source_api,

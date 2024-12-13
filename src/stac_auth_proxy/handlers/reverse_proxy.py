@@ -37,7 +37,7 @@ class ReverseProxyHandler:
         for endpoint in [self.proxy_request, self.stream]:
             endpoint.__annotations__["collections_filter"] = Annotated[
                 Optional[Expr],
-                Depends(getattr(self.collections_filter, "dependency", lambda: None)),
+                Depends(self.collections_filter or (lambda: None)),
             ]
 
     async def proxy_request(
@@ -55,6 +55,7 @@ class ReverseProxyHandler:
         path = request.url.path
         query = request.url.query
 
+        # Appliy filters
         if utils.is_collection_endpoint(path) and collections_filter:
             if request.method == "GET" and path == "/collections":
                 query = utils.insert_filter(qs=query, filter=collections_filter)

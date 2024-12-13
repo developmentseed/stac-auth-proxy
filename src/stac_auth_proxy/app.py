@@ -15,8 +15,6 @@ from .config import Settings
 from .handlers import ReverseProxyHandler, build_openapi_spec_handler
 from .middleware import AddProcessTimeHeaderMiddleware
 
-# from .utils import apply_filter
-
 logger = logging.getLogger(__name__)
 
 
@@ -40,20 +38,18 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             methods=["GET"],
         )
 
-    collections_filter = (
-        settings.collections_filter(auth_scheme.maybe_validated_user)
-        if settings.collections_filter
-        else None
-    )
-    items_filter = (
-        settings.items_filter(auth_scheme.maybe_validated_user)
-        if settings.items_filter
-        else None
-    )
     proxy_handler = ReverseProxyHandler(
         upstream=str(settings.upstream_url),
-        collections_filter=collections_filter,
-        items_filter=items_filter,
+        collections_filter=(
+            settings.collections_filter(auth_scheme.maybe_validated_user)
+            if settings.collections_filter
+            else None
+        ),
+        items_filter=(
+            settings.items_filter(auth_scheme.maybe_validated_user)
+            if settings.items_filter
+            else None
+        ),
     )
     openapi_handler = build_openapi_spec_handler(
         proxy=proxy_handler,

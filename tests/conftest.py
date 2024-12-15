@@ -3,8 +3,8 @@
 import json
 import os
 import threading
-from typing import Any
-from unittest.mock import MagicMock, patch
+from typing import Any, Generator
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import uvicorn
@@ -120,7 +120,7 @@ def source_api():
 @pytest.fixture(scope="session")
 def source_api_server(source_api):
     """Run the source API in a background thread."""
-    host, port = "127.0.0.1", 8000
+    host, port = "127.0.0.1", 9119
     server = uvicorn.Server(
         uvicorn.Config(
             source_api,
@@ -140,3 +140,13 @@ def mock_env():
     """Clear environment variables to avoid poluting configs from runtime env."""
     with patch.dict(os.environ, clear=True):
         yield
+
+
+@pytest.fixture
+def mock_upstream() -> Generator[MagicMock, None, None]:
+    """Mock the HTTPX send method. Useful when we want to inspect the request is sent to upstream API."""
+    with patch(
+        "stac_auth_proxy.handlers.reverse_proxy.httpx.AsyncClient.send",
+        new_callable=AsyncMock,
+    ) as mock_send_method:
+        yield mock_send_method

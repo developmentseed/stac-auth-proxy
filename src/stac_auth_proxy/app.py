@@ -8,11 +8,11 @@ authentication, authorization, and proxying of requests to some internal STAC AP
 import logging
 from typing import Optional
 
-from eoapi.auth_utils import OpenIdConnectAuth
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI, Security
 
+from .auth import OpenIdConnectAuth
 from .config import Settings
-from .handlers import OpenApiSpecHandler, ReverseProxyHandler
+from .handlers import ReverseProxyHandler, build_openapi_spec_handler
 from .middleware import AddProcessTimeHeaderMiddleware
 
 logger = logging.getLogger(__name__)
@@ -28,12 +28,8 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     app.add_middleware(AddProcessTimeHeaderMiddleware)
 
     auth_scheme = OpenIdConnectAuth(
-        openid_configuration_url=str(settings.oidc_discovery_url)
-    ).valid_token_dependency
-
-    if settings.guard:
-        logger.info("Wrapping auth scheme")
-        auth_scheme = settings.guard(auth_scheme)
+        openid_configuration_url=settings.oidc_discovery_url
+    )
 
     if settings.debug:
         app.add_api_route(
@@ -42,9 +38,22 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             methods=["GET"],
         )
 
-    proxy_handler = ReverseProxyHandler(upstream=str(settings.upstream_url))
-    openapi_handler = OpenApiSpecHandler(
-        proxy=proxy_handler, oidc_config_url=str(settings.oidc_discovery_url)
+    proxy_handler = ReverseProxyHandler(
+        upstream=str(settings.upstream_url),
+        collections_filter=(
+            settings.collections_filter(auth_scheme.maybe_validated_user)
+            if settings.collections_filter
+            else None
+        ),
+        items_filter=(
+            settings.items_filter(auth_scheme.maybe_validated_user)
+            if settings.items_filter
+            else None
+        ),
+    )
+    openapi_handler = build_openapi_spec_handler(
+        proxy=proxy_handler,
+        oidc_config_url=str(settings.oidc_discovery_url),
     )
 
     # Endpoints that are explicitely marked private
@@ -54,10 +63,10 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             (
                 proxy_handler.stream
                 if path != settings.openapi_spec_endpoint
-                else openapi_handler.dispatch
+                else openapi_handler
             ),
             methods=methods,
-            dependencies=[Depends(auth_scheme)],
+            dependencies=[Security(auth_scheme.validated_user)],
         )
 
     # Endpoints that are explicitely marked as public
@@ -67,9 +76,10 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             (
                 proxy_handler.stream
                 if path != settings.openapi_spec_endpoint
-                else openapi_handler.dispatch
+                else openapi_handler
             ),
             methods=methods,
+            dependencies=[Security(auth_scheme.maybe_validated_user)],
         )
 
     # Catchall for remainder of the endpoints
@@ -77,7 +87,15 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         "/{path:path}",
         proxy_handler.stream,
         methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-        dependencies=([] if settings.default_public else [Depends(auth_scheme)]),
+        dependencies=(
+            [
+                Security(
+                    auth_scheme.maybe_validated_user
+                    if settings.default_public
+                    else auth_scheme.validated_user
+                )
+            ]
+        ),
     )
 
     return app

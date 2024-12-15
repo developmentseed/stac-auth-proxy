@@ -3,7 +3,7 @@
 import importlib
 from typing import Optional, Sequence, TypeAlias
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic.networks import HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -14,8 +14,8 @@ class ClassInput(BaseModel):
     """Input model for dynamically loading a class or function."""
 
     cls: str
-    args: Optional[Sequence[str]] = []
-    kwargs: Optional[dict[str, str]] = {}
+    args: Sequence[str] = Field(default_factory=list)
+    kwargs: dict[str, str] = Field(default_factory=dict)
 
     def __call__(self, token_dependency):
         """Dynamically load a class and instantiate it with kwargs."""
@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     public_endpoints: EndpointMethods = {"/api.html": ["GET"], "/api": ["GET"]}
     openapi_spec_endpoint: Optional[str] = None
 
-    model_config = SettingsConfigDict(env_prefix="STAC_AUTH_PROXY_")
+    collections_filter: Optional[ClassInput] = None
+    items_filter: Optional[ClassInput] = None
 
-    guard: Optional[ClassInput] = None
+    model_config = SettingsConfigDict(env_prefix="STAC_AUTH_PROXY_")

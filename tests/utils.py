@@ -1,6 +1,9 @@
 """Utilities for testing."""
 
+from dataclasses import dataclass
 from typing import Callable
+
+import httpx
 
 from stac_auth_proxy import Settings, create_app
 
@@ -23,3 +26,25 @@ class AppFactory:
                 },
             )
         )
+
+
+@dataclass
+class SingleChunkAsyncStream(httpx.AsyncByteStream):
+    """Mock async stream that returns a single chunk of data."""
+
+    body: bytes
+
+    async def __aiter__(self):
+        """Return a single chunk of data."""
+        yield self.body
+
+
+def single_chunk_async_stream_response(
+    body: bytes, status_code=200, headers={"content-type": "application/json"}
+):
+    """Create a response with a single chunk of data."""
+    return httpx.Response(
+        stream=SingleChunkAsyncStream(body),
+        status_code=status_code,
+        headers=headers,
+    )

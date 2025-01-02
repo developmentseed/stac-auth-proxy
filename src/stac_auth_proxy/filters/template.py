@@ -1,21 +1,21 @@
 """Generate CQL2 filter expressions via Jinja2 templating."""
 
-from typing import Annotated, Any, Callable
+from typing import Annotated, Any
 
 from cql2 import Expr
-from fastapi import Request, Security
+from fastapi import Request
 from jinja2 import BaseLoader, Environment
 
 from ..utils.requests import extract_variables
 
 
-def Template(template_str: str, token_dependency: Callable[..., Any]):
+def Template(template_str: str):
     """Generate CQL2 filter expressions via Jinja2 templating."""
     env = Environment(loader=BaseLoader).from_string(template_str)
 
     async def dependency(
         request: Request,
-        auth_token: Annotated[dict[str, Any], Security(token_dependency)],
+        auth_token: Annotated[dict[str, Any], ...],
     ) -> Expr:
         """Render a CQL2 filter expression with the request and auth token."""
         # TODO: How to handle the case where auth_token is null?

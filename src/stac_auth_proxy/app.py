@@ -40,38 +40,14 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     proxy_handler = ReverseProxyHandler(
         upstream=str(settings.upstream_url),
-        collections_filter=(
-            settings.collections_filter(auth_scheme.maybe_validated_user)
-            if settings.collections_filter
-            else None
-        ),
-        items_filter=(
-            settings.items_filter(auth_scheme.maybe_validated_user)
-            if settings.items_filter
-            else None
-        ),
+        auth_dependency=auth_scheme.maybe_validated_user,
+        collections_filter=settings.collections_filter,
+        items_filter=settings.items_filter,
     )
     openapi_handler = build_openapi_spec_handler(
         proxy=proxy_handler,
         oidc_config_url=str(settings.oidc_discovery_url),
     )
-
-    # TODO: How can we inject the collections_filter into only the endpoints that need it?
-    # for endpoint, methods in settings.collections_filter_endpoints.items():
-    #     app.add_api_route(
-    #         endpoint,
-    #         partial(
-    #             proxy_handler.stream, collections_filter=settings.collections_filter
-    #         ),
-    #         methods=methods,
-    #         dependencies=[Security(auth_scheme.maybe_validated_user)],
-    #     )
-
-    # skip = [
-    #     settings.openapi_spec_endpoint,
-    #     *settings.collections_filter_endpoints,
-    # ]
-
     # Endpoints that are explicitely marked private
     for path, methods in settings.private_endpoints.items():
         app.add_api_route(

@@ -12,7 +12,7 @@ from starlette.background import BackgroundTask
 from starlette.datastructures import MutableHeaders
 from starlette.responses import StreamingResponse
 
-from ..utils import filters
+from ..utils import di, filters
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,8 @@ class ReverseProxyHandler:
     """Reverse proxy functionality."""
 
     upstream: str
+    auth_dependency: Callable
+
     client: httpx.AsyncClient = None
 
     # Filters
@@ -34,21 +36,21 @@ class ReverseProxyHandler:
             base_url=self.upstream,
             timeout=httpx.Timeout(timeout=15.0),
         )
+        self.collections_filter = (
+            self.collections_filter() if self.collections_filter else None
+        )
+        self.items_filter = self.items_filter() if self.items_filter else None
 
-        # Update annotations to support FastAPI's dependency injection
-        for endpoint in [self.proxy_request, self.stream]:
-            endpoint.__annotations__["collections_filter"] = Annotated[
+        # Inject auth dependency into filters
+        for endpoint in [self.collections_filter, self.items_filter]:
+            if not endpoint:
+                continue
+            endpoint.__annotations__["auth_token"] = Annotated[
                 Optional[Expr],
-                Depends(self.collections_filter or (lambda: None)),
+                Depends(self.auth_dependency),
             ]
 
-    async def proxy_request(
-        self,
-        request: Request,
-        *,
-        collections_filter: Annotated[Optional[Expr], Depends(...)] = None,
-        stream=False,
-    ) -> httpx.Response:
+    async def proxy_request(self, request: Request, *, stream=False) -> httpx.Response:
         """Proxy a request to the upstream STAC API."""
         headers = MutableHeaders(request.headers)
         headers.setdefault("X-Forwarded-For", request.client.host)
@@ -58,12 +60,23 @@ class ReverseProxyHandler:
         query = request.url.query
 
         # Apply filters
-        if filters.is_collection_endpoint(path) and collections_filter:
-            if request.method == "GET" and path == "/collections":
+        if filters.is_collection_endpoint(path) and self.collections_filter:
+            collections_filter = await di.call_with_injected_dependencies(
+                func=self.collections_filter,
+                request=request,
+            )
+            if request.method == "GET":
                 query = filters.insert_filter(qs=query, filter=collections_filter)
-        elif filters.is_item_endpoint(path) and self.items_filter:
+            else:
+                # TODO: Augment body
+                ...
+
+        if filters.is_item_endpoint(path) and self.items_filter:
             if request.method == "GET":
                 query = filters.insert_filter(qs=query, filter=self.items_filter)
+            else:
+                # TODO: Augment body
+                ...
 
         # https://github.com/fastapi/fastapi/discussions/7382#discussioncomment-5136466
         rp_req = self.client.build_request(
@@ -87,15 +100,11 @@ class ReverseProxyHandler:
         rp_resp.headers["X-Upstream-Time"] = f"{proxy_time:.3f}"
         return rp_resp
 
-    async def stream(
-        self,
-        request: Request,
-        collections_filter: Annotated[Optional[Expr], Depends(...)],
-    ) -> StreamingResponse:
+    async def stream(self, request: Request) -> StreamingResponse:
         """Transparently proxy a request to the upstream STAC API."""
         rp_resp = await self.proxy_request(
             request,
-            collections_filter=collections_filter,
+            # collections_filter=collections_filter,
             stream=True,
         )
         return StreamingResponse(

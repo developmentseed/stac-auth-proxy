@@ -1,6 +1,8 @@
-import re
+"""Utility functions for working with HTTP requests."""
 
+import re
 from urllib.parse import urlparse
+
 from httpx import Headers
 
 

@@ -17,12 +17,12 @@ class ClassInput(BaseModel):
     args: Sequence[str] = Field(default_factory=list)
     kwargs: dict[str, str] = Field(default_factory=dict)
 
-    def __call__(self, token_dependency):
+    def __call__(self):
         """Dynamically load a class and instantiate it with args & kwargs."""
         module_path, class_name = self.cls.rsplit(".", 1)
         module = importlib.import_module(module_path)
         cls = getattr(module, class_name)
-        return cls(*self.args, **self.kwargs, token_dependency=token_dependency)
+        return cls(*self.args, **self.kwargs)
 
 
 class Settings(BaseSettings):

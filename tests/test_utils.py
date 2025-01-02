@@ -2,7 +2,7 @@
 
 import pytest
 
-from stac_auth_proxy.utils import extract_variables
+from stac_auth_proxy.utils.requests import extract_variables
 
 
 @pytest.mark.parametrize(

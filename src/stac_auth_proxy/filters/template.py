@@ -6,7 +6,7 @@ from cql2 import Expr
 from fastapi import Request, Security
 from jinja2 import BaseLoader, Environment
 
-from ..utils import extract_variables
+from ..utils.requests import extract_variables
 
 
 def Template(template_str: str, token_dependency: Callable[..., Any]):

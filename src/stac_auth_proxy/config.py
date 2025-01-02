@@ -18,7 +18,7 @@ class ClassInput(BaseModel):
     kwargs: dict[str, str] = Field(default_factory=dict)
 
     def __call__(self, token_dependency):
-        """Dynamically load a class and instantiate it with kwargs."""
+        """Dynamically load a class and instantiate it with args & kwargs."""
         module_path, class_name = self.cls.rsplit(".", 1)
         module = importlib.import_module(module_path)
         cls = getattr(module, class_name)
@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     openapi_spec_endpoint: Optional[str] = None
 
     collections_filter: Optional[ClassInput] = None
+    collections_filter_endpoints: Optional[EndpointMethods] = {
+        "/collections": ["GET"],
+        "/collections/{collection_id}": ["GET"],
+    }
     items_filter: Optional[ClassInput] = None
 
     model_config = SettingsConfigDict(env_prefix="STAC_AUTH_PROXY_")

@@ -5,7 +5,8 @@ import logging
 from fastapi import Request, Response
 from fastapi.routing import APIRoute
 
-from ..utils import has_any_security_requirements, safe_headers
+from ..utils.di import has_any_security_requirements
+from ..utils.requests import safe_headers
 from .reverse_proxy import ReverseProxyHandler
 
 logger = logging.getLogger(__name__)

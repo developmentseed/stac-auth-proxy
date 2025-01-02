@@ -12,7 +12,7 @@ from starlette.background import BackgroundTask
 from starlette.datastructures import MutableHeaders
 from starlette.responses import StreamingResponse
 
-from .. import utils
+from ..utils import filters
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,8 @@ class ReverseProxyHandler:
 
     upstream: str
     client: httpx.AsyncClient = None
+
+    # Filters
     collections_filter: Optional[Callable] = None
     items_filter: Optional[Callable] = None
 
@@ -55,13 +57,13 @@ class ReverseProxyHandler:
         path = request.url.path
         query = request.url.query
 
-        # Appliy filters
-        if utils.is_collection_endpoint(path) and collections_filter:
+        # Apply filters
+        if filters.is_collection_endpoint(path) and collections_filter:
             if request.method == "GET" and path == "/collections":
-                query = utils.insert_filter(qs=query, filter=collections_filter)
-        elif utils.is_item_endpoint(path) and self.items_filter:
+                query = filters.insert_filter(qs=query, filter=collections_filter)
+        elif filters.is_item_endpoint(path) and self.items_filter:
             if request.method == "GET":
-                query = utils.insert_filter(qs=query, filter=self.items_filter)
+                query = filters.insert_filter(qs=query, filter=self.items_filter)
 
         # https://github.com/fastapi/fastapi/discussions/7382#discussioncomment-5136466
         rp_req = self.client.build_request(

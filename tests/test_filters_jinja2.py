@@ -4,9 +4,7 @@ from urllib.parse import parse_qs
 
 import pytest
 from fastapi.testclient import TestClient
-from utils import AppFactory
-
-from tests.utils import single_chunk_async_stream_response
+from utils import AppFactory, single_chunk_async_stream_response
 
 app_factory = AppFactory(
     oidc_discovery_url="https://example-stac-api.com/.well-known/openid-configuration",

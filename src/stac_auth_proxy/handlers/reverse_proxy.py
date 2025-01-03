@@ -60,20 +60,19 @@ class ReverseProxyHandler:
         query = request.url.query
 
         # Apply filters
-        if filters.is_collection_endpoint(path) and self.collections_filter:
-            collections_filter = await di.call_with_injected_dependencies(
-                func=self.collections_filter,
+        for is_match, filter_generator in [
+            (filters.is_collection_endpoint(path), self.collections_filter),
+            (filters.is_item_endpoint(path), self.items_filter),
+        ]:
+            if not is_match or not filter_generator:
+                continue
+
+            cql_filter = await di.call_with_injected_dependencies(
+                func=filter_generator,
                 request=request,
             )
             if request.method == "GET":
-                query = filters.insert_filter(qs=query, filter=collections_filter)
-            else:
-                # TODO: Augment body
-                ...
-
-        if filters.is_item_endpoint(path) and self.items_filter:
-            if request.method == "GET":
-                query = filters.insert_filter(qs=query, filter=self.items_filter)
+                query = filters.insert_filter(qs=query, filter=cql_filter)
             else:
                 # TODO: Augment body
                 ...

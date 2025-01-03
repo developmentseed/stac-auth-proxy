@@ -23,13 +23,9 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     settings = settings or Settings()
 
     app = FastAPI(
-        openapi_url=None,
+        openapi_url=None,  # Disable OpenAPI schema endpoint, we want to serve upstream's schema
     )
     app.add_middleware(AddProcessTimeHeaderMiddleware)
-
-    auth_scheme = OpenIdConnectAuth(
-        openid_configuration_url=settings.oidc_discovery_url
-    )
 
     if settings.debug:
         app.add_api_route(
@@ -38,6 +34,10 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             methods=["GET"],
         )
 
+    # Tooling
+    auth_scheme = OpenIdConnectAuth(
+        openid_configuration_url=settings.oidc_discovery_url
+    )
     proxy_handler = ReverseProxyHandler(
         upstream=str(settings.upstream_url),
         auth_dependency=auth_scheme.maybe_validated_user,
@@ -48,31 +48,24 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         proxy=proxy_handler,
         oidc_config_url=str(settings.oidc_discovery_url),
     )
-    # Endpoints that are explicitely marked private
-    for path, methods in settings.private_endpoints.items():
-        app.add_api_route(
-            path,
-            (
-                proxy_handler.stream
-                if path != settings.openapi_spec_endpoint
-                else openapi_handler
-            ),
-            methods=methods,
-            dependencies=[Security(auth_scheme.validated_user)],
-        )
 
-    # Endpoints that are explicitely marked as public
-    for path, methods in settings.public_endpoints.items():
-        app.add_api_route(
-            path,
-            (
-                proxy_handler.stream
-                if path != settings.openapi_spec_endpoint
-                else openapi_handler
-            ),
-            methods=methods,
-            dependencies=[],
-        )
+    # Configure security dependency for explicitely specified endpoints
+    for path_methods, dependencies in [
+        (settings.private_endpoints, [Security(auth_scheme.validated_user)]),
+        (settings.public_endpoints, []),
+    ]:
+        for path, methods in path_methods.items():
+            endpoint = (
+                openapi_handler
+                if path == settings.openapi_spec_endpoint
+                else proxy_handler.stream
+            )
+            app.add_api_route(
+                path,
+                endpoint=endpoint,
+                methods=methods,
+                dependencies=dependencies,
+            )
 
     # Catchall for remainder of the endpoints
     app.add_api_route(

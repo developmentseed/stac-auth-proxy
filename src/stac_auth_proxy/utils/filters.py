@@ -1,5 +1,6 @@
 """Utility functions."""
 
+import re
 from urllib.parse import parse_qs, urlencode
 
 from cql2 import Expr
@@ -29,4 +30,4 @@ def is_collection_endpoint(path: str) -> bool:
 def is_item_endpoint(path: str) -> bool:
     """Check if the path is an item endpoint."""
     # TODO: Expand this to cover all cases where an item filter should be applied
-    return path == "/collection/{collection_id}/items"
+    return bool(re.compile(r"^/collections/([^/]+)/items$").match(path))

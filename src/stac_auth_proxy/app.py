@@ -71,7 +71,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
                 else openapi_handler
             ),
             methods=methods,
-            dependencies=[Security(auth_scheme.maybe_validated_user)],
+            dependencies=[],
         )
 
     # Catchall for remainder of the endpoints
@@ -80,13 +80,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         proxy_handler.stream,
         methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         dependencies=(
-            [
-                Security(
-                    auth_scheme.maybe_validated_user
-                    if settings.default_public
-                    else auth_scheme.validated_user
-                )
-            ]
+            [] if settings.default_public else [Security(auth_scheme.validated_user)]
         ),
     )
 

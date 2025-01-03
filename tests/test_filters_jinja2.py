@@ -70,3 +70,37 @@ def test_collections_filter_private_and_public(
     assert mock_upstream.call_count == 1
     [r] = mock_upstream.call_args[0]
     assert parse_qs(r.url.query.decode()) == {"filter": [expected_filter]}
+
+
+@pytest.mark.parametrize(
+    "authenticated, expected_filter",
+    [
+        (True, "true"),
+        (False, '("properties.private" = false)'),
+    ],
+)
+def test_items_filter_private_and_public(
+    mock_upstream, source_api_server, token_builder, authenticated, expected_filter
+):
+    """Test that filter can be used for private/public collections."""
+    app = app_factory(
+        upstream_url=source_api_server,
+        items_filter={
+            "cls": "stac_auth_proxy.filters.Template",
+            "args": ["{{ '(properties.private = false)' if token is none else true }}"],
+        },
+        default_public=True,
+    )
+
+    client = TestClient(
+        app,
+        headers=(
+            {"Authorization": f"Bearer {token_builder({})}"} if authenticated else {}
+        ),
+    )
+    response = client.get("/collections/foo/items")
+
+    assert response.status_code == 200
+    assert mock_upstream.call_count == 1
+    [r] = mock_upstream.call_args[0]
+    assert parse_qs(r.url.query.decode()) == {"filter": [expected_filter]}

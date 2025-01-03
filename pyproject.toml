@@ -47,3 +47,7 @@ dev = [
   "pytest-cov>=5.0.0",
   "pytest>=8.3.3",
 ]
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+asyncio_mode = "strict"

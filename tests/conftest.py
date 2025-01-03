@@ -10,6 +10,7 @@ import pytest
 import uvicorn
 from fastapi import FastAPI
 from jwcrypto import jwk, jwt
+from utils import single_chunk_async_stream_response
 
 
 @pytest.fixture
@@ -149,4 +150,6 @@ def mock_upstream() -> Generator[MagicMock, None, None]:
         "stac_auth_proxy.handlers.reverse_proxy.httpx.AsyncClient.send",
         new_callable=AsyncMock,
     ) as mock_send_method:
+        # Mock response from upstream API
+        mock_send_method.return_value = single_chunk_async_stream_response(b"{}")
         yield mock_send_method

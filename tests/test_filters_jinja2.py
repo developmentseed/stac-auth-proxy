@@ -189,6 +189,7 @@ app_factory = AppFactory(
 def test_search_post(
     mock_upstream, source_api_server, filter_template_expr, input_query
 ):
+    filter_template_expr = filter_template_expr.strip()
     # Setup app
     app = app_factory(
         upstream_url=source_api_server,
@@ -200,7 +201,6 @@ def test_search_post(
     )
 
     # Query API
-    print(f"{input_query=}")
     TestClient(app).post("/search", json=input_query)
 
     # Retrieve query from upstream
@@ -209,15 +209,11 @@ def test_search_post(
     output_query = json.loads(r.read().decode())
 
     # Parse query from upstream
-    input_filter_land = input_query.get("filter-lang")
+    # input_filter_land = input_query.get("filter-lang")
     input_filter = input_query.get("filter")
     filter_exprs = [input_filter, filter_template_expr]
     expected_filter_out = cql2.Expr(
-        " AND ".join(
-            cql2.Expr(expr.strip() if isinstance(expr, str) else expr).to_text()
-            for expr in filter_exprs
-            if expr
-        )
+        " AND ".join(cql2.Expr(expr).to_text() for expr in filter_exprs if expr)
     ).to_json()
 
     expected_output_query = {

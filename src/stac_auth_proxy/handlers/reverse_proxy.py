@@ -1,9 +1,10 @@
 """Tooling to manage the reverse proxying of requests to an upstream STAC API."""
 
+import json
 import logging
 import time
 from dataclasses import dataclass
-from typing import Annotated, Callable, Optional
+from typing import Annotated, Any, Callable, Optional
 
 import httpx
 from cql2 import Expr
@@ -50,6 +51,17 @@ class ReverseProxyHandler:
                 Depends(self.auth_dependency),
             ]
 
+    def _get_filter(self, path: str) -> Optional[Callable[..., Expr]]:
+        """Get the CQL2 filter builder for the given path."""
+        endpoint_filters = [
+            # TODO: Use collections_filter_endpoints & items_filter_endpoints
+            (filters.is_collection_endpoint, self.collections_filter),
+            (filters.is_item_endpoint, self.items_filter),
+        ]
+        for check, builder in endpoint_filters:
+            if check(path):
+                return builder
+
     async def proxy_request(self, request: Request, *, stream=False) -> httpx.Response:
         """Proxy a request to the upstream STAC API."""
         headers = MutableHeaders(request.headers)
@@ -58,24 +70,29 @@ class ReverseProxyHandler:
 
         path = request.url.path
         query = request.url.query
+        # TODO: Should we only do this conditionally based on stream?
+        body = (await request.body()).decode()
 
-        # Apply filters
-        for is_match, filter_generator in [
-            (filters.is_collection_endpoint(path), self.collections_filter),
-            (filters.is_item_endpoint(path), self.items_filter),
-        ]:
-            if not is_match or not filter_generator:
-                continue
-
+        # Apply filter if applicable
+        filter_builder = self._get_filter(path)
+        if filter_builder:
             cql_filter = await di.call_with_injected_dependencies(
-                func=filter_generator,
+                func=filter_builder,
                 request=request,
             )
             if request.method == "GET":
                 query = filters.insert_filter(qs=query, filter=cql_filter)
-            else:
-                # TODO: Augment body
-                ...
+            elif request.method in ["POST", "PUT"]:
+                if filters.is_search_endpoint(path):
+                    try:
+                        body = json.loads(body)
+                    except json.JSONDecodeError:
+                        ...
+                    # TODO: Should append to body, not query
+                    query = filters.insert_filter(qs=body, filter=cql_filter)
+                else:
+                    # TODO: Validate STAC items before create/update
+                    ...
 
         # https://github.com/fastapi/fastapi/discussions/7382#discussioncomment-5136466
         rp_req = self.client.build_request(
@@ -85,7 +102,7 @@ class ReverseProxyHandler:
                 query=query.encode("utf-8"),
             ),
             headers=headers,
-            content=request.stream(),
+            json=body,
         )
         logger.debug(f"Proxying request to {rp_req.url}")
 

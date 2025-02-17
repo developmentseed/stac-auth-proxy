@@ -57,6 +57,7 @@ class ReverseProxyHandler:
             # TODO: Use collections_filter_endpoints & items_filter_endpoints
             (filters.is_collection_endpoint, self.collections_filter),
             (filters.is_item_endpoint, self.items_filter),
+            (filters.is_search_endpoint, self.items_filter),
         ]
         for check, builder in endpoint_filters:
             if check(path):
@@ -81,18 +82,18 @@ class ReverseProxyHandler:
                 request=request,
             )
             if request.method == "GET":
-                query = filters.insert_filter(qs=query, filter=cql_filter)
+                # query = filters.insert_filter(qs=query, filter=cql_filter)
+                ...  # TODO...
             elif request.method in ["POST", "PUT"]:
-                if filters.is_search_endpoint(path):
-                    try:
-                        body = json.loads(body)
-                    except json.JSONDecodeError:
-                        ...
-                    # TODO: Should append to body, not query
-                    query = filters.insert_filter(qs=body, filter=cql_filter)
-                else:
-                    # TODO: Validate STAC items before create/update
-                    ...
+                body_dict = json.loads(body)
+                body_filter = body_dict.get("filter")
+                combined_filter = (
+                    filters.combine_filters([Expr(body_filter), cql_filter])
+                    if body_filter
+                    else cql_filter
+                )
+                body_dict["filter"] = combined_filter.to_json()
+                body = json.dumps(body_dict)
 
         # https://github.com/fastapi/fastapi/discussions/7382#discussioncomment-5136466
         rp_req = self.client.build_request(
@@ -102,7 +103,7 @@ class ReverseProxyHandler:
                 query=query.encode("utf-8"),
             ),
             headers=headers,
-            json=body,
+            content=body,
         )
         logger.debug(f"Proxying request to {rp_req.url}")
 

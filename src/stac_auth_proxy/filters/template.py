@@ -34,7 +34,7 @@ def Template(template_str: str):
             },
             "token": auth_token,
         }
-        cql2_str = env.render(**context)
+        cql2_str = env.render(**context).strip()
         cql2_expr = Expr(cql2_str)
         cql2_expr.validate()
         return cql2_expr

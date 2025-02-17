@@ -211,10 +211,12 @@ def test_search_post(
     # Parse query from upstream
     # input_filter_land = input_query.get("filter-lang")
     input_filter = input_query.get("filter")
-    filter_exprs = [input_filter, filter_template_expr]
-    expected_filter_out = cql2.Expr(
-        " AND ".join(cql2.Expr(expr).to_text() for expr in filter_exprs if expr)
-    ).to_json()
+    filter_exprs = [
+        cql2.Expr(expr).to_text()
+        for expr in [input_filter, filter_template_expr]
+        if expr
+    ]
+    expected_filter_out = cql2.Expr(" AND ".join(filter_exprs)).to_json()
 
     expected_output_query = {
         **input_query,

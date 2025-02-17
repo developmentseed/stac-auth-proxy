@@ -166,14 +166,14 @@ app_factory = AppFactory(
     "filter_template_expr",
     [
         "(properties.private = false)",
-        # "{{ '(properties.private = false)' if token is none else true }}",
+        "{{ '(properties.private = false)' if token is none else true }}",
         """
         {
             "op": "=", 
             "args": [{"property": "private"}, true]
         }
         """,
-        # '{{ \'{"op": "=", "args": [{"property": "private"}, true]}\' if token is none else true }}',
+        '{{ \'{"op": "=", "args": [{"property": "private"}, true]}\' if token is none else true }}',
         """
         {
             "op": "and",

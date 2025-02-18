@@ -4,7 +4,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass
-from typing import Annotated, Any, Callable, Optional
+from typing import Annotated, Callable, Optional
 
 import httpx
 from cql2 import Expr
@@ -62,6 +62,7 @@ class ReverseProxyHandler:
         for check, builder in endpoint_filters:
             if check(path):
                 return builder
+        return None
 
     async def proxy_request(self, request: Request, *, stream=False) -> httpx.Response:
         """Proxy a request to the upstream STAC API."""

@@ -5,11 +5,9 @@ from typing import cast
 
 import cql2
 import pytest
-from httpx import Request
 from fastapi.testclient import TestClient
+from httpx import Request
 from utils import AppFactory
-
-from fixtures.demo_searches import SEARCHES
 
 app_factory = AppFactory(
     oidc_discovery_url="https://example-stac-api.com/.well-known/openid-configuration",
@@ -198,21 +196,33 @@ app_factory = AppFactory(
             "true",
             """{"op": "=", "args": [{"property": "private"}, true]}""",
         ],
-        # Not sure what is demonstrated in this...
-        # [
-        #     """{
-        #         "op": "and",
-        #         "args": [
-        #             { "op": "=", "args": [{ "property": "id" }, "LC08_L1TP_060247_20180905_20180912_01_T1_L1TP" ] },
-        #             { "op": "=", "args": [{ "property": "collection" }, "landsat8_l1tp"] }
-        #         ]
-        #     }"""
-        # ]
-        # * 3,
     ],
 )
 @pytest.mark.parametrize("is_authenticated", [True, False])
-@pytest.mark.parametrize("input_query", SEARCHES)
+@pytest.mark.parametrize(
+    "input_query",
+    [
+        # Not using filter
+        {
+            "collections": ["example-collection"],
+            "bbox": [-120.5, 35.7, -120.0, 36.0],
+            "datetime": "2021-06-01T00:00:00Z/2021-06-30T23:59:59Z",
+        },
+        # Using filter
+        {
+            "filter-lang": "cql2-json",
+            "filter": {
+                "op": "and",
+                "args": [
+                    {"op": "=", "args": [{"property": "collection"}, "landsat-8-l1"]},
+                    {"op": "<=", "args": [{"property": "eo:cloud_cover"}, 20]},
+                    {"op": "=", "args": [{"property": "platform"}, "landsat-8"]},
+                ],
+            },
+            "limit": 5,
+        },
+    ],
+)
 def test_search_post(
     mock_upstream,
     source_api_server,
@@ -223,6 +233,7 @@ def test_search_post(
     input_query,
     token_builder,
 ):
+    """Test filter is applied to search with full-featured filtering."""
     # Setup app
     app = app_factory(
         upstream_url=source_api_server,
@@ -246,7 +257,6 @@ def test_search_post(
     output_query = json.loads(r.read().decode())
 
     # Parse query from upstream
-    # input_filter_lang = input_query.get("filter-lang")
     input_filter = input_query.get("filter")
     expected_filter = auth_filter if is_authenticated else anon_filter
     expected_filter_exprs = [
@@ -254,11 +264,10 @@ def test_search_post(
         for expr in [input_filter, expected_filter.strip()]
         if expr
     ]
-    expected_filter_out = cql2.Expr(" AND ".join(expected_filter_exprs)).to_json()
 
     expected_output_query = {
         **input_query,
-        "filter": expected_filter_out,
+        "filter": cql2.Expr(" AND ".join(expected_filter_exprs)).to_json(),
     }
 
     assert (

@@ -163,45 +163,82 @@ app_factory = AppFactory(
 
 
 @pytest.mark.parametrize(
-    "filter_template_expr",
+    "filter_template_expr, auth_filter, anon_filter",
     [
-        "(properties.private = false)",
-        "{{ '(properties.private = false)' if token is none else true }}",
-        """
-        {
-            "op": "=", 
-            "args": [{"property": "private"}, true]
-        }
-        """,
-        '{{ \'{"op": "=", "args": [{"property": "private"}, true]}\' if token is none else true }}',
-        """
-        {
-            "op": "and",
-            "args": [
-                { "op": "=", "args": [{ "property": "id" }, "LC08_L1TP_060247_20180905_20180912_01_T1_L1TP" ] },
-                { "op": "=", "args": [{ "property": "collection" }, "landsat8_l1tp"] }
-            ]
-        }
-        """,
+        # Simple filter, not templated
+        [
+            "(properties.private = false)",
+            "(properties.private = false)",
+            "(properties.private = false)",
+        ],
+        # Simple filter, templated
+        [
+            "{{ '(properties.private = false)' if token is none else true }}",
+            "true",
+            "(properties.private = false)",
+        ],
+        # Complex filter, not templated
+        [
+            """{
+                "op": "=", 
+                "args": [{"property": "private"}, true]
+            }""",
+            """{
+                "op": "=", 
+                "args": [{"property": "private"}, true]
+            }""",
+            """{
+                "op": "=", 
+                "args": [{"property": "private"}, true]
+            }""",
+        ],
+        # Complex filter, templated
+        [
+            """{{ '{"op": "=", "args": [{"property": "private"}, true]}' if token is none else true }}""",
+            "true",
+            """{"op": "=", "args": [{"property": "private"}, true]}""",
+        ],
+        # Not sure what is demonstrated in this...
+        # [
+        #     """{
+        #         "op": "and",
+        #         "args": [
+        #             { "op": "=", "args": [{ "property": "id" }, "LC08_L1TP_060247_20180905_20180912_01_T1_L1TP" ] },
+        #             { "op": "=", "args": [{ "property": "collection" }, "landsat8_l1tp"] }
+        #         ]
+        #     }"""
+        # ]
+        # * 3,
     ],
 )
+@pytest.mark.parametrize("is_authenticated", [True, False])
 @pytest.mark.parametrize("input_query", SEARCHES)
 def test_search_post(
-    mock_upstream, source_api_server, filter_template_expr, input_query
+    mock_upstream,
+    source_api_server,
+    filter_template_expr,
+    auth_filter,
+    anon_filter,
+    is_authenticated,
+    input_query,
+    token_builder,
 ):
-    filter_template_expr = filter_template_expr.strip()
     # Setup app
     app = app_factory(
         upstream_url=source_api_server,
         items_filter={
             "cls": "stac_auth_proxy.filters.Template",
-            "args": [filter_template_expr],
+            "args": [filter_template_expr.strip()],
         },
         default_public=True,
     )
 
     # Query API
-    TestClient(app).post("/search", json=input_query)
+    headers = (
+        {"Authorization": f"Bearer {token_builder({})}"} if is_authenticated else {}
+    )
+    response = TestClient(app, headers=headers).post("/search", json=input_query)
+    response.raise_for_status()
 
     # Retrieve query from upstream
     assert mock_upstream.call_count == 1
@@ -209,14 +246,15 @@ def test_search_post(
     output_query = json.loads(r.read().decode())
 
     # Parse query from upstream
-    # input_filter_land = input_query.get("filter-lang")
+    # input_filter_lang = input_query.get("filter-lang")
     input_filter = input_query.get("filter")
-    filter_exprs = [
+    expected_filter = auth_filter if is_authenticated else anon_filter
+    expected_filter_exprs = [
         cql2.Expr(expr).to_text()
-        for expr in [input_filter, filter_template_expr]
+        for expr in [input_filter, expected_filter.strip()]
         if expr
     ]
-    expected_filter_out = cql2.Expr(" AND ".join(filter_exprs)).to_json()
+    expected_filter_out = cql2.Expr(" AND ".join(expected_filter_exprs)).to_json()
 
     expected_output_query = {
         **input_query,
@@ -226,3 +264,6 @@ def test_search_post(
     assert (
         output_query == expected_output_query
     ), "Query should be combined with the filter expression."
+
+    # Reset test
+    mock_upstream.reset_mock()

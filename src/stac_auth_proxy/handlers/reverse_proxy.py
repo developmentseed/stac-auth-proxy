@@ -83,8 +83,7 @@ class ReverseProxyHandler:
                 request=request,
             )
             if request.method == "GET":
-                # query = filters.insert_filter(qs=query, filter=cql_filter)
-                ...  # TODO...
+                query = filters.insert_filter(qs=query, filter=cql_filter)
             elif request.method in ["POST", "PUT"]:
                 body_dict = json.loads(body)
                 body_filter = body_dict.get("filter")

@@ -274,5 +274,119 @@ def test_search_post(
         output_query == expected_output_query
     ), "Query should be combined with the filter expression."
 
-    # Reset test
-    mock_upstream.reset_mock()
+
+@pytest.mark.parametrize(
+    "filter_template_expr, auth_filter, anon_filter",
+    [
+        # Simple filter, not templated
+        [
+            "(properties.private = false)",
+            "(properties.private = false)",
+            "(properties.private = false)",
+        ],
+        # Simple filter, templated
+        [
+            "{{ '(properties.private = false)' if token is none else true }}",
+            "true",
+            "(properties.private = false)",
+        ],
+        # Complex filter, not templated
+        [
+            """{
+                "op": "=",
+                "args": [{"property": "private"}, true]
+            }""",
+            """{
+                "op": "=",
+                "args": [{"property": "private"}, true]
+            }""",
+            """{
+                "op": "=",
+                "args": [{"property": "private"}, true]
+            }""",
+        ],
+        # Complex filter, templated
+        [
+            """{{ '{"op": "=", "args": [{"property": "private"}, true]}' if token is none else true }}""",
+            "true",
+            """{"op": "=", "args": [{"property": "private"}, true]}""",
+        ],
+    ],
+)
+@pytest.mark.parametrize("is_authenticated", [True, False])
+@pytest.mark.parametrize(
+    "input_query",
+    [
+        # Not using filter
+        {
+            "collections": "example-collection",
+            "bbox": "160.6,-55.95,-170,-25.89",
+            "datetime": "2021-06-01T00:00:00Z/2021-06-30T23:59:59Z",
+        },
+        # Using filter
+        # {
+        #     "filter-lang": "cql2-json",
+        #     "filter": {
+        #         "op": "and",
+        #         "args": [
+        #             {"op": "=", "args": [{"property": "collection"}, "landsat-8-l1"]},
+        #             {"op": "<=", "args": [{"property": "eo:cloud_cover"}, 20]},
+        #             {"op": "=", "args": [{"property": "platform"}, "landsat-8"]},
+        #         ],
+        #     },
+        #     "limit": 5,
+        # },
+    ],
+)
+def test_search_get(
+    mock_upstream,
+    source_api_server,
+    filter_template_expr,
+    auth_filter,
+    anon_filter,
+    is_authenticated,
+    input_query,
+    token_builder,
+):
+    """Test filter is applied to search with fimple filtering."""
+    # Setup app
+    app = app_factory(
+        upstream_url=source_api_server,
+        items_filter={
+            "cls": "stac_auth_proxy.filters.Template",
+            "args": [filter_template_expr.strip()],
+        },
+        default_public=True,
+    )
+
+    # Query API
+    headers = (
+        {"Authorization": f"Bearer {token_builder({})}"} if is_authenticated else {}
+    )
+    response = TestClient(app, headers=headers).get("/search", params=input_query)
+    response.raise_for_status()
+
+    # Retrieve query from upstream
+    assert mock_upstream.call_count == 1
+    [r] = cast(list[Request], mock_upstream.call_args[0])
+    assert r.read().decode() == ""
+    upstream_querystring = dict(r.url.params)
+
+    # Parse query from upstream
+    input_filter = input_query.get("filter")
+    expected_filter = auth_filter if is_authenticated else anon_filter
+    expected_filter_exprs = [
+        cql2.Expr(expr).to_text()
+        for expr in [input_filter, expected_filter.strip()]
+        if expr
+    ]
+
+    # TODO: Use QS, not dict
+    expected_output_query = {
+        **input_query,
+        "filter": cql2.Expr(" AND ".join(expected_filter_exprs)).to_text(),
+    }
+
+    assert (
+        upstream_querystring == expected_output_query
+    ), "Query should be combined with the filter expression."

@@ -1,4 +1,4 @@
-"""Tests for Jinja2 CQL2 filter."""
+"""Tests for Jinja2 CQL2 filter (simplified for readability)."""
 
 import json
 from typing import cast
@@ -10,61 +10,43 @@ from fastapi.testclient import TestClient
 from httpx import Request
 from utils import AppFactory
 
-app_factory = AppFactory(
-    oidc_discovery_url="https://example-stac-api.com/.well-known/openid-configuration",
-    default_public=False,
-)
+FILTER_EXPR_CASES = [
+    pytest.param(
+        "(properties.private = false)",
+        "(properties.private = false)",
+        "(properties.private = false)",
+        id="simple_not_templated",
+    ),
+    pytest.param(
+        "{{ '(properties.private = false)' if token is none else true }}",
+        "true",
+        "(properties.private = false)",
+        id="simple_templated",
+    ),
+    pytest.param(
+        "(private = true)",
+        "(private = true)",
+        "(private = true)",
+        id="complex_not_templated",
+    ),
+    pytest.param(
+        """{{ '{"op": "=", "args": [{"property": "private"}, true]}' if token is none else true }}""",
+        "true",
+        """{"op": "=", "args": [{"property": "private"}, true]}""",
+        id="complex_templated",
+    ),
+]
 
-
-@pytest.mark.parametrize(
-    "filter_template_expr, auth_filter, anon_filter",
-    [
-        # Simple filter, not templated
-        [
-            "(properties.private = false)",
-            "(properties.private = false)",
-            "(properties.private = false)",
-        ],
-        # Simple filter, templated
-        [
-            "{{ '(properties.private = false)' if token is none else true }}",
-            "true",
-            "(properties.private = false)",
-        ],
-        # Complex filter, not templated
-        [
-            """{
-                "op": "=", 
-                "args": [{"property": "private"}, true]
-            }""",
-            """{
-                "op": "=", 
-                "args": [{"property": "private"}, true]
-            }""",
-            """{
-                "op": "=", 
-                "args": [{"property": "private"}, true]
-            }""",
-        ],
-        # Complex filter, templated
-        [
-            """{{ '{"op": "=", "args": [{"property": "private"}, true]}' if token is none else true }}""",
-            "true",
-            """{"op": "=", "args": [{"property": "private"}, true]}""",
-        ],
-    ],
-)
-@pytest.mark.parametrize("is_authenticated", [True, False])
-@pytest.mark.parametrize(
-    "input_query",
-    [
-        # Not using filter
+SEARCH_POST_QUERIES = [
+    pytest.param(
         {
             "collections": ["example-collection"],
             "bbox": [-120.5, 35.7, -120.0, 36.0],
             "datetime": "2021-06-01T00:00:00Z/2021-06-30T23:59:59Z",
         },
-        # Using filter
+        id="no_filter",
+    ),
+    pytest.param(
         {
             "filter-lang": "cql2-json",
             "filter": {
@@ -77,243 +59,69 @@ app_factory = AppFactory(
             },
             "limit": 5,
         },
-    ],
-)
-def test_search_post(
-    mock_upstream,
-    source_api_server,
-    filter_template_expr,
-    auth_filter,
-    anon_filter,
-    is_authenticated,
-    input_query,
-    token_builder,
-):
-    """Append body with generated CQL2 query."""
-    response = _build_client(
-        src_api_server=source_api_server,
-        template_expr=filter_template_expr,
-        is_authenticated=is_authenticated,
-        token_builder=token_builder,
-    ).post("/search", json=input_query)
-    response.raise_for_status()
+        id="with_filter",
+    ),
+]
 
-    # Retrieve query from upstream
-    upstream_body = json.loads(_get_upstream_request(mock_upstream)[0])
-
-    # Parse query from upstream
-    input_filter = input_query.get("filter")
-    expected_filter = auth_filter if is_authenticated else anon_filter
-    expected_filter_exprs = [
-        cql2.Expr(expr).to_text()
-        for expr in [input_filter, expected_filter.strip()]
-        if expr
-    ]
-
-    expected_output_query = {
-        **input_query,
-        "filter": cql2.Expr(" AND ".join(expected_filter_exprs)).to_json(),
-    }
-
-    assert (
-        upstream_body == expected_output_query
-    ), "Query should be combined with the filter expression."
-
-
-@pytest.mark.parametrize(
-    "filter_template_expr, auth_filter, anon_filter",
-    [
-        # Simple filter, not templated
-        [
-            "(properties.private = false)",
-            "(properties.private = false)",
-            "(properties.private = false)",
-        ],
-        # Simple filter, templated
-        [
-            "{{ '(properties.private = false)' if token is none else true }}",
-            "true",
-            "(properties.private = false)",
-        ],
-        # Complex filter, not templated
-        [
-            """{
-                "op": "=",
-                "args": [{"property": "private"}, true]
-            }""",
-            """{
-                "op": "=",
-                "args": [{"property": "private"}, true]
-            }""",
-            """{
-                "op": "=",
-                "args": [{"property": "private"}, true]
-            }""",
-        ],
-        # Complex filter, templated
-        [
-            """{{ '{"op": "=", "args": [{"property": "private"}, true]}' if token is none else true }}""",
-            "true",
-            """{"op": "=", "args": [{"property": "private"}, true]}""",
-        ],
-    ],
-)
-@pytest.mark.parametrize("is_authenticated", [True, False])
-@pytest.mark.parametrize(
-    "input_query",
-    [
-        # Not using filter
+SEARCH_GET_QUERIES = [
+    pytest.param(
         {
             "collections": "example-collection",
             "bbox": "160.6,-55.95,-170,-25.89",
             "datetime": "2021-06-01T00:00:00Z/2021-06-30T23:59:59Z",
         },
-        # Using filter
-        # {
-        #     "filter-lang": "cql2-json",
-        #     "filter": {
-        #         "op": "and",
-        #         "args": [
-        #             {"op": "=", "args": [{"property": "collection"}, "landsat-8-l1"]},
-        #             {"op": "<=", "args": [{"property": "eo:cloud_cover"}, 20]},
-        #             {"op": "=", "args": [{"property": "platform"}, "landsat-8"]},
-        #         ],
-        #     },
-        #     "limit": 5,
-        # },
-    ],
-)
-def test_search_get(
-    mock_upstream,
-    source_api_server,
-    filter_template_expr,
-    auth_filter,
-    anon_filter,
-    is_authenticated,
-    input_query,
-    token_builder,
-):
-    """Append query params with generated CQL2 query."""
-    response = _build_client(
-        src_api_server=source_api_server,
-        template_expr=filter_template_expr,
-        is_authenticated=is_authenticated,
-        token_builder=token_builder,
-    ).get("/search", params=input_query)
-    response.raise_for_status()
-
-    # Retrieve query from upstream
-    upstream_body, upstream_querystring = _get_upstream_request(mock_upstream)
-    assert upstream_body == ""
-
-    # Parse query from upstream
-    input_filter = input_query.get("filter")
-    expected_filter = auth_filter if is_authenticated else anon_filter
-    expected_filter_exprs = [
-        cql2.Expr(expr).to_text()
-        for expr in [input_filter, expected_filter.strip()]
-        if expr
-    ]
-
-    # TODO: Use QS, not dict
-    expected_output_query = {
-        **input_query,
-        "filter": cql2.Expr(" AND ".join(expected_filter_exprs)).to_text(),
-    }
-
-    assert (
-        upstream_querystring == expected_output_query
-    ), "Query should be combined with the filter expression."
-
-
-@pytest.mark.parametrize(
-    "filter_template_expr, auth_filter, anon_filter",
-    [
-        # Simple filter, not templated
-        [
-            "(properties.private = false)",
-            "(properties.private = false)",
-            "(properties.private = false)",
-        ],
-        # Simple filter, templated
-        [
-            "{{ '(properties.private = false)' if token is none else true }}",
-            "true",
-            "(properties.private = false)",
-        ],
-        # Complex filter, not templated
-        [
-            """{
-                "op": "=",
-                "args": [{"property": "private"}, true]
-            }""",
-            """{
-                "op": "=",
-                "args": [{"property": "private"}, true]
-            }""",
-            """{
-                "op": "=",
-                "args": [{"property": "private"}, true]
-            }""",
-        ],
-        # Complex filter, templated
-        [
-            """{{ '{"op": "=", "args": [{"property": "private"}, true]}' if token is none else true }}""",
-            "true",
-            """{"op": "=", "args": [{"property": "private"}, true]}""",
-        ],
-    ],
-)
-@pytest.mark.parametrize("is_authenticated", [True, False])
-@pytest.mark.parametrize(
-    "input_query",
-    [
-        # Not using filter
+        id="no_filter",
+    ),
+    pytest.param(
         {
-            "collections": "example-collection",
             "bbox": "160.6,-55.95,-170,-25.89",
-            "datetime": "2021-06-01T00:00:00Z/2021-06-30T23:59:59Z",
+            "filter-lang": "cql2-text",
+            "filter": "((collection = 'landsat-8-l1') AND (\"eo:cloud_cover\" <= 20) AND (platform = 'landsat-8'))",
+            "limit": "5",
         },
-        # Using filter
-        # {
-        #     "filter-lang": "cql2-json",
-        #     "filter": {
-        #         "op": "and",
-        #         "args": [
-        #             {"op": "=", "args": [{"property": "collection"}, "landsat-8-l1"]},
-        #             {"op": "<=", "args": [{"property": "eo:cloud_cover"}, 20]},
-        #             {"op": "=", "args": [{"property": "platform"}, "landsat-8"]},
-        #         ],
-        #     },
-        #     "limit": 5,
-        # },
-    ],
+        id="with_filter_text",
+    ),
+    pytest.param(
+        {
+            "bbox": "160.6,-55.95,-170,-25.89",
+            "filter-lang": "cql2-json",
+            "filter": json.dumps(
+                {
+                    "op": "and",
+                    "args": [
+                        {
+                            "op": "=",
+                            "args": [{"property": "collection"}, "landsat-8-l1"],
+                        },
+                        {"op": "<=", "args": [{"property": "eo:cloud_cover"}, 20]},
+                        {"op": "=", "args": [{"property": "platform"}, "landsat-8"]},
+                    ],
+                }
+            ),
+            "limit": "5",
+        },
+        id="with_filter_json",
+    ),
+]
+
+ITEMS_LIST_QUERIES = [
+    pytest.param(
+        {},
+        id="items_no_filter",
+    ),
+    pytest.param(
+        {
+            "filter-lang": "cql2-text",
+            "filter": "((collection = 'landsat-8-l1') AND (\"eo:cloud_cover\" <= 20) AND (platform = 'landsat-8'))",
+        },
+        id="items_with_filter",
+    ),
+]
+
+app_factory = AppFactory(
+    oidc_discovery_url="https://example-stac-api.com/.well-known/openid-configuration",
+    default_public=False,
 )
-def test_items_list(
-    mock_upstream,
-    source_api_server,
-    filter_template_expr,
-    auth_filter,
-    anon_filter,
-    is_authenticated,
-    input_query,
-    token_builder,
-):
-    """Append query params with generated CQL2 query."""
-    response = _build_client(
-        src_api_server=source_api_server,
-        template_expr=filter_template_expr,
-        is_authenticated=is_authenticated,
-        token_builder=token_builder,
-    ).get("/collections/foo/items")
-    response.raise_for_status()
-
-    body, query = _get_upstream_request(mock_upstream)
-
-    assert body == ""
-    assert query == {
-        "filter": cql2.Expr(auth_filter if is_authenticated else anon_filter).to_text()
-    }
 
 
 def _build_client(
@@ -323,7 +131,7 @@ def _build_client(
     is_authenticated: bool,
     token_builder,
 ):
-    # Setup app
+    """Builds a TestClient configured for either authenticated or anonymous usage."""
     app = app_factory(
         upstream_url=src_api_server,
         items_filter={
@@ -332,8 +140,6 @@ def _build_client(
         },
         default_public=True,
     )
-
-    # Query API
     headers = (
         {"Authorization": f"Bearer {token_builder({})}"} if is_authenticated else {}
     )
@@ -341,6 +147,146 @@ def _build_client(
 
 
 def _get_upstream_request(mock_upstream: MagicMock):
+    """Fetches the raw body and query params from the single upstream request."""
     assert mock_upstream.call_count == 1
-    [r] = cast(list[Request], mock_upstream.call_args[0])
-    return (r.read().decode(), dict(r.url.params))
+    [request] = cast(list[Request], mock_upstream.call_args[0])
+    return request.read().decode(), dict(request.url.params)
+
+
+@pytest.mark.parametrize(
+    "filter_template_expr, expected_auth_filter, expected_anon_filter",
+    FILTER_EXPR_CASES,
+)
+@pytest.mark.parametrize("is_authenticated", [True, False], ids=["auth", "anon"])
+@pytest.mark.parametrize("input_query", SEARCH_POST_QUERIES)
+def test_search_post(
+    mock_upstream,
+    source_api_server,
+    filter_template_expr,
+    expected_auth_filter,
+    expected_anon_filter,
+    is_authenticated,
+    input_query,
+    token_builder,
+):
+    """Test that POST /search merges the upstream query with the templated filter."""
+    response = _build_client(
+        src_api_server=source_api_server,
+        template_expr=filter_template_expr,
+        is_authenticated=is_authenticated,
+        token_builder=token_builder,
+    ).post("/search", json=input_query)
+    response.raise_for_status()
+
+    # Retrieve the JSON body that was actually sent upstream
+    proxied_body_str = _get_upstream_request(mock_upstream)[0]
+    proxied_body = json.loads(proxied_body_str)
+
+    # Determine the expected combined filter
+    proxy_filter = cql2.Expr(
+        expected_auth_filter if is_authenticated else expected_anon_filter
+    )
+    input_filter = input_query.get("filter")
+    if input_filter:
+        proxy_filter += cql2.Expr(input_filter)
+
+    expected_output = {
+        **input_query,
+        "filter": proxy_filter.to_json(),
+    }
+
+    assert (
+        proxied_body == expected_output
+    ), "POST query should combine filter expressions."
+
+
+@pytest.mark.parametrize(
+    "filter_template_expr, expected_auth_filter, expected_anon_filter",
+    FILTER_EXPR_CASES,
+)
+@pytest.mark.parametrize("is_authenticated", [True, False], ids=["auth", "anon"])
+@pytest.mark.parametrize("input_query", SEARCH_GET_QUERIES)
+def test_search_get(
+    mock_upstream,
+    source_api_server,
+    filter_template_expr,
+    expected_auth_filter,
+    expected_anon_filter,
+    is_authenticated,
+    input_query,
+    token_builder,
+):
+    """Test that GET /search merges the upstream query params with the templated filter."""
+    response = _build_client(
+        src_api_server=source_api_server,
+        template_expr=filter_template_expr,
+        is_authenticated=is_authenticated,
+        token_builder=token_builder,
+    ).get("/search", params=input_query)
+    response.raise_for_status()
+
+    # For GET, we expect the upstream body to be empty, but URL params to be appended
+    proxied_body, upstream_query = _get_upstream_request(mock_upstream)
+    assert proxied_body == ""
+
+    # Determine the expected combined filter
+    proxy_filter = cql2.Expr(
+        expected_auth_filter if is_authenticated else expected_anon_filter
+    )
+    input_filter = input_query.get("filter")
+    if input_filter:
+        proxy_filter += cql2.Expr(input_filter)
+
+    expected_output = {
+        **input_query,
+        "filter": proxy_filter.to_text(),
+        "filter-lang": "cql2-text",
+    }
+    assert (
+        upstream_query == expected_output
+    ), "GET query should combine filter expressions."
+
+
+@pytest.mark.parametrize(
+    "filter_template_expr, expected_auth_filter, expected_anon_filter",
+    FILTER_EXPR_CASES,
+)
+@pytest.mark.parametrize("is_authenticated", [True, False], ids=["auth", "anon"])
+@pytest.mark.parametrize("input_query", ITEMS_LIST_QUERIES)
+def test_items_list(
+    mock_upstream,
+    source_api_server,
+    filter_template_expr,
+    expected_auth_filter,
+    expected_anon_filter,
+    is_authenticated,
+    input_query,
+    token_builder,
+):
+    """Test that GET /collections/foo/items merges query params with the templated filter."""
+    client = _build_client(
+        src_api_server=source_api_server,
+        template_expr=filter_template_expr,
+        is_authenticated=is_authenticated,
+        token_builder=token_builder,
+    )
+    response = client.get("/collections/foo/items", params=input_query)
+    response.raise_for_status()
+
+    # For GET items, we also expect an empty body and appended querystring
+    proxied_body, proxied_query = _get_upstream_request(mock_upstream)
+    assert proxied_body == ""
+
+    # Only the appended filter (no input_filter merges in these particular tests),
+    # but you could do similar merging logic if needed.
+    proxy_filter = cql2.Expr(
+        expected_auth_filter if is_authenticated else expected_anon_filter
+    )
+    assert proxied_query == {
+        "filter-lang": "cql2-text",
+        "filter": (
+            proxy_filter + cql2.Expr(qs_filter)
+            if (qs_filter := input_query.get("filter"))
+            else proxy_filter
+        ).to_text(),
+    }, "Items query should include only the appended filter expression."

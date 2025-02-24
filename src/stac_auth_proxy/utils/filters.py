@@ -6,21 +6,15 @@ from urllib.parse import parse_qs, urlencode
 from cql2 import Expr
 
 
-def combine_filters(filters: list[Expr]) -> Expr:
-    """Combine multiple filters into a single filter."""
-    combined_filter = Expr(" AND ".join(e.to_text() for e in filters))
-    combined_filter.validate()
-    return combined_filter
-
-
 def insert_filter(qs: str, filter: Expr) -> str:
     """Insert a filter expression into a query string. If a filter already exists, combine them."""
     qs_dict = parse_qs(qs)
 
-    filters = [Expr(f) for f in qs_dict.get("filter", [])]
-    filters.append(filter)
+    for qs_filter in qs_dict.get("filter", []):
+        filter += Expr(qs_filter)
 
-    qs_dict["filter"] = [combine_filters(filters).to_text()]
+    qs_dict["filter"] = filter.to_text()
+    qs_dict["filter-lang"] = "cql2-text"
 
     return urlencode(qs_dict, doseq=True)
 

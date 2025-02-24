@@ -82,17 +82,16 @@ class ReverseProxyHandler:
                 func=filter_builder,
                 request=request,
             )
+            cql_filter.validate()
+
             if request.method == "GET":
                 query = filters.insert_filter(qs=query, filter=cql_filter)
             elif request.method in ["POST", "PUT"]:
                 body_dict = json.loads(body)
                 body_filter = body_dict.get("filter")
-                combined_filter = (
-                    filters.combine_filters([Expr(body_filter), cql_filter])
-                    if body_filter
-                    else cql_filter
-                )
-                body_dict["filter"] = combined_filter.to_json()
+                if body_filter:
+                    cql_filter = cql_filter + Expr(body_filter)
+                body_dict["filter"] = cql_filter.to_json()
                 body = json.dumps(body_dict)
 
         # https://github.com/fastapi/fastapi/discussions/7382#discussioncomment-5136466

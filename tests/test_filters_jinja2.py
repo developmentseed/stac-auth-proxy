@@ -2,6 +2,7 @@
 
 import json
 from typing import cast
+from unittest.mock import MagicMock
 
 import cql2
 import pytest
@@ -233,28 +234,17 @@ def test_search_post(
     input_query,
     token_builder,
 ):
-    """Test filter is applied to search with full-featured filtering."""
-    # Setup app
-    app = app_factory(
-        upstream_url=source_api_server,
-        items_filter={
-            "cls": "stac_auth_proxy.filters.Template",
-            "args": [filter_template_expr.strip()],
-        },
-        default_public=True,
-    )
-
-    # Query API
-    headers = (
-        {"Authorization": f"Bearer {token_builder({})}"} if is_authenticated else {}
-    )
-    response = TestClient(app, headers=headers).post("/search", json=input_query)
+    """Append body with generated CQL2 query."""
+    response = _build_client(
+        src_api_server=source_api_server,
+        template_expr=filter_template_expr,
+        is_authenticated=is_authenticated,
+        token_builder=token_builder,
+    ).post("/search", json=input_query)
     response.raise_for_status()
 
     # Retrieve query from upstream
-    assert mock_upstream.call_count == 1
-    [r] = cast(list[Request], mock_upstream.call_args[0])
-    output_query = json.loads(r.read().decode())
+    upstream_body = json.loads(_get_upstream_request(mock_upstream)[0])
 
     # Parse query from upstream
     input_filter = input_query.get("filter")
@@ -271,7 +261,7 @@ def test_search_post(
     }
 
     assert (
-        output_query == expected_output_query
+        upstream_body == expected_output_query
     ), "Query should be combined with the filter expression."
 
 
@@ -348,29 +338,18 @@ def test_search_get(
     input_query,
     token_builder,
 ):
-    """Test filter is applied to search with fimple filtering."""
-    # Setup app
-    app = app_factory(
-        upstream_url=source_api_server,
-        items_filter={
-            "cls": "stac_auth_proxy.filters.Template",
-            "args": [filter_template_expr.strip()],
-        },
-        default_public=True,
-    )
-
-    # Query API
-    headers = (
-        {"Authorization": f"Bearer {token_builder({})}"} if is_authenticated else {}
-    )
-    response = TestClient(app, headers=headers).get("/search", params=input_query)
+    """Append query params with generated CQL2 query."""
+    response = _build_client(
+        src_api_server=source_api_server,
+        template_expr=filter_template_expr,
+        is_authenticated=is_authenticated,
+        token_builder=token_builder,
+    ).get("/search", params=input_query)
     response.raise_for_status()
 
     # Retrieve query from upstream
-    assert mock_upstream.call_count == 1
-    [r] = cast(list[Request], mock_upstream.call_args[0])
-    assert r.read().decode() == ""
-    upstream_querystring = dict(r.url.params)
+    upstream_body, upstream_querystring = _get_upstream_request(mock_upstream)
+    assert upstream_body == ""
 
     # Parse query from upstream
     input_filter = input_query.get("filter")
@@ -390,3 +369,33 @@ def test_search_get(
     assert (
         upstream_querystring == expected_output_query
     ), "Query should be combined with the filter expression."
+
+
+def _build_client(
+    *,
+    src_api_server: str,
+    template_expr: str,
+    is_authenticated: bool,
+    token_builder,
+):
+    # Setup app
+    app = app_factory(
+        upstream_url=src_api_server,
+        items_filter={
+            "cls": "stac_auth_proxy.filters.Template",
+            "args": [template_expr.strip()],
+        },
+        default_public=True,
+    )
+
+    # Query API
+    headers = (
+        {"Authorization": f"Bearer {token_builder({})}"} if is_authenticated else {}
+    )
+    return TestClient(app, headers=headers)
+
+
+def _get_upstream_request(mock_upstream: MagicMock):
+    assert mock_upstream.call_count == 1
+    [r] = cast(list[Request], mock_upstream.call_args[0])
+    return (r.read().decode(), dict(r.url.params))

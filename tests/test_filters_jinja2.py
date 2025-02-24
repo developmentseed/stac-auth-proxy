@@ -371,6 +371,96 @@ def test_search_get(
     ), "Query should be combined with the filter expression."
 
 
+@pytest.mark.parametrize(
+    "filter_template_expr, auth_filter, anon_filter",
+    [
+        # Simple filter, not templated
+        [
+            "(properties.private = false)",
+            "(properties.private = false)",
+            "(properties.private = false)",
+        ],
+        # Simple filter, templated
+        [
+            "{{ '(properties.private = false)' if token is none else true }}",
+            "true",
+            "(properties.private = false)",
+        ],
+        # Complex filter, not templated
+        [
+            """{
+                "op": "=",
+                "args": [{"property": "private"}, true]
+            }""",
+            """{
+                "op": "=",
+                "args": [{"property": "private"}, true]
+            }""",
+            """{
+                "op": "=",
+                "args": [{"property": "private"}, true]
+            }""",
+        ],
+        # Complex filter, templated
+        [
+            """{{ '{"op": "=", "args": [{"property": "private"}, true]}' if token is none else true }}""",
+            "true",
+            """{"op": "=", "args": [{"property": "private"}, true]}""",
+        ],
+    ],
+)
+@pytest.mark.parametrize("is_authenticated", [True, False])
+@pytest.mark.parametrize(
+    "input_query",
+    [
+        # Not using filter
+        {
+            "collections": "example-collection",
+            "bbox": "160.6,-55.95,-170,-25.89",
+            "datetime": "2021-06-01T00:00:00Z/2021-06-30T23:59:59Z",
+        },
+        # Using filter
+        # {
+        #     "filter-lang": "cql2-json",
+        #     "filter": {
+        #         "op": "and",
+        #         "args": [
+        #             {"op": "=", "args": [{"property": "collection"}, "landsat-8-l1"]},
+        #             {"op": "<=", "args": [{"property": "eo:cloud_cover"}, 20]},
+        #             {"op": "=", "args": [{"property": "platform"}, "landsat-8"]},
+        #         ],
+        #     },
+        #     "limit": 5,
+        # },
+    ],
+)
+def test_items_list(
+    mock_upstream,
+    source_api_server,
+    filter_template_expr,
+    auth_filter,
+    anon_filter,
+    is_authenticated,
+    input_query,
+    token_builder,
+):
+    """Append query params with generated CQL2 query."""
+    response = _build_client(
+        src_api_server=source_api_server,
+        template_expr=filter_template_expr,
+        is_authenticated=is_authenticated,
+        token_builder=token_builder,
+    ).get("/collections/foo/items")
+    response.raise_for_status()
+
+    body, query = _get_upstream_request(mock_upstream)
+
+    assert body == ""
+    assert query == {
+        "filter": cql2.Expr(auth_filter if is_authenticated else anon_filter).to_text()
+    }
+
+
 def _build_client(
     *,
     src_api_server: str,

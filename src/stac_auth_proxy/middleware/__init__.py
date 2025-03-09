@@ -1,11 +1,11 @@
 """Custom middleware."""
 
-from .OpenApiMiddleware import OpenApiMiddleware
+from .UpdateOpenApiMiddleware import OpenApiMiddleware
 from .AddProcessTimeHeaderMiddleware import AddProcessTimeHeaderMiddleware
 from .EnforceAuthMiddleware import EnforceAuthMiddleware
 
 __all__ = [
-    OpenApiMiddleware,
+    UpdateOpenApiMiddleware,
     AddProcessTimeHeaderMiddleware,
     EnforceAuthMiddleware,
 ]

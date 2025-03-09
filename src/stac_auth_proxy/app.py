@@ -32,6 +32,8 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     )
 
     app.add_middleware(AddProcessTimeHeaderMiddleware)
+    app.add_middleware(EnforceAuthMiddleware)
+
     if settings.openapi_spec_endpoint:
         app.add_middleware(
             OpenApiMiddleware,
@@ -40,7 +42,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             private_endpoints=settings.private_endpoints,
             default_public=settings.default_public,
         )
-    app.add_middleware(EnforceAuthMiddleware)
 
     if settings.debug:
         app.add_api_route(
@@ -56,11 +57,12 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     proxy_handler = ReverseProxyHandler(
         upstream=str(settings.upstream_url),
         auth_dependency=auth_scheme.maybe_validated_user,
+        # TODO: Refactor filter tooling into middleare
         collections_filter=settings.collections_filter,
         items_filter=settings.items_filter,
     )
 
-    # # Configure security dependency for explicitely specified endpoints
+    # Configure security dependency for explicitely specified endpoints
     # for path_methods, dependencies in [
     #     (settings.private_endpoints, [Security(auth_scheme.validated_user)]),
     #     (settings.public_endpoints, []),
@@ -83,9 +85,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         "/{path:path}",
         proxy_handler.stream,
         methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-        # dependencies=(
-        #     [] if settings.default_public else [Security(auth_scheme.validated_user)]
-        # ),
     )
 
     return app

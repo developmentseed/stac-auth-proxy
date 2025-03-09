@@ -10,14 +10,15 @@ from typing import Optional
 
 from fastapi import FastAPI
 
+from .middleware import (
+    OpenApiMiddleware,
+    AddProcessTimeHeaderMiddleware,
+    EnforceAuthMiddleware,
+)
+
 from .auth import OpenIdConnectAuth
 from .config import Settings
 from .handlers import ReverseProxyHandler
-from .middleware import (
-    AddProcessTimeHeaderMiddleware,
-    EnforceAuthMiddleware,
-    OpenApiMiddleware,
-)
 
 logger = logging.getLogger(__name__)
 

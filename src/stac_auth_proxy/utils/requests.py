@@ -1,5 +1,6 @@
 """Utility functions for working with HTTP requests."""
 
+import json
 import re
 from urllib.parse import urlparse
 
@@ -29,3 +30,8 @@ def extract_variables(url: str) -> dict:
     pattern = r"^/collections/(?P<collection_id>[^/]+)(?:/(?:items|bulk_items)(?:/(?P<item_id>[^/]+))?)?/?$"
     match = re.match(pattern, path)
     return {k: v for k, v in match.groupdict().items() if v} if match else {}
+
+
+def dict_to_bytes(d: dict) -> bytes:
+    """Convert a dictionary to a body."""
+    return json.dumps(d, separators=(",", ":")).encode("utf-8")

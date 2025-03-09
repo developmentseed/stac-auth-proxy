@@ -1,27 +1,13 @@
-"""Custom middleware."""
+from stac_auth_proxy.config import EndpointMethods
+from stac_auth_proxy.utils.requests import dict_to_bytes
 
+
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+
+import json
 from dataclasses import dataclass
 from typing import Any
-import json
-import time
-
-from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.types import ASGIApp, Message, Scope, Receive, Send
-
-from .config import EndpointMethods
-
-
-class AddProcessTimeHeaderMiddleware(BaseHTTPMiddleware):
-    """Middleware to add a header with the process time to the response."""
-
-    async def dispatch(self, request: Request, call_next) -> Response:
-        """Add a header with the process time to the response."""
-        start_time = time.perf_counter()
-        response = await call_next(request)
-        process_time = time.perf_counter() - start_time
-        response.headers["X-Process-Time"] = f"{process_time:.3f}"
-        return response
 
 
 @dataclass(frozen=True)
@@ -71,17 +57,3 @@ class OpenApiMiddleware:
                             {self.oidc_auth_scheme_name: []}
                         )
         return openapi_spec
-
-
-# TODO
-class EnforceAuthMiddleware(BaseHTTPMiddleware):
-    """Middleware to enforce authentication."""
-
-    async def dispatch(self, request: Request, call_next) -> Response:
-        """Enforce authentication."""
-        return await call_next(request)
-
-
-def dict_to_bytes(d: dict) -> bytes:
-    """Convert a dictionary to a body."""
-    return json.dumps(d, separators=(",", ":")).encode("utf-8")

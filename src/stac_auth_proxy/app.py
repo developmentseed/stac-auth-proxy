@@ -62,25 +62,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         collections_filter=settings.collections_filter,
         items_filter=settings.items_filter,
     )
-
-    # Configure security dependency for explicitely specified endpoints
-    # for path_methods, dependencies in [
-    #     (settings.private_endpoints, [Security(auth_scheme.validated_user)]),
-    #     (settings.public_endpoints, []),
-    # ]:
-    #     for path, methods in path_methods.items():
-    #         endpoint = (
-    #             openapi_handler
-    #             if path == settings.openapi_spec_endpoint
-    #             else proxy_handler.stream
-    #         )
-    #         app.add_api_route(
-    #             path,
-    #             endpoint=endpoint,
-    #             methods=methods,
-    #             dependencies=dependencies,
-    #         )
-
     # Catchall for remainder of the endpoints
     app.add_api_route(
         "/{path:path}",

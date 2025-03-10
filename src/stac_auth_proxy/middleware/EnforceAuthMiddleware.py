@@ -125,19 +125,6 @@ class EnforceAuthMiddleware:
                 headers={"WWW-Authenticate": "Bearer"},
             ) from e
 
-        # Validate scopes (if required)
-        for scope in required_scopes.scopes:
-            if scope not in payload["scope"]:
-                if auto_error:
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Not enough permissions",
-                        headers={
-                            "WWW-Authenticate": f'Bearer scope="{required_scopes.scope_str}"'
-                        },
-                    )
-                return None
-
         return payload
 
 

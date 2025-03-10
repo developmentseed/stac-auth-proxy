@@ -63,7 +63,7 @@ class EnforceAuthMiddleware:
 
         request = Request(scope)
         try:
-            scope["user"] = self.validated_user(
+            scope["state"]["user"] = self.validated_user(
                 request.headers.get("Authorization"),
                 security.SecurityScopes(scopes=["read"]),
                 auto_error=self.should_enforce_auth(request),

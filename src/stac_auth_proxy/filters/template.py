@@ -32,7 +32,7 @@ def Template(template_str: str):
                     else (await request.body()).decode()
                 ),
             },
-            "token": auth_token,
+            "token": request.state.user,
         }
         cql2_str = env.render(**context).strip()
         cql2_expr = Expr(cql2_str)

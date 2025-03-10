@@ -9,7 +9,7 @@ app_factory = AppFactory(
 )
 
 
-def test_no_openapi_spec_endpoint(source_api_server):
+def test_no_openapi_spec_endpoint(source_api_server: str):
     """When no OpenAPI spec endpoint is set, the proxied OpenAPI spec is unaltered."""
     app = app_factory(
         upstream_url=source_api_server,
@@ -25,7 +25,7 @@ def test_no_openapi_spec_endpoint(source_api_server):
     assert "oidcAuth" not in openapi.get("components", {}).get("securitySchemes", {})
 
 
-def test_no_private_endpoints(source_api_server):
+def test_no_private_endpoints(source_api_server: str):
     """When no endpoints are private, the proxied OpenAPI spec is unaltered."""
     app = app_factory(
         upstream_url=source_api_server,

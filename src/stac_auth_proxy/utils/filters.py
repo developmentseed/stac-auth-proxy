@@ -6,7 +6,7 @@ from urllib.parse import parse_qs, urlencode
 from cql2 import Expr
 
 
-def insert_filter(qs: str, filter: Expr) -> str:
+def append_qs_filter(qs: str, filter: Expr) -> str:
     """Insert a filter expression into a query string. If a filter already exists, combine them."""
     qs_dict = parse_qs(qs)
 
@@ -17,6 +17,16 @@ def insert_filter(qs: str, filter: Expr) -> str:
     qs_dict["filter-lang"] = "cql2-text"
 
     return urlencode(qs_dict, doseq=True)
+
+
+def append_body_filter(body: dict, filter: Expr) -> dict:
+    """Insert a filter expression into a request body. If a filter already exists, combine them."""
+    cur_filter = body.get("filter")
+    if cur_filter:
+        filter = filter + Expr(cur_filter)
+    body["filter"] = filter.to_json()
+    body["filter-lang"] = "cql2-json"
+    return body
 
 
 def is_collection_endpoint(path: str) -> bool:

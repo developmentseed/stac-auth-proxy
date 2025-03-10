@@ -56,12 +56,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         )
 
     # Tooling
-    proxy_handler = ReverseProxyHandler(
-        upstream=str(settings.upstream_url),
-        # TODO: Refactor filter tooling into middleare
-        collections_filter=settings.collections_filter,
-        items_filter=settings.items_filter,
-    )
+    proxy_handler = ReverseProxyHandler(upstream=str(settings.upstream_url))
     # Catchall for remainder of the endpoints
     app.add_api_route(
         "/{path:path}",

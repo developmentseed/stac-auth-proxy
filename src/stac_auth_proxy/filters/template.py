@@ -1,6 +1,6 @@
 """Generate CQL2 filter expressions via Jinja2 templating."""
 
-from typing import Annotated, Any
+from dataclasses import dataclass, field
 
 from cql2 import Expr
 from fastapi import Request
@@ -9,11 +9,18 @@ from jinja2 import BaseLoader, Environment
 from ..utils.requests import extract_variables
 
 
-def Template(template_str: str):
+@dataclass
+class Template:
     """Generate CQL2 filter expressions via Jinja2 templating."""
-    env = Environment(loader=BaseLoader).from_string(template_str)
 
-    async def dependency(request: Request) -> Expr:
+    template_str: str
+    env: Environment = field(init=False)
+
+    def __post_init__(self):
+        """Initialize the Jinja2 environment."""
+        self.env = Environment(loader=BaseLoader).from_string(self.template_str)
+
+    async def __call__(self, request: Request) -> Expr:
         """Render a CQL2 filter expression with the request and auth token."""
         # TODO: How to handle the case where auth_token is null?
         context = {
@@ -31,9 +38,7 @@ def Template(template_str: str):
             },
             "token": request.state.user,
         }
-        cql2_str = env.render(**context).strip()
+        cql2_str = self.env.render(**context).strip()
         cql2_expr = Expr(cql2_str)
         cql2_expr.validate()
         return cql2_expr
-
-    return dependency

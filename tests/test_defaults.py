@@ -34,18 +34,18 @@ app_factory = AppFactory(
 )
 def test_default_public_true(source_api_server, path, method, expected_status):
     """
-    When default_public=true and private_endpoints aren't set, all endpoints should be
+    When default_public=true and private_endpoints are set, all endpoints should be
     public except for transaction endpoints.
     """
     test_app = app_factory(
         upstream_url=source_api_server,
         public_endpoints={},
         private_endpoints={
-            "/collections": ["POST"],
-            "/collections/{collection_id}": ["PUT", "PATCH", "DELETE"],
-            "/collections/{collection_id}/items": ["POST"],
-            "/collections/{collection_id}/items/{item_id}": ["PUT", "PATCH", "DELETE"],
-            "/collections/{collection_id}/bulk_items": ["POST"],
+            r"^/collections$": ["POST"],
+            r"^/collections/([^/]+)$": ["PUT", "PATCH", "DELETE"],
+            r"^/collections/([^/]+)/items$": ["POST"],
+            r"^/collections/([^/]+)/items/([^/]+)$": ["PUT", "PATCH", "DELETE"],
+            r"^/collections/([^/]+)/bulk_items$": ["POST"],
         },
         default_public=True,
     )

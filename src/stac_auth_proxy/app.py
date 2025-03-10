@@ -32,7 +32,13 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     )
 
     app.add_middleware(AddProcessTimeHeaderMiddleware)
-    app.add_middleware(EnforceAuthMiddleware)
+    app.add_middleware(
+        EnforceAuthMiddleware,
+        public_endpoints=settings.public_endpoints,
+        private_endpoints=settings.private_endpoints,
+        default_public=settings.default_public,
+        oidc_config_url=settings.oidc_discovery_url,
+    )
 
     if settings.openapi_spec_endpoint:
         app.add_middleware(

@@ -37,15 +37,15 @@ class Settings(BaseSettings):
     default_public: bool = False
     private_endpoints: EndpointMethods = {
         # https://github.com/stac-api-extensions/collection-transaction/blob/v1.0.0-beta.1/README.md#methods
-        "/collections": ["POST"],
-        "/collections/{collection_id}": ["PUT", "PATCH", "DELETE"],
+        r"^/collections$": ["POST"],
+        r"^/collections/([^/]+)$": ["PUT", "PATCH", "DELETE"],
         # https://github.com/stac-api-extensions/transaction/blob/v1.0.0-rc.3/README.md#methods
-        "/collections/{collection_id}/items": ["POST"],
-        "/collections/{collection_id}/items/{item_id}": ["PUT", "PATCH", "DELETE"],
+        r"^/collections/([^/]+)/items$": ["POST"],
+        r"^/collections/([^/]+)/items/([^/]+)$": ["PUT", "PATCH", "DELETE"],
         # https://stac-utils.github.io/stac-fastapi/api/stac_fastapi/extensions/third_party/bulk_transactions/#bulktransactionextension
-        "/collections/{collection_id}/bulk_items": ["POST"],
+        r"^/collections/([^/]+)/bulk_items$": ["POST"],
     }
-    public_endpoints: EndpointMethods = {"/api.html": ["GET"], "/api": ["GET"]}
+    public_endpoints: EndpointMethods = {r"^/api.html$": ["GET"], r"^/api$": ["GET"]}
     openapi_spec_endpoint: Optional[str] = None
 
     collections_filter: Optional[ClassInput] = None

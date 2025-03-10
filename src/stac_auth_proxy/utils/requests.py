@@ -5,6 +5,7 @@ import re
 from urllib.parse import urlparse
 
 from httpx import Headers
+from starlette.requests import Request
 
 
 def safe_headers(headers: Headers) -> dict[str, str]:
@@ -35,3 +36,21 @@ def extract_variables(url: str) -> dict:
 def dict_to_bytes(d: dict) -> bytes:
     """Convert a dictionary to a body."""
     return json.dumps(d, separators=(",", ":")).encode("utf-8")
+
+
+def matches_route(request: Request, url_patterns: dict[str, list[str]]) -> bool:
+    """
+    Returns True if the incoming request.path and request.method
+    match any of the patterns (and their methods) in url_patterns.
+    Otherwise returns False.
+    """
+    path = request.url.path  # e.g. '/collections/123'
+    method = request.method.casefold()  # e.g. 'post'
+
+    for pattern, allowed_methods in url_patterns.items():
+        if re.match(pattern, path) and method in [
+            m.casefold() for m in allowed_methods
+        ]:
+            return True
+
+    return False

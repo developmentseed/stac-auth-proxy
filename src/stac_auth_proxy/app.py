@@ -16,7 +16,6 @@ from .middleware import (
     EnforceAuthMiddleware,
 )
 
-from .auth import OpenIdConnectAuth
 from .config import Settings
 from .handlers import ReverseProxyHandler
 
@@ -57,12 +56,8 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         )
 
     # Tooling
-    auth_scheme = OpenIdConnectAuth(
-        openid_configuration_url=settings.oidc_discovery_url
-    )
     proxy_handler = ReverseProxyHandler(
         upstream=str(settings.upstream_url),
-        auth_dependency=auth_scheme.maybe_validated_user,
         # TODO: Refactor filter tooling into middleare
         collections_filter=settings.collections_filter,
         items_filter=settings.items_filter,

@@ -23,8 +23,6 @@ class ReverseProxyHandler:
     """Reverse proxy functionality."""
 
     upstream: str
-    auth_dependency: Callable
-
     client: httpx.AsyncClient = None
 
     # Filters
@@ -41,15 +39,6 @@ class ReverseProxyHandler:
             self.collections_filter() if self.collections_filter else None
         )
         self.items_filter = self.items_filter() if self.items_filter else None
-
-        # Inject auth dependency into filters
-        for endpoint in [self.collections_filter, self.items_filter]:
-            if not endpoint:
-                continue
-            endpoint.__annotations__["auth_token"] = Annotated[
-                Optional[Expr],
-                Depends(self.auth_dependency),
-            ]
 
     def _get_filter(self, path: str) -> Optional[Callable[..., Expr]]:
         """Get the CQL2 filter builder for the given path."""

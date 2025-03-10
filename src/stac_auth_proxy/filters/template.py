@@ -13,10 +13,7 @@ def Template(template_str: str):
     """Generate CQL2 filter expressions via Jinja2 templating."""
     env = Environment(loader=BaseLoader).from_string(template_str)
 
-    async def dependency(
-        request: Request,
-        auth_token: Annotated[dict[str, Any], ...],
-    ) -> Expr:
+    async def dependency(request: Request) -> Expr:
         """Render a CQL2 filter expression with the request and auth token."""
         # TODO: How to handle the case where auth_token is null?
         context = {

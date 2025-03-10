@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+from starlette.requests import Request
 
 from ..config import EndpointMethods
 from ..utils.requests import dict_to_bytes
@@ -21,20 +22,30 @@ class OpenApiMiddleware:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """Add the OpenAPI spec to the response."""
-        if scope["type"] != "http":
+        if scope["type"] != "http" or Request(scope).url.path != self.openapi_spec_path:
             return await self.app(scope, receive, send)
+
+        total_body = b""
 
         async def augment_oidc_spec(message: Message):
             if message["type"] != "http.response.body":
                 return await send(message)
 
             # TODO: Make more robust to handle non-JSON responses
-            body = json.loads(message["body"])
+
+            nonlocal total_body
+
+            total_body += message["body"]
+
+            # Pass empty body chunks until all chunks have been received
+            if message["more_body"]:
+                return await send({**message, "body": b""})
 
             await send(
                 {
                     "type": "http.response.body",
-                    "body": dict_to_bytes(self.augment_spec(body)),
+                    "body": dict_to_bytes(self.augment_spec(json.loads(total_body))),
+                    "more_body": False,
                 }
             )
 

@@ -1,13 +1,11 @@
-from stac_auth_proxy.config import EndpointMethods
-from stac_auth_proxy.utils.requests import dict_to_bytes
-
-
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
-
-
 import json
 from dataclasses import dataclass
 from typing import Any
+
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+from ..config import EndpointMethods
+from ..utils.requests import dict_to_bytes
 
 
 @dataclass(frozen=True)
@@ -52,7 +50,7 @@ class OpenApiMiddleware:
         for path, method_config in openapi_spec["paths"].items():
             for method, config in method_config.items():
                 for private_method in self.private_endpoints.get(path, []):
-                    if method.lower() == private_method.lower():
+                    if method.casefold() == private_method.casefold():
                         config.setdefault("security", []).append(
                             {self.oidc_auth_scheme_name: []}
                         )

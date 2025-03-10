@@ -5,11 +5,10 @@ import logging
 import urllib.request
 
 from fastapi import HTTPException, Security, security, status, Request
-from fastapi.security.base import SecurityBase
 from pydantic import HttpUrl
 from starlette.middleware.base import ASGIApp
 from starlette.responses import JSONResponse
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
+from starlette.types import ASGIApp, Receive, Scope, Send
 import jwt
 
 from ..config import EndpointMethods
@@ -32,7 +31,6 @@ class EnforceAuthMiddleware:
     allowed_jwt_audiences: Optional[Sequence[str]] = None
 
     # Generated attributes
-    # auth_scheme: SecurityBase = field(init=False)
     jwks_client: jwt.PyJWKClient = field(init=False)
 
     def __post_init__(self):
@@ -51,11 +49,6 @@ class EnforceAuthMiddleware:
             oidc_config = json.load(response)
             self.jwks_client = jwt.PyJWKClient(oidc_config["jwks_uri"])
 
-        # self.auth_scheme = security.OpenIdConnect(
-        #     openIdConnectUrl=str(self.oidc_config_url),
-        #     auto_error=False,
-        # )
-
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """Enforce authentication."""
         if scope["type"] != "http":
@@ -65,7 +58,6 @@ class EnforceAuthMiddleware:
         try:
             scope["state"]["user"] = self.validated_user(
                 request.headers.get("Authorization"),
-                security.SecurityScopes(scopes=["read"]),
                 auto_error=self.should_enforce_auth(request),
             )
         except HTTPException as e:
@@ -84,7 +76,6 @@ class EnforceAuthMiddleware:
     def validated_user(
         self,
         auth_header: Annotated[str, Security(...)],
-        required_scopes: security.SecurityScopes,
         auto_error: bool = True,
     ):
         """Dependency to validate an OIDC token."""

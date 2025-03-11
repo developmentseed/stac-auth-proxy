@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 from typing import Callable
+import json
+from urllib.parse import parse_qs, unquote
 
 import httpx
 
@@ -48,3 +50,19 @@ def single_chunk_async_stream_response(
         status_code=status_code,
         headers=headers,
     )
+
+
+def parse_query_string(qs: str) -> dict:
+    """Parse a query string into a dictionary."""
+    parsed = parse_qs(qs)
+
+    result = {}
+    for key, value_list in parsed.items():
+        value = value_list[0]
+        if key == "filter" and parsed.get("filter-lang") == "cql2-json":
+            decoded_str = unquote(value)
+            result[key] = json.loads(decoded_str)
+        else:
+            result[key] = unquote(value)
+
+    return result

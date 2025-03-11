@@ -8,7 +8,7 @@ import cql2
 import pytest
 from fastapi.testclient import TestClient
 from httpx import Request
-from utils import AppFactory
+from utils import AppFactory, parse_query_string
 
 FILTER_EXPR_CASES = [
     pytest.param(
@@ -151,7 +151,7 @@ async def _get_upstream_request(mock_upstream: MagicMock):
     assert mock_upstream.call_count == 1
     [request] = cast(list[Request], mock_upstream.call_args[0])
     req_body = request._streamed_body
-    return req_body.decode(), dict(request.url.params)
+    return req_body.decode(), parse_query_string(request.url.query.decode("utf-8"))
 
 
 @pytest.mark.parametrize(
@@ -219,12 +219,13 @@ async def test_search_get(
     token_builder,
 ):
     """Test that GET /search merges the upstream query params with the templated filter."""
-    response = _build_client(
+    client = _build_client(
         src_api_server=source_api_server,
         template_expr=filter_template_expr,
         is_authenticated=is_authenticated,
         token_builder=token_builder,
-    ).get("/search", params=input_query)
+    )
+    response = client.get("/search", params=input_query)
     response.raise_for_status()
 
     # For GET, we expect the upstream body to be empty, but URL params to be appended
@@ -239,13 +240,15 @@ async def test_search_get(
     if input_filter:
         proxy_filter += cql2.Expr(input_filter)
 
+    filter_lang = input_query.get("filter-lang", "cql2-text")
     expected_output = {
         **input_query,
         "filter": (
             proxy_filter.to_text()
-            if input_query.get("filter-lang") == "cql2-text"
+            if filter_lang == "cql2-text"
             else proxy_filter.to_json()
         ),
+        "filter-lang": filter_lang,
     }
     assert (
         upstream_query == expected_output

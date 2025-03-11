@@ -4,7 +4,7 @@ import json
 import logging
 import urllib.request
 
-from fastapi import HTTPException, Security, security, status, Request
+from fastapi import HTTPException, Security, status, Request
 from pydantic import HttpUrl
 from starlette.middleware.base import ASGIApp
 from starlette.responses import JSONResponse

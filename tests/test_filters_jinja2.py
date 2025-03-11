@@ -241,8 +241,11 @@ async def test_search_get(
 
     expected_output = {
         **input_query,
-        "filter": proxy_filter.to_text(),
-        "filter-lang": "cql2-text",
+        "filter": (
+            proxy_filter.to_text()
+            if input_query.get("filter-lang") == "cql2-text"
+            else proxy_filter.to_json()
+        ),
     }
     assert (
         upstream_query == expected_output

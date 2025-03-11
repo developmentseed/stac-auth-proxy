@@ -16,6 +16,7 @@
       ],
       "jinja": true,
       "cwd": "${workspaceFolder}/src",
+      "justMyCode": false
     }
   ]
 }

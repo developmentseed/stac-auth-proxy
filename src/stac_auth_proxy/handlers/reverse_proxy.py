@@ -2,7 +2,7 @@
 
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import httpx
 from fastapi import Request
@@ -19,35 +19,35 @@ class ReverseProxyHandler:
 
     upstream: str
     client: httpx.AsyncClient = None
+    timeout: httpx.Timeout = field(default_factory=lambda: httpx.Timeout(timeout=15.0))
 
     def __post_init__(self):
         """Initialize the HTTP client."""
         self.client = self.client or httpx.AsyncClient(
             base_url=self.upstream,
-            timeout=httpx.Timeout(timeout=15.0),
+            timeout=self.timeout,
         )
 
-    async def proxy_request(self, request: Request, *, stream=False) -> httpx.Response:
+    async def proxy_request(self, request: Request) -> httpx.Response:
         """Proxy a request to the upstream STAC API."""
         headers = MutableHeaders(request.headers)
         headers.setdefault("X-Forwarded-For", request.client.host)
         headers.setdefault("X-Forwarded-Host", request.url.hostname)
 
         # https://github.com/fastapi/fastapi/discussions/7382#discussioncomment-5136466
-        url = httpx.URL(
-            path=request.url.path,
-            query=request.url.query.encode("utf-8"),
-        )
         rp_req = self.client.build_request(
             request.method,
-            url=url,
+            url=httpx.URL(
+                path=request.url.path,
+                query=request.url.query.encode("utf-8"),
+            ),
             headers=headers,
             content=request.stream(),
         )
         logger.debug(f"Proxying request to {rp_req.url}")
 
         start_time = time.perf_counter()
-        rp_resp = await self.client.send(rp_req, stream=stream)
+        rp_resp = await self.client.send(rp_req, stream=True)
         proxy_time = time.perf_counter() - start_time
 
         logger.debug(
@@ -58,7 +58,7 @@ class ReverseProxyHandler:
 
     async def stream(self, request: Request) -> StreamingResponse:
         """Transparently proxy a request to the upstream STAC API."""
-        rp_resp = await self.proxy_request(request, stream=True)
+        rp_resp = await self.proxy_request(request)
         return StreamingResponse(
             rp_resp.aiter_raw(),
             status_code=rp_resp.status_code,

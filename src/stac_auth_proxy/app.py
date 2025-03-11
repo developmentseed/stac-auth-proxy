@@ -8,12 +8,17 @@ authentication, authorization, and proxying of requests to some internal STAC AP
 import logging
 from typing import Optional
 
-from eoapi.auth_utils import OpenIdConnectAuth
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI
 
 from .config import Settings
-from .handlers import OpenApiSpecHandler, ReverseProxyHandler
-from .middleware import AddProcessTimeHeaderMiddleware
+from .handlers import ReverseProxyHandler
+from .middleware import (
+    AddProcessTimeHeaderMiddleware,
+    ApplyCql2FilterMiddleware,
+    BuildCql2FilterMiddleware,
+    EnforceAuthMiddleware,
+    OpenApiMiddleware,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -23,17 +28,35 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     settings = settings or Settings()
 
     app = FastAPI(
-        openapi_url=None,
+        openapi_url=None,  # Disable OpenAPI schema endpoint, we want to serve upstream's schema
     )
+
     app.add_middleware(AddProcessTimeHeaderMiddleware)
 
-    auth_scheme = OpenIdConnectAuth(
-        openid_configuration_url=str(settings.oidc_discovery_url)
-    ).valid_token_dependency
+    if settings.openapi_spec_endpoint:
+        app.add_middleware(
+            OpenApiMiddleware,
+            openapi_spec_path=settings.openapi_spec_endpoint,
+            oidc_config_url=str(settings.oidc_discovery_url),
+            private_endpoints=settings.private_endpoints,
+            default_public=settings.default_public,
+        )
 
-    if settings.guard:
-        logger.info("Wrapping auth scheme")
-        auth_scheme = settings.guard(auth_scheme)
+    if settings.items_filter:
+        app.add_middleware(ApplyCql2FilterMiddleware)
+        app.add_middleware(
+            BuildCql2FilterMiddleware,
+            # collections_filter=settings.collections_filter,
+            items_filter=settings.items_filter(),
+        )
+
+    app.add_middleware(
+        EnforceAuthMiddleware,
+        public_endpoints=settings.public_endpoints,
+        private_endpoints=settings.private_endpoints,
+        default_public=settings.default_public,
+        oidc_config_url=settings.oidc_discovery_url,
+    )
 
     if settings.debug:
         app.add_api_route(
@@ -42,42 +65,12 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             methods=["GET"],
         )
 
+    # Catchall for any endpoint
     proxy_handler = ReverseProxyHandler(upstream=str(settings.upstream_url))
-    openapi_handler = OpenApiSpecHandler(
-        proxy=proxy_handler, oidc_config_url=str(settings.oidc_discovery_url)
-    )
-
-    # Endpoints that are explicitely marked private
-    for path, methods in settings.private_endpoints.items():
-        app.add_api_route(
-            path,
-            (
-                proxy_handler.stream
-                if path != settings.openapi_spec_endpoint
-                else openapi_handler.dispatch
-            ),
-            methods=methods,
-            dependencies=[Depends(auth_scheme)],
-        )
-
-    # Endpoints that are explicitely marked as public
-    for path, methods in settings.public_endpoints.items():
-        app.add_api_route(
-            path,
-            (
-                proxy_handler.stream
-                if path != settings.openapi_spec_endpoint
-                else openapi_handler.dispatch
-            ),
-            methods=methods,
-        )
-
-    # Catchall for remainder of the endpoints
     app.add_api_route(
         "/{path:path}",
         proxy_handler.stream,
         methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-        dependencies=([] if settings.default_public else [Depends(auth_scheme)]),
     )
 
     return app

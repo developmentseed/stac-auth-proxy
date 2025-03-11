@@ -1,8 +1,9 @@
 """Tests for OpenAPI spec handling."""
 
 import pytest
+from utils import parse_query_string
 
-from stac_auth_proxy.utils import extract_variables
+from stac_auth_proxy.utils.requests import extract_variables
 
 
 @pytest.mark.parametrize(
@@ -19,3 +20,18 @@ from stac_auth_proxy.utils import extract_variables
 def test_extract_variables(url, expected):
     """Test extracting variables from a URL path."""
     assert extract_variables(url) == expected
+
+
+@pytest.mark.parametrize(
+    "query, expected",
+    (
+        ("foo=bar", {"foo": "bar"}),
+        (
+            'filter={"xyz":"abc"}&filter-lang=cql2-json',
+            {"filter": {"xyz": "abc"}, "filter-lang": "cql2-json"},
+        ),
+    ),
+)
+def test_parse_query_string(query, expected):
+    """Validate test helper for parsing query strings."""
+    assert parse_query_string(query) == expected

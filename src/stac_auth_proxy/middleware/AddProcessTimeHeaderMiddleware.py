@@ -1,4 +1,4 @@
-"""Custom middleware."""
+"""Middleware to add a header with the process time to the response."""
 
 import time
 

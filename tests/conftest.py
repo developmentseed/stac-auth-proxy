@@ -3,13 +3,14 @@
 import json
 import os
 import threading
-from typing import Any
-from unittest.mock import MagicMock, patch
+from typing import Any, AsyncGenerator
+from unittest.mock import DEFAULT, AsyncMock, MagicMock, patch
 
 import pytest
 import uvicorn
 from fastapi import FastAPI
 from jwcrypto import jwk, jwt
+from utils import single_chunk_async_stream_response
 
 
 @pytest.fixture
@@ -120,7 +121,7 @@ def source_api():
 @pytest.fixture(scope="session")
 def source_api_server(source_api):
     """Run the source API in a background thread."""
-    host, port = "127.0.0.1", 8000
+    host, port = "127.0.0.1", 9119
     server = uvicorn.Server(
         uvicorn.Config(
             source_api,
@@ -140,3 +141,24 @@ def mock_env():
     """Clear environment variables to avoid poluting configs from runtime env."""
     with patch.dict(os.environ, clear=True):
         yield
+
+
+@pytest.fixture
+async def mock_upstream() -> AsyncGenerator[MagicMock, None]:
+    """Mock the HTTPX send method. Useful when we want to inspect the request is sent to upstream API."""
+
+    async def store_body(request, **kwargs):
+        """Exhaust and store the request body."""
+        _streamed_body = b""
+        async for chunk in request.stream:
+            _streamed_body += chunk
+        setattr(request, "_streamed_body", _streamed_body)
+        return DEFAULT
+
+    with patch(
+        "stac_auth_proxy.handlers.reverse_proxy.httpx.AsyncClient.send",
+        new_callable=AsyncMock,
+        side_effect=store_body,
+        return_value=single_chunk_async_stream_response(b"{}"),
+    ) as mock_send_method:
+        yield mock_send_method

@@ -131,7 +131,7 @@ def _build_client(
     is_authenticated: bool,
     token_builder,
 ):
-    """Builds a TestClient configured for either authenticated or anonymous usage."""
+    """Build a TestClient configured for either authenticated or anonymous usage."""
     app = app_factory(
         upstream_url=src_api_server,
         items_filter={
@@ -149,7 +149,7 @@ def _build_client(
 
 
 async def _get_upstream_request(mock_upstream: MagicMock):
-    """Fetches the raw body and query params from the single upstream request."""
+    """Fetch the raw body and query params from the single upstream request."""
     assert mock_upstream.call_count == 1
     [request] = cast(list[Request], mock_upstream.call_args[0])
     req_body = request._streamed_body

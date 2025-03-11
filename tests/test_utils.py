@@ -1,9 +1,9 @@
 """Tests for OpenAPI spec handling."""
 
 import pytest
+from utils import parse_query_string
 
 from stac_auth_proxy.utils.requests import extract_variables
-from utils import parse_query_string
 
 
 @pytest.mark.parametrize(

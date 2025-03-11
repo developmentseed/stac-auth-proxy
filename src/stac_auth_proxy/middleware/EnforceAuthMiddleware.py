@@ -1,15 +1,16 @@
-from dataclasses import dataclass, field
-from typing import Annotated, Optional, Sequence
+"""Middleware to enforce authentication."""
+
 import json
 import logging
 import urllib.request
+from dataclasses import dataclass, field
+from typing import Annotated, Optional, Sequence
 
-from fastapi import HTTPException, Security, status, Request
+import jwt
+from fastapi import HTTPException, Request, Security, status
 from pydantic import HttpUrl
-from starlette.middleware.base import ASGIApp
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
-import jwt
 
 from ..config import EndpointMethods
 from ..utils.requests import matches_route

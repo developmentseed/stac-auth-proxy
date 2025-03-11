@@ -10,7 +10,6 @@ from starlette.background import BackgroundTask
 from starlette.datastructures import MutableHeaders
 from starlette.responses import StreamingResponse
 
-
 logger = logging.getLogger(__name__)
 
 

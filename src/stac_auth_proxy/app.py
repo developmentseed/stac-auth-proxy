@@ -10,16 +10,15 @@ from typing import Optional
 
 from fastapi import FastAPI
 
-from .middleware import (
-    OpenApiMiddleware,
-    AddProcessTimeHeaderMiddleware,
-    EnforceAuthMiddleware,
-    BuildCql2FilterMiddleware,
-    ApplyCql2FilterMiddleware,
-)
-
 from .config import Settings
 from .handlers import ReverseProxyHandler
+from .middleware import (
+    AddProcessTimeHeaderMiddleware,
+    ApplyCql2FilterMiddleware,
+    BuildCql2FilterMiddleware,
+    EnforceAuthMiddleware,
+    OpenApiMiddleware,
+)
 
 logger = logging.getLogger(__name__)
 

@@ -1,9 +1,11 @@
+"""Middleware to add auth information to the OpenAPI spec served by upstream API."""
+
 import json
 from dataclasses import dataclass
 from typing import Any
 
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.requests import Request
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from ..config import EndpointMethods
 from ..utils.requests import dict_to_bytes
@@ -52,6 +54,7 @@ class OpenApiMiddleware:
         return await self.app(scope, receive, augment_oidc_spec)
 
     def augment_spec(self, openapi_spec) -> dict[str, Any]:
+        """Augment the OpenAPI spec with auth information."""
         components = openapi_spec.setdefault("components", {})
         securitySchemes = components.setdefault("securitySchemes", {})
         securitySchemes[self.oidc_auth_scheme_name] = {

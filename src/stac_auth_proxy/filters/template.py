@@ -1,10 +1,9 @@
 """Generate CQL2 filter expressions via Jinja2 templating."""
 
-from typing import Any
 from dataclasses import dataclass, field
+from typing import Any
 
 from cql2 import Expr
-from fastapi import Request
 from jinja2 import BaseLoader, Environment
 
 

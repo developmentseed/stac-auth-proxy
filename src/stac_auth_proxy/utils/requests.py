@@ -40,9 +40,8 @@ def dict_to_bytes(d: dict) -> bytes:
 
 def matches_route(request: Request, url_patterns: dict[str, list[str]]) -> bool:
     """
-    Returns True if the incoming request.path and request.method
-    match any of the patterns (and their methods) in url_patterns.
-    Otherwise returns False.
+    Test if the incoming request.path and request.method match any of the patterns
+    (and their methods) in url_patterns.
     """
     path = request.url.path  # e.g. '/collections/123'
     method = request.method.casefold()  # e.g. 'post'

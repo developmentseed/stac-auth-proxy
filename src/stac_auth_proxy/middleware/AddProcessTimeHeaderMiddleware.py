@@ -1,8 +1,9 @@
-from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
-
+"""Middleware to add a header with the process time to the response."""
 
 import time
+
+from fastapi import Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
 
 
 class AddProcessTimeHeaderMiddleware(BaseHTTPMiddleware):

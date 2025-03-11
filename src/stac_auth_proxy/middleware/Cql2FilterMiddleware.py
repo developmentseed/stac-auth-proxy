@@ -1,11 +1,13 @@
-from logging import getLogger
+"""Middleware to build and apply CQL2 filters."""
+
 import json
 from dataclasses import dataclass
+from logging import getLogger
 from typing import Callable, Optional
 
 from cql2 import Expr
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.requests import Request
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from ..utils import filters, requests
 
@@ -25,6 +27,7 @@ class BuildCql2FilterMiddleware:
     state_key: str = "cql2_filter"
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """Build the CQL2 filter, place on the request state."""
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
 
@@ -35,6 +38,7 @@ class BuildCql2FilterMiddleware:
             return await self.app(scope, receive, send)
 
         async def set_filter(body: Optional[dict] = None) -> None:
+            assert filter_builder is not None
             cql2_filter = await filter_builder(
                 {
                     "req": {

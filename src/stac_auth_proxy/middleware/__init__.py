@@ -1,14 +1,17 @@
 """Custom middleware."""
 
-from .UpdateOpenApiMiddleware import OpenApiMiddleware
 from .AddProcessTimeHeaderMiddleware import AddProcessTimeHeaderMiddleware
+from .Cql2FilterMiddleware import ApplyCql2FilterMiddleware, BuildCql2FilterMiddleware
 from .EnforceAuthMiddleware import EnforceAuthMiddleware
-from .Cql2FilterMiddleware import BuildCql2FilterMiddleware, ApplyCql2FilterMiddleware
+from .UpdateOpenApiMiddleware import OpenApiMiddleware
 
 __all__ = [
-    OpenApiMiddleware,
-    AddProcessTimeHeaderMiddleware,
-    EnforceAuthMiddleware,
-    BuildCql2FilterMiddleware,
-    ApplyCql2FilterMiddleware,
+    x.__name__
+    for x in [
+        OpenApiMiddleware,
+        AddProcessTimeHeaderMiddleware,
+        EnforceAuthMiddleware,
+        BuildCql2FilterMiddleware,
+        ApplyCql2FilterMiddleware,
+    ]
 ]

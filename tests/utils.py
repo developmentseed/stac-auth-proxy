@@ -1,8 +1,8 @@
 """Utilities for testing."""
 
+import json
 from dataclasses import dataclass
 from typing import Callable
-import json
 from urllib.parse import parse_qs, unquote
 
 import httpx

@@ -4,7 +4,7 @@ import json
 import os
 import threading
 from typing import Any, AsyncGenerator
-from unittest.mock import AsyncMock, MagicMock, patch, DEFAULT
+from unittest.mock import DEFAULT, AsyncMock, MagicMock, patch
 
 import pytest
 import uvicorn

@@ -55,8 +55,8 @@ class Settings(BaseSettings):
     }
     items_filter: Optional[ClassInput] = None
     items_filter_endpoints: Optional[EndpointMethods] = {
-        "/search": ["POST"],
-        "/collections/{collection_id}/items": ["GET", "POST"],
+        r"^/search$": ["POST"],
+        r"^/collections/([^/]+)/items$": ["GET", "POST"],
     }
 
     model_config = SettingsConfigDict(env_prefix="STAC_AUTH_PROXY_")

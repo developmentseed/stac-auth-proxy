@@ -14,6 +14,8 @@ from .middleware import (
     OpenApiMiddleware,
     AddProcessTimeHeaderMiddleware,
     EnforceAuthMiddleware,
+    BuildCql2FilterMiddleware,
+    ApplyCql2FilterMiddleware,
 )
 
 from .config import Settings
@@ -47,6 +49,13 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             private_endpoints=settings.private_endpoints,
             default_public=settings.default_public,
         )
+
+    app.add_middleware(ApplyCql2FilterMiddleware)
+    app.add_middleware(
+        BuildCql2FilterMiddleware,
+        # collections_filter=settings.collections_filter,
+        items_filter=settings.items_filter(),
+    )
 
     if settings.debug:
         app.add_api_route(

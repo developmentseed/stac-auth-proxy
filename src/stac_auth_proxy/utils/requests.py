@@ -4,21 +4,7 @@ import json
 import re
 from urllib.parse import urlparse
 
-from httpx import Headers
 from starlette.requests import Request
-
-
-def safe_headers(headers: Headers) -> dict[str, str]:
-    """Scrub headers that should not be proxied to the client."""
-    excluded_headers = [
-        "content-length",
-        "content-encoding",
-    ]
-    return {
-        key: value
-        for key, value in headers.items()
-        if key.lower() not in excluded_headers
-    }
 
 
 def extract_variables(url: str) -> dict:

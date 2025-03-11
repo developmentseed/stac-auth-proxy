@@ -141,7 +141,9 @@ def _build_client(
         default_public=True,
     )
     headers = (
-        {"Authorization": f"Bearer {token_builder({})}"} if is_authenticated else {}
+        {"Authorization": f"Bearer {token_builder({'sub': 'test-user'})}"}
+        if is_authenticated
+        else {}
     )
     return TestClient(app, headers=headers)
 

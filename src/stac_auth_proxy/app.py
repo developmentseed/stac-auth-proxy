@@ -33,13 +33,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     )
 
     app.add_middleware(AddProcessTimeHeaderMiddleware)
-    app.add_middleware(
-        EnforceAuthMiddleware,
-        public_endpoints=settings.public_endpoints,
-        private_endpoints=settings.private_endpoints,
-        default_public=settings.default_public,
-        oidc_config_url=settings.oidc_discovery_url,
-    )
 
     if settings.openapi_spec_endpoint:
         app.add_middleware(
@@ -58,6 +51,14 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             items_filter=settings.items_filter(),
         )
 
+    app.add_middleware(
+        EnforceAuthMiddleware,
+        public_endpoints=settings.public_endpoints,
+        private_endpoints=settings.private_endpoints,
+        default_public=settings.default_public,
+        oidc_config_url=settings.oidc_discovery_url,
+    )
+
     if settings.debug:
         app.add_api_route(
             "/_debug",
@@ -65,7 +66,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             methods=["GET"],
         )
 
-    # Catchall for remainder of the endpoints
+    # Catchall for any endpoint
     proxy_handler = ReverseProxyHandler(upstream=str(settings.upstream_url))
     app.add_api_route(
         "/{path:path}",

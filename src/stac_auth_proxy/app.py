@@ -50,12 +50,13 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             default_public=settings.default_public,
         )
 
-    app.add_middleware(ApplyCql2FilterMiddleware)
-    app.add_middleware(
-        BuildCql2FilterMiddleware,
-        # collections_filter=settings.collections_filter,
-        items_filter=settings.items_filter(),
-    )
+    if settings.items_filter:
+        app.add_middleware(ApplyCql2FilterMiddleware)
+        app.add_middleware(
+            BuildCql2FilterMiddleware,
+            # collections_filter=settings.collections_filter,
+            items_filter=settings.items_filter(),
+        )
 
     if settings.debug:
         app.add_api_route(
@@ -64,9 +65,8 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             methods=["GET"],
         )
 
-    # Tooling
-    proxy_handler = ReverseProxyHandler(upstream=str(settings.upstream_url))
     # Catchall for remainder of the endpoints
+    proxy_handler = ReverseProxyHandler(upstream=str(settings.upstream_url))
     app.add_api_route(
         "/{path:path}",
         proxy_handler.stream,

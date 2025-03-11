@@ -1,18 +1,15 @@
 from logging import getLogger
 import json
 from dataclasses import dataclass
-from typing import Annotated, Callable, Optional
+from typing import Callable, Optional
 
 from cql2 import Expr
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from starlette.requests import Request
 
-from ..config import EndpointMethods
-from ..utils import di, filters, requests
+from ..utils import filters, requests
 
 logger = getLogger(__name__)
-
-FILTER_STATE_KEY = "cql2_filter"
 
 
 @dataclass(frozen=True)
@@ -24,6 +21,8 @@ class BuildCql2FilterMiddleware:
     # Filters
     collections_filter: Optional[Callable] = None
     items_filter: Optional[Callable] = None
+
+    state_key: str = "cql2_filter"
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -46,11 +45,11 @@ class BuildCql2FilterMiddleware:
                         "headers": dict(request.headers),
                         "body": body,
                     },
-                    **request.state._state,
+                    **scope["state"],
                 }
             )
             cql2_filter.validate()
-            scope["state"][FILTER_STATE_KEY] = cql2_filter
+            setattr(request.state, self.state_key, cql2_filter)
 
         # For GET requests, we can build the filter immediately
         # NOTE: It appears that FastAPI will not call receive function for GET requests
@@ -92,6 +91,8 @@ class ApplyCql2FilterMiddleware:
 
     app: ASGIApp
 
+    state_key: str = "cql2_filter"
+
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """Add the Cql2Filter to the request."""
         if scope["type"] != "http":
@@ -100,20 +101,21 @@ class ApplyCql2FilterMiddleware:
         request = Request(scope)
 
         if request.method == "GET":
-            cql2_filter = scope["state"].get(FILTER_STATE_KEY)
+            cql2_filter = getattr(request.state, self.state_key, None)
             if cql2_filter:
                 scope["query_string"] = filters.append_qs_filter(
                     request.url.query, cql2_filter
                 )
             return await self.app(scope, receive, send)
+
         elif request.method in ["POST", "PUT", "PATCH"]:
-            # For methods with bodies, we need to wrap receive to modify the body
-            async def receive_with_filter() -> Message:
+
+            async def receive_and_apply_filter() -> Message:
                 message = await receive()
                 if message["type"] != "http.request":
                     return message
 
-                cql2_filter = scope["state"].get(FILTER_STATE_KEY)
+                cql2_filter = getattr(request.state, self.state_key, None)
                 if cql2_filter:
                     try:
                         body = message.get("body", b"{}")
@@ -126,6 +128,6 @@ class ApplyCql2FilterMiddleware:
                     message["body"] = json.dumps(new_body).encode("utf-8")
                 return message
 
-            return await self.app(scope, receive_with_filter, send)
+            return await self.app(scope, receive_and_apply_filter, send)
 
         return await self.app(scope, receive, send)

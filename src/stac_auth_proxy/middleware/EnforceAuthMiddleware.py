@@ -30,6 +30,8 @@ class EnforceAuthMiddleware:
     openid_configuration_internal_url: Optional[HttpUrl] = None
     allowed_jwt_audiences: Optional[Sequence[str]] = None
 
+    state_key: str = "user"
+
     # Generated attributes
     jwks_client: jwt.PyJWKClient = field(init=False)
 
@@ -56,9 +58,13 @@ class EnforceAuthMiddleware:
 
         request = Request(scope)
         try:
-            scope["state"]["user"] = self.validated_user(
-                request.headers.get("Authorization"),
-                auto_error=self.should_enforce_auth(request),
+            setattr(
+                request.state,
+                self.state_key,
+                self.validated_user(
+                    request.headers.get("Authorization"),
+                    auto_error=self.should_enforce_auth(request),
+                ),
             )
         except HTTPException as e:
             response = JSONResponse({"detail": e.detail}, status_code=e.status_code)

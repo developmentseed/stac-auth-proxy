@@ -1,7 +1,9 @@
 """Utilities for testing."""
 
+import json
 from dataclasses import dataclass
 from typing import Callable
+from urllib.parse import parse_qs, unquote
 
 import httpx
 
@@ -48,3 +50,21 @@ def single_chunk_async_stream_response(
         status_code=status_code,
         headers=headers,
     )
+
+
+def parse_query_string(qs: str) -> dict:
+    """Parse a query string into a dictionary."""
+    # Python's parse_qs will turn dicts into strings (e.g. parse_qs('foo={"x":"y"}') == {'foo': ['{"x":"y"}']})
+    # so we need some special tooling to examine the query params and compare them to expected values
+    parsed = parse_qs(qs)
+
+    result = {}
+    for key, value_list in parsed.items():
+        value = value_list[0]
+        if key == "filter" and parsed.get("filter-lang") == ["cql2-json"]:
+            decoded_str = unquote(value)
+            result[key] = json.loads(decoded_str)
+        else:
+            result[key] = unquote(value)
+
+    return result

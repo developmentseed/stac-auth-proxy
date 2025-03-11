@@ -1,19 +1,14 @@
 """Tooling to manage the reverse proxying of requests to an upstream STAC API."""
 
-import json
 import logging
 import time
-from dataclasses import dataclass
-from typing import Annotated, Callable, Optional
+from dataclasses import dataclass, field
 
 import httpx
-from cql2 import Expr
-from fastapi import Depends, Request
+from fastapi import Request
 from starlette.background import BackgroundTask
 from starlette.datastructures import MutableHeaders
 from starlette.responses import StreamingResponse
-
-from ..utils import di, filters
 
 logger = logging.getLogger(__name__)
 
@@ -23,91 +18,36 @@ class ReverseProxyHandler:
     """Reverse proxy functionality."""
 
     upstream: str
-    auth_dependency: Callable
-
     client: httpx.AsyncClient = None
-
-    # Filters
-    collections_filter: Optional[Callable] = None
-    items_filter: Optional[Callable] = None
+    timeout: httpx.Timeout = field(default_factory=lambda: httpx.Timeout(timeout=15.0))
 
     def __post_init__(self):
         """Initialize the HTTP client."""
         self.client = self.client or httpx.AsyncClient(
             base_url=self.upstream,
-            timeout=httpx.Timeout(timeout=15.0),
+            timeout=self.timeout,
         )
-        self.collections_filter = (
-            self.collections_filter() if self.collections_filter else None
-        )
-        self.items_filter = self.items_filter() if self.items_filter else None
 
-        # Inject auth dependency into filters
-        for endpoint in [self.collections_filter, self.items_filter]:
-            if not endpoint:
-                continue
-            endpoint.__annotations__["auth_token"] = Annotated[
-                Optional[Expr],
-                Depends(self.auth_dependency),
-            ]
-
-    def _get_filter(self, path: str) -> Optional[Callable[..., Expr]]:
-        """Get the CQL2 filter builder for the given path."""
-        endpoint_filters = [
-            # TODO: Use collections_filter_endpoints & items_filter_endpoints
-            (filters.is_collection_endpoint, self.collections_filter),
-            (filters.is_item_endpoint, self.items_filter),
-            (filters.is_search_endpoint, self.items_filter),
-        ]
-        for check, builder in endpoint_filters:
-            if check(path):
-                return builder
-        return None
-
-    async def proxy_request(self, request: Request, *, stream=False) -> httpx.Response:
+    async def proxy_request(self, request: Request) -> httpx.Response:
         """Proxy a request to the upstream STAC API."""
         headers = MutableHeaders(request.headers)
         headers.setdefault("X-Forwarded-For", request.client.host)
         headers.setdefault("X-Forwarded-Host", request.url.hostname)
 
-        path = request.url.path
-        query = request.url.query
-        # TODO: Should we only do this conditionally based on stream?
-        body = (await request.body()).decode()
-
-        # Apply filter if applicable
-        filter_builder = self._get_filter(path)
-        if filter_builder:
-            cql_filter = await di.call_with_injected_dependencies(
-                func=filter_builder,
-                request=request,
-            )
-            cql_filter.validate()
-
-            if request.method == "GET":
-                query = filters.insert_filter(qs=query, filter=cql_filter)
-            elif request.method in ["POST", "PUT"]:
-                body_dict = json.loads(body)
-                body_filter = body_dict.get("filter")
-                if body_filter:
-                    cql_filter = cql_filter + Expr(body_filter)
-                body_dict["filter"] = cql_filter.to_json()
-                body = json.dumps(body_dict)
-
         # https://github.com/fastapi/fastapi/discussions/7382#discussioncomment-5136466
         rp_req = self.client.build_request(
             request.method,
             url=httpx.URL(
-                path=path,
-                query=query.encode("utf-8"),
+                path=request.url.path,
+                query=request.url.query.encode("utf-8"),
             ),
             headers=headers,
-            content=body,
+            content=request.stream(),
         )
         logger.debug(f"Proxying request to {rp_req.url}")
 
         start_time = time.perf_counter()
-        rp_resp = await self.client.send(rp_req, stream=stream)
+        rp_resp = await self.client.send(rp_req, stream=True)
         proxy_time = time.perf_counter() - start_time
 
         logger.debug(
@@ -118,11 +58,7 @@ class ReverseProxyHandler:
 
     async def stream(self, request: Request) -> StreamingResponse:
         """Transparently proxy a request to the upstream STAC API."""
-        rp_resp = await self.proxy_request(
-            request,
-            # collections_filter=collections_filter,
-            stream=True,
-        )
+        rp_resp = await self.proxy_request(request)
         return StreamingResponse(
             rp_resp.aiter_raw(),
             status_code=rp_resp.status_code,

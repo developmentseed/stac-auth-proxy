@@ -3,8 +3,8 @@
 import json
 import os
 import threading
-from typing import Any, Generator
-from unittest.mock import AsyncMock, MagicMock, patch
+from typing import Any, AsyncGenerator
+from unittest.mock import DEFAULT, AsyncMock, MagicMock, patch
 
 import pytest
 import uvicorn
@@ -144,12 +144,21 @@ def mock_env():
 
 
 @pytest.fixture
-def mock_upstream() -> Generator[MagicMock, None, None]:
+async def mock_upstream() -> AsyncGenerator[MagicMock, None]:
     """Mock the HTTPX send method. Useful when we want to inspect the request is sent to upstream API."""
+
+    async def store_body(request, **kwargs):
+        """Exhaust and store the request body."""
+        _streamed_body = b""
+        async for chunk in request.stream:
+            _streamed_body += chunk
+        setattr(request, "_streamed_body", _streamed_body)
+        return DEFAULT
+
     with patch(
         "stac_auth_proxy.handlers.reverse_proxy.httpx.AsyncClient.send",
         new_callable=AsyncMock,
+        side_effect=store_body,
+        return_value=single_chunk_async_stream_response(b"{}"),
     ) as mock_send_method:
-        # Mock response from upstream API
-        mock_send_method.return_value = single_chunk_async_stream_response(b"{}")
         yield mock_send_method

@@ -8,12 +8,17 @@ authentication, authorization, and proxying of requests to some internal STAC AP
 import logging
 from typing import Optional
 
-from fastapi import FastAPI, Security
+from fastapi import FastAPI
 
-from .auth import OpenIdConnectAuth
 from .config import Settings
-from .handlers import ReverseProxyHandler, build_openapi_spec_handler
-from .middleware import AddProcessTimeHeaderMiddleware
+from .handlers import ReverseProxyHandler
+from .middleware import (
+    AddProcessTimeHeaderMiddleware,
+    ApplyCql2FilterMiddleware,
+    BuildCql2FilterMiddleware,
+    EnforceAuthMiddleware,
+    OpenApiMiddleware,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +30,33 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     app = FastAPI(
         openapi_url=None,  # Disable OpenAPI schema endpoint, we want to serve upstream's schema
     )
+
     app.add_middleware(AddProcessTimeHeaderMiddleware)
+
+    if settings.openapi_spec_endpoint:
+        app.add_middleware(
+            OpenApiMiddleware,
+            openapi_spec_path=settings.openapi_spec_endpoint,
+            oidc_config_url=str(settings.oidc_discovery_url),
+            private_endpoints=settings.private_endpoints,
+            default_public=settings.default_public,
+        )
+
+    if settings.items_filter:
+        app.add_middleware(ApplyCql2FilterMiddleware)
+        app.add_middleware(
+            BuildCql2FilterMiddleware,
+            # collections_filter=settings.collections_filter,
+            items_filter=settings.items_filter(),
+        )
+
+    app.add_middleware(
+        EnforceAuthMiddleware,
+        public_endpoints=settings.public_endpoints,
+        private_endpoints=settings.private_endpoints,
+        default_public=settings.default_public,
+        oidc_config_url=settings.oidc_discovery_url,
+    )
 
     if settings.debug:
         app.add_api_route(
@@ -34,47 +65,12 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             methods=["GET"],
         )
 
-    # Tooling
-    auth_scheme = OpenIdConnectAuth(
-        openid_configuration_url=settings.oidc_discovery_url
-    )
-    proxy_handler = ReverseProxyHandler(
-        upstream=str(settings.upstream_url),
-        auth_dependency=auth_scheme.maybe_validated_user,
-        collections_filter=settings.collections_filter,
-        items_filter=settings.items_filter,
-    )
-    openapi_handler = build_openapi_spec_handler(
-        proxy=proxy_handler,
-        oidc_config_url=str(settings.oidc_discovery_url),
-    )
-
-    # Configure security dependency for explicitely specified endpoints
-    for path_methods, dependencies in [
-        (settings.private_endpoints, [Security(auth_scheme.validated_user)]),
-        (settings.public_endpoints, []),
-    ]:
-        for path, methods in path_methods.items():
-            endpoint = (
-                openapi_handler
-                if path == settings.openapi_spec_endpoint
-                else proxy_handler.stream
-            )
-            app.add_api_route(
-                path,
-                endpoint=endpoint,
-                methods=methods,
-                dependencies=dependencies,
-            )
-
-    # Catchall for remainder of the endpoints
+    # Catchall for any endpoint
+    proxy_handler = ReverseProxyHandler(upstream=str(settings.upstream_url))
     app.add_api_route(
         "/{path:path}",
         proxy_handler.stream,
         methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-        dependencies=(
-            [] if settings.default_public else [Security(auth_scheme.validated_user)]
-        ),
     )
 
     return app

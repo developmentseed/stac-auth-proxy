@@ -18,7 +18,7 @@ FILTER_EXPR_CASES = [
         id="simple_not_templated",
     ),
     pytest.param(
-        "{{ '(properties.private = false)' if token is none else true }}",
+        "{{ '(properties.private = false)' if user is none else true }}",
         "true",
         "(properties.private = false)",
         id="simple_templated",
@@ -30,7 +30,7 @@ FILTER_EXPR_CASES = [
         id="complex_not_templated",
     ),
     pytest.param(
-        """{{ '{"op": "=", "args": [{"property": "private"}, true]}' if token is none else true }}""",
+        """{{ '{"op": "=", "args": [{"property": "private"}, true]}' if user is none else true }}""",
         "true",
         """{"op": "=", "args": [{"property": "private"}, true]}""",
         id="complex_templated",
@@ -146,11 +146,12 @@ def _build_client(
     return TestClient(app, headers=headers)
 
 
-def _get_upstream_request(mock_upstream: MagicMock):
+async def _get_upstream_request(mock_upstream: MagicMock):
     """Fetches the raw body and query params from the single upstream request."""
     assert mock_upstream.call_count == 1
     [request] = cast(list[Request], mock_upstream.call_args[0])
-    return request.read().decode(), dict(request.url.params)
+    req_body = request._streamed_body
+    return req_body.decode(), dict(request.url.params)
 
 
 @pytest.mark.parametrize(
@@ -159,7 +160,7 @@ def _get_upstream_request(mock_upstream: MagicMock):
 )
 @pytest.mark.parametrize("is_authenticated", [True, False], ids=["auth", "anon"])
 @pytest.mark.parametrize("input_query", SEARCH_POST_QUERIES)
-def test_search_post(
+async def test_search_post(
     mock_upstream,
     source_api_server,
     filter_template_expr,
@@ -179,7 +180,7 @@ def test_search_post(
     response.raise_for_status()
 
     # Retrieve the JSON body that was actually sent upstream
-    proxied_body_str = _get_upstream_request(mock_upstream)[0]
+    proxied_body_str = (await _get_upstream_request(mock_upstream))[0]
     proxied_body = json.loads(proxied_body_str)
 
     # Determine the expected combined filter
@@ -193,6 +194,7 @@ def test_search_post(
     expected_output = {
         **input_query,
         "filter": proxy_filter.to_json(),
+        "filter-lang": "cql2-json",
     }
 
     assert (
@@ -206,7 +208,7 @@ def test_search_post(
 )
 @pytest.mark.parametrize("is_authenticated", [True, False], ids=["auth", "anon"])
 @pytest.mark.parametrize("input_query", SEARCH_GET_QUERIES)
-def test_search_get(
+async def test_search_get(
     mock_upstream,
     source_api_server,
     filter_template_expr,
@@ -226,7 +228,7 @@ def test_search_get(
     response.raise_for_status()
 
     # For GET, we expect the upstream body to be empty, but URL params to be appended
-    proxied_body, upstream_query = _get_upstream_request(mock_upstream)
+    proxied_body, upstream_query = await _get_upstream_request(mock_upstream)
     assert proxied_body == ""
 
     # Determine the expected combined filter
@@ -253,7 +255,7 @@ def test_search_get(
 )
 @pytest.mark.parametrize("is_authenticated", [True, False], ids=["auth", "anon"])
 @pytest.mark.parametrize("input_query", ITEMS_LIST_QUERIES)
-def test_items_list(
+async def test_items_list(
     mock_upstream,
     source_api_server,
     filter_template_expr,
@@ -274,7 +276,7 @@ def test_items_list(
     response.raise_for_status()
 
     # For GET items, we also expect an empty body and appended querystring
-    proxied_body, proxied_query = _get_upstream_request(mock_upstream)
+    proxied_body, proxied_query = await _get_upstream_request(mock_upstream)
     assert proxied_body == ""
 
     # Only the appended filter (no input_filter merges in these particular tests),

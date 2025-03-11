@@ -48,11 +48,11 @@ class Settings(BaseSettings):
     public_endpoints: EndpointMethods = {r"^/api.html$": ["GET"], r"^/api$": ["GET"]}
     openapi_spec_endpoint: Optional[str] = None
 
-    collections_filter: Optional[ClassInput] = None
-    collections_filter_endpoints: Optional[EndpointMethods] = {
-        "/collections": ["GET"],
-        "/collections/{collection_id}": ["GET"],
-    }
+    # collections_filter: Optional[ClassInput] = None
+    # collections_filter_endpoints: Optional[EndpointMethods] = {
+    #     r"^/collections$": ["GET"],
+    #     r"^/collections$/([^/]+)": ["GET"],
+    # }
     items_filter: Optional[ClassInput] = None
     items_filter_endpoints: Optional[EndpointMethods] = {
         r"^/search$": ["POST"],

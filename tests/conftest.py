@@ -10,6 +10,7 @@ import pytest
 import uvicorn
 from fastapi import FastAPI
 from jwcrypto import jwk, jwt
+from starlette_cramjam.middleware import CompressionMiddleware
 from utils import single_chunk_async_stream_response
 
 
@@ -69,6 +70,8 @@ def source_api():
     """Create upstream API for testing purposes."""
     app = FastAPI(docs_url="/api.html", openapi_url="/api")
 
+    app.add_middleware(CompressionMiddleware, minimum_size=0, compression_level=1)
+
     for path, methods in {
         "/": [
             "GET",
@@ -118,7 +121,7 @@ def source_api():
     return app
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def source_api_server(source_api):
     """Run the source API in a background thread."""
     host, port = "127.0.0.1", 9119

@@ -11,7 +11,7 @@ from typing import Optional
 from fastapi import FastAPI
 
 from .config import Settings
-from .handlers import ReverseProxyHandler
+from .handlers import HealthzHandler, ReverseProxyHandler
 from .middleware import (
     AddProcessTimeHeaderMiddleware,
     ApplyCql2FilterMiddleware,
@@ -58,12 +58,9 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         oidc_config_url=settings.oidc_discovery_url,
     )
 
-    if settings.debug:
-        app.add_api_route(
-            "/_debug",
-            lambda: {"settings": settings},
-            methods=["GET"],
-        )
+    if settings.healthz_prefix:
+        healthz_handler = HealthzHandler(upstream_url=str(settings.upstream_url))
+        app.include_router(healthz_handler.router, prefix="/healthz")
 
     # Catchall for any endpoint
     proxy_handler = ReverseProxyHandler(upstream=str(settings.upstream_url))

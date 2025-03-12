@@ -8,6 +8,7 @@ from pydantic.networks import HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 EndpointMethods: TypeAlias = dict[str, list[str]]
+_PREFIX_PATTERN = r"^/.*$"
 
 
 class ClassInput(BaseModel):
@@ -28,12 +29,11 @@ class ClassInput(BaseModel):
 class Settings(BaseSettings):
     """Configuration settings for the STAC Auth Proxy."""
 
-    debug: bool = False
-
     upstream_url: HttpUrl = HttpUrl(url="https://earth-search.aws.element84.com/v1")
     oidc_discovery_url: HttpUrl
 
     # Endpoints
+    healthz_prefix: str = Field(pattern=_PREFIX_PATTERN, default="/healthz")
     default_public: bool = False
     private_endpoints: EndpointMethods = {
         # https://github.com/stac-api-extensions/collection-transaction/blob/v1.0.0-beta.1/README.md#methods

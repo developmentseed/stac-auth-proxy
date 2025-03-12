@@ -1,10 +1,9 @@
 """Tests for OpenAPI spec handling."""
 
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from utils import AppFactory
-import gzip
-from fastapi import Request, Response
 
 app_factory = AppFactory(
     oidc_discovery_url="https://example-stac-api.com/.well-known/openid-configuration"

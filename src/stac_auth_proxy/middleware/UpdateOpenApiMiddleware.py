@@ -1,20 +1,19 @@
 """Middleware to add auth information to the OpenAPI spec served by upstream API."""
 
-import brotli
 import gzip
 import json
 import re
 import zlib
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 
+import brotli
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from ..config import EndpointMethods
 from ..utils.requests import dict_to_bytes
-
 
 ENCODING_HANDLERS = {
     "gzip": gzip,
@@ -40,7 +39,7 @@ class OpenApiMiddleware:
         if scope["type"] != "http" or Request(scope).url.path != self.openapi_spec_path:
             return await self.app(scope, receive, send)
 
-        start_message = None
+        start_message: Optional[Message] = None
         body = b""
 
         async def augment_oidc_spec(message: Message):
@@ -80,6 +79,7 @@ class OpenApiMiddleware:
 
             # Update the content-length header
             headers["content-length"] = str(len(body))
+            assert start_message, "Expected start_message to be set"
             start_message["headers"] = [
                 (key.encode(), value.encode()) for key, value in headers.items()
             ]
@@ -120,7 +120,7 @@ class OpenApiMiddleware:
         return openapi_spec
 
     @staticmethod
-    def path_matches(path: str, method: str, endpoints: dict[str, list[str]]) -> bool:
+    def path_matches(path: str, method: str, endpoints: EndpointMethods) -> bool:
         """Check if the given path and method match any of the regex patterns and methods in the endpoints."""
         for pattern, endpoint_methods in endpoints.items():
             if not re.match(pattern, path):

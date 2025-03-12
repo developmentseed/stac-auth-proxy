@@ -46,10 +46,8 @@ services:
     build:
       context: .
     environment:
-      STAC_AUTH_PROXY_UPSTREAM_URL: ${STAC_AUTH_PROXY_UPSTREAM_URL:-http://stac:8001}
-      STAC_AUTH_PROXY_OIDC_DISCOVERY_URL: ${STAC_AUTH_PROXY_OIDC_DISCOVERY_URL}
-    ports:
-      - "8000:8000"
+      UPSTREAM_URL: ${UPSTREAM_URL:-http://stac:8001}
+      OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL:-https://accounts.google.com/.well-known/openid-configuration}
     env_file:
       - path: .env
         required: false

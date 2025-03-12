@@ -6,6 +6,8 @@ from urllib.parse import urlparse
 
 from starlette.requests import Request
 
+from ..config import EndpointMethods
+
 
 def extract_variables(url: str) -> dict:
     """
@@ -24,7 +26,7 @@ def dict_to_bytes(d: dict) -> bytes:
     return json.dumps(d, separators=(",", ":")).encode("utf-8")
 
 
-def matches_route(request: Request, url_patterns: dict[str, list[str]]) -> bool:
+def matches_route(request: Request, url_patterns: EndpointMethods) -> bool:
     """
     Test if the incoming request.path and request.method match any of the patterns
     (and their methods) in url_patterns.

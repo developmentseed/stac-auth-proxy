@@ -98,23 +98,6 @@ class OpenApiMiddleware:
 
         return await self.app(scope, receive, augment_oidc_spec)
 
-    # def augment_spec(self, openapi_spec) -> dict[str, Any]:
-    #     """Augment the OpenAPI spec with auth information."""
-    #     components = openapi_spec.setdefault("components", {})
-    #     securitySchemes = components.setdefault("securitySchemes", {})
-    #     securitySchemes[self.oidc_auth_scheme_name] = {
-    #         "type": "openIdConnect",
-    #         "openIdConnectUrl": self.oidc_config_url,
-    #     }
-    #     for path, method_config in openapi_spec["paths"].items():
-    #         for method, config in method_config.items():
-    #             for private_method in self.private_endpoints.get(path, []):
-    #                 if method.casefold() == private_method.casefold():
-    #                     config.setdefault("security", []).append(
-    #                         {self.oidc_auth_scheme_name: []}
-    #                     )
-    #     return openapi_spec
-
     def augment_spec(self, openapi_spec) -> dict[str, Any]:
         """Augment the OpenAPI spec with auth information."""
         components = openapi_spec.setdefault("components", {})

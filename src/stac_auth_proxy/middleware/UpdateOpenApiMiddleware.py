@@ -31,6 +31,7 @@ class OpenApiMiddleware:
     openapi_spec_path: str
     oidc_config_url: str
     private_endpoints: EndpointMethods
+    public_endpoints: EndpointMethods
     default_public: bool
     oidc_auth_scheme_name: str = "oidcAuth"
 
@@ -97,6 +98,23 @@ class OpenApiMiddleware:
 
         return await self.app(scope, receive, augment_oidc_spec)
 
+    # def augment_spec(self, openapi_spec) -> dict[str, Any]:
+    #     """Augment the OpenAPI spec with auth information."""
+    #     components = openapi_spec.setdefault("components", {})
+    #     securitySchemes = components.setdefault("securitySchemes", {})
+    #     securitySchemes[self.oidc_auth_scheme_name] = {
+    #         "type": "openIdConnect",
+    #         "openIdConnectUrl": self.oidc_config_url,
+    #     }
+    #     for path, method_config in openapi_spec["paths"].items():
+    #         for method, config in method_config.items():
+    #             for private_method in self.private_endpoints.get(path, []):
+    #                 if method.casefold() == private_method.casefold():
+    #                     config.setdefault("security", []).append(
+    #                         {self.oidc_auth_scheme_name: []}
+    #                     )
+    #     return openapi_spec
+
     def augment_spec(self, openapi_spec) -> dict[str, Any]:
         """Augment the OpenAPI spec with auth information."""
         components = openapi_spec.setdefault("components", {})
@@ -107,9 +125,24 @@ class OpenApiMiddleware:
         }
         for path, method_config in openapi_spec["paths"].items():
             for method, config in method_config.items():
-                for private_method in self.private_endpoints.get(path, []):
-                    if method.casefold() == private_method.casefold():
-                        config.setdefault("security", []).append(
-                            {self.oidc_auth_scheme_name: []}
-                        )
+                requires_auth = (
+                    self.path_matches(path, method, self.private_endpoints)
+                    if self.default_public
+                    else not self.path_matches(path, method, self.public_endpoints)
+                )
+                if requires_auth:
+                    config.setdefault("security", []).append(
+                        {self.oidc_auth_scheme_name: []}
+                    )
         return openapi_spec
+
+    @staticmethod
+    def path_matches(path: str, method: str, endpoints: dict[str, list[str]]) -> bool:
+        """Check if the given path and method match any of the regex patterns and methods in the endpoints."""
+        for pattern, endpoint_methods in endpoints.items():
+            if not re.match(pattern, path):
+                continue
+            for endpoint_method in endpoint_methods:
+                if method.casefold() == endpoint_method.casefold():
+                    return True
+        return False

@@ -1,14 +1,26 @@
 """Middleware to add auth information to the OpenAPI spec served by upstream API."""
 
+import brotli
+import gzip
 import json
+import re
+import zlib
 from dataclasses import dataclass
 from typing import Any
 
+from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from ..config import EndpointMethods
 from ..utils.requests import dict_to_bytes
+
+
+ENCODING_HANDLERS = {
+    "gzip": gzip,
+    "deflate": zlib,
+    "br": brotli,
+}
 
 
 @dataclass(frozen=True)
@@ -27,26 +39,58 @@ class OpenApiMiddleware:
         if scope["type"] != "http" or Request(scope).url.path != self.openapi_spec_path:
             return await self.app(scope, receive, send)
 
-        total_body = b""
+        start_message = None
+        body = b""
 
         async def augment_oidc_spec(message: Message):
-            if message["type"] != "http.response.body":
+            nonlocal start_message
+            nonlocal body
+            if message["type"] == "http.response.start":
+                # NOTE: Because we are modifying the response body, we will need to update
+                # the content-length header. However, headers are sent before we see the
+                # body. To handle this, we delay sending the http.response.start message
+                # until after we alter the body.
+                start_message = message
+                return
+            elif message["type"] != "http.response.body":
                 return await send(message)
 
-            # TODO: Make more robust to handle non-JSON responses
+            body += message["body"]
 
-            nonlocal total_body
-
-            total_body += message["body"]
-
-            # Pass empty body chunks until all chunks have been received
+            # Skip body chunks until all chunks have been received
             if message["more_body"]:
-                return await send({**message, "body": b""})
+                return
 
+            # Maybe decompress the body
+            headers = MutableHeaders(scope=start_message)
+            content_encoding = headers.get("content-encoding", "").lower()
+            handler = None
+            if content_encoding:
+                handler = ENCODING_HANDLERS.get(content_encoding)
+                assert handler, f"Unsupported content encoding: {content_encoding}"
+                body = handler.decompress(body)
+
+            # Augment the spec
+            body = dict_to_bytes(self.augment_spec(json.loads(body)))
+
+            # Maybe re-compress the body
+            if handler:
+                body = handler.compress(body)
+
+            # Update the content-length header
+            headers["content-length"] = str(len(body))
+            start_message["headers"] = [
+                (key.encode(), value.encode()) for key, value in headers.items()
+            ]
+
+            # Send http.response.start
+            await send(start_message)
+
+            # Send http.response.body
             await send(
                 {
                     "type": "http.response.body",
-                    "body": dict_to_bytes(self.augment_spec(json.loads(total_body))),
+                    "body": body,
                     "more_body": False,
                 }
             )

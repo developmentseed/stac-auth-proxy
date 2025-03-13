@@ -38,6 +38,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             OpenApiMiddleware,
             openapi_spec_path=settings.openapi_spec_endpoint,
             oidc_config_url=str(settings.oidc_discovery_url),
+            public_endpoints=settings.public_endpoints,
             private_endpoints=settings.private_endpoints,
             default_public=settings.default_public,
         )

@@ -68,7 +68,11 @@ class OpenApiMiddleware:
             if content_encoding:
                 handler = ENCODING_HANDLERS.get(content_encoding)
                 assert handler, f"Unsupported content encoding: {content_encoding}"
-                body = handler.decompress(body)
+                body = (
+                    handler.decompress(body)
+                    if content_encoding != "deflate"
+                    else handler.decompress(body, -zlib.MAX_WBITS)
+                )
 
             # Augment the spec
             body = dict_to_bytes(self.augment_spec(json.loads(body)))

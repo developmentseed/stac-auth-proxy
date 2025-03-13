@@ -1,6 +1,6 @@
 """Tests for OpenAPI spec handling."""
 
-
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from utils import AppFactory
@@ -41,7 +41,6 @@ def test_no_private_endpoints(source_api_server: str):
     assert "info" in openapi
     assert "openapi" in openapi
     assert "paths" in openapi
-    # assert "oidcAuth" not in openapi.get("components", {}).get("securitySchemes", {})
 
 
 def test_oidc_in_openapi_spec(source_api: FastAPI, source_api_server: str):
@@ -60,43 +59,44 @@ def test_oidc_in_openapi_spec(source_api: FastAPI, source_api_server: str):
     assert "oidcAuth" in openapi.get("components", {}).get("securitySchemes", {})
 
 
-# def test_oidc_in_openapi_spec_compressed(source_api: FastAPI, source_api_server: str):
-#     """When OpenAPI spec endpoint is set, the proxied OpenAPI spec is augmented with oidc details."""
+@pytest.mark.parametrize("compression_type", ["gzip", "br", "deflate"])
+def test_oidc_in_openapi_spec_compressed(
+    source_api: FastAPI, source_api_server: str, compression_type: str
+):
+    """When OpenAPI spec endpoint is set, the proxied OpenAPI spec is augmented with oidc details."""
+    app = app_factory(
+        upstream_url=source_api_server,
+        openapi_spec_endpoint=source_api.openapi_url,
+    )
+    client = TestClient(app)
 
-#     # Create a compressed response factory
-#     def compressed_response_factory(request: Request):
-#         assert False
-#         # Get the original OpenAPI spec
-#         openapi = source_api.openapi()
-#         compressed_data = gzip.compress(str(openapi).encode())
-#         return Response(
-#             content=compressed_data,
-#             headers={
-#                 "Content-Encoding": "gzip",
-#                 "Content-Type": "application/json",
-#             },
-#         )
+    # Test with gzip acceptance
+    response = client.get(
+        source_api.openapi_url, headers={"Accept-Encoding": compression_type}
+    )
+    assert response.status_code == 200
+    assert response.headers.get("content-encoding") == compression_type
+    assert response.headers.get("content-type") == "application/json"
 
-#     # Set the custom response factory
-#     source_api.state.response_factory = compressed_response_factory
+    # TestClient automatically decompresses
+    openapi = response.json()
+    assert "info" in openapi
+    assert "openapi" in openapi
+    assert "paths" in openapi
+    assert "oidcAuth" in openapi.get("components", {}).get("securitySchemes", {})
 
-#     app = app_factory(
-#         upstream_url=source_api_server,
-#         openapi_spec_endpoint=source_api.openapi_url,
-#     )
-#     client = TestClient(app)
-#     response = client.get(
-#         source_api.openapi_url,
-#         headers={"Accept-Encoding": "gzip"},
-#     )
-#     assert response.status_code == 200
-#     assert response.headers.get("content-encoding") == "gzip"
+    # # Test without gzip acceptance
+    # response = client.get(source_api.openapi_url)
+    # assert response.status_code == 200
+    # assert "content-encoding" not in response.headers
+    # assert response.headers.get("content-type") == "application/json"
 
-#     openapi = response.json()  # TestClient automatically decompresses
-#     assert "info" in openapi
-#     assert "openapi" in openapi
-#     assert "paths" in openapi
-#     assert "oidcAuth" in openapi.get("components", {}).get("securitySchemes", {})
+    # # Should get same content
+    # openapi = response.json()
+    # assert "info" in openapi
+    # assert "openapi" in openapi
+    # assert "paths" in openapi
+    # assert "oidcAuth" in openapi.get("components", {}).get("securitySchemes", {})
 
 
 def test_oidc_in_openapi_spec_private_endpoints(

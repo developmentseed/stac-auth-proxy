@@ -8,9 +8,11 @@ from pydantic.networks import HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 METHODS = Literal["GET", "POST", "PUT", "DELETE", "PATCH"]
+EndpointMethodsNoScope: TypeAlias = dict[str, Sequence[METHODS]]
 EndpointMethods: TypeAlias = dict[
     str, Sequence[Union[METHODS, tuple[METHODS, Sequence[str]]]]
 ]
+
 _PREFIX_PATTERN = r"^/.*$"
 
 
@@ -45,7 +47,7 @@ class Settings(BaseSettings):
 
     # Auth
     default_public: bool = False
-    public_endpoints: EndpointMethods = {
+    public_endpoints: EndpointMethodsNoScope = {
         r"^/api.html$": ["GET"],
         r"^/api$": ["GET"],
         r"^/healthz": ["GET"],

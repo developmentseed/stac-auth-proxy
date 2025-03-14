@@ -31,13 +31,13 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     #
     # Application
     #
-    upstream_urls = [
-        settings.upstream_url,
-        settings.oidc_discovery_internal_url or settings.oidc_discovery_url,
-    ]
     lifespan = LifespanManager(
         on_startup=(
-            [ServerHealthCheck(url=url) for url in upstream_urls]
+            [
+                ServerHealthCheck(
+                    urls=[settings.upstream_url, settings.oidc_discovery_internal_url]
+                )
+            ]
             if settings.wait_for_upstream
             else []
         )

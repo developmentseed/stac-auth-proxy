@@ -1,7 +1,8 @@
 """Custom middleware."""
 
 from .AddProcessTimeHeaderMiddleware import AddProcessTimeHeaderMiddleware
-from .Cql2FilterMiddleware import ApplyCql2FilterMiddleware, BuildCql2FilterMiddleware
+from .ApplyCql2FilterMiddleware import ApplyCql2FilterMiddleware
+from .BuildCql2FilterMiddleware import BuildCql2FilterMiddleware
 from .EnforceAuthMiddleware import EnforceAuthMiddleware
 from .UpdateOpenApiMiddleware import OpenApiMiddleware
 

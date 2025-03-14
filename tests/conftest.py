@@ -1,6 +1,5 @@
 """Pytest fixtures."""
 
-import json
 import os
 import threading
 from typing import Any, AsyncGenerator
@@ -36,16 +35,14 @@ def mock_jwks(public_key: dict[str, Any]):
     mock_jwks = {"keys": [public_key]}
 
     with (
-        patch("urllib.request.urlopen") as mock_urlopen,
+        patch("httpx.get") as mock_urlopen,
         patch("jwt.PyJWKClient.fetch_data") as mock_fetch_data,
     ):
         mock_oidc_config_response = MagicMock()
-        mock_oidc_config_response.read.return_value = json.dumps(
-            mock_oidc_config
-        ).encode()
+        mock_oidc_config_response.json.return_value = mock_oidc_config
         mock_oidc_config_response.status = 200
 
-        mock_urlopen.return_value.__enter__.return_value = mock_oidc_config_response
+        mock_urlopen.return_value = mock_oidc_config_response
         mock_fetch_data.return_value = mock_jwks
         yield mock_urlopen
 
@@ -121,7 +118,7 @@ def source_api():
     return app
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def source_api_server(source_api):
     """Run the source API in a background thread."""
     host, port = "127.0.0.1", 9119
@@ -139,7 +136,7 @@ def source_api_server(source_api):
     thread.join()
 
 
-@pytest.fixture(autouse=True, scope="module")
+@pytest.fixture(autouse=True, scope="session")
 def mock_env():
     """Clear environment variables to avoid poluting configs from runtime env."""
     with patch.dict(os.environ, clear=True):

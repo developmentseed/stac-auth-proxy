@@ -90,8 +90,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         public_endpoints=settings.public_endpoints,
         private_endpoints=settings.private_endpoints,
         default_public=settings.default_public,
-        oidc_config_url=settings.oidc_discovery_url,
-        oidc_config_internal_url=settings.oidc_discovery_internal_url,
+        oidc_config_url=settings.oidc_discovery_internal_url,
     )
 
     app.add_middleware(

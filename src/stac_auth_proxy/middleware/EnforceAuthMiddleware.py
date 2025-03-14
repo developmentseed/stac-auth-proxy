@@ -27,7 +27,6 @@ class EnforceAuthMiddleware:
     default_public: bool
 
     oidc_config_url: HttpUrl
-    oidc_config_internal_url: Optional[HttpUrl] = None
     allowed_jwt_audiences: Optional[Sequence[str]] = None
 
     state_key: str = "payload"
@@ -40,7 +39,7 @@ class EnforceAuthMiddleware:
         """Get the OIDC configuration URL."""
         if not self._jwks_client:
             logger.debug("Requesting OIDC config")
-            origin_url = str(self.oidc_config_internal_url or self.oidc_config_url)
+            origin_url = str(self.oidc_config_url)
 
             try:
                 response = httpx.get(origin_url)

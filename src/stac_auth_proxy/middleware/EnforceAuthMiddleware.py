@@ -12,7 +12,7 @@ from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from ..config import EndpointMethods
-from ..utils.requests import matches_route
+from ..utils.requests import find_match
 
 logger = logging.getLogger(__name__)
 
@@ -68,11 +68,20 @@ class EnforceAuthMiddleware:
             return await self.app(scope, receive, send)
 
         request = Request(scope)
+        match = find_match(
+            request.url.path,
+            request.method,
+            private_endpoints=self.private_endpoints,
+            public_endpoints=self.public_endpoints,
+            default_public=self.default_public,
+        )
         try:
             payload = self.validate_token(
                 request.headers.get("Authorization"),
-                auto_error=self.should_enforce_auth(request),
+                auto_error=match.is_private,
+                required_scopes=match.required_scopes,
             )
+
         except HTTPException as e:
             response = JSONResponse({"detail": e.detail}, status_code=e.status_code)
             return await response(scope, receive, send)
@@ -85,18 +94,11 @@ class EnforceAuthMiddleware:
         )
         return await self.app(scope, receive, send)
 
-    def should_enforce_auth(self, request: Request) -> bool:
-        """Determine if authentication should be required on a given request."""
-        # If default_public, we only enforce auth if the request is for an endpoint explicitly listed as private
-        if self.default_public:
-            return matches_route(request, self.private_endpoints)
-        # If not default_public, we enforce auth if the request is not for an endpoint explicitly listed as public
-        return not matches_route(request, self.public_endpoints)
-
     def validate_token(
         self,
         auth_header: Annotated[str, Security(...)],
         auto_error: bool = True,
+        required_scopes: Optional[Sequence[str]] = None,
     ) -> Optional[dict[str, Any]]:
         """Dependency to validate an OIDC token."""
         if not auth_header:
@@ -136,6 +138,14 @@ class EnforceAuthMiddleware:
                 headers={"WWW-Authenticate": "Bearer"},
             ) from e
 
+        if required_scopes:
+            for scope in required_scopes:
+                if scope not in payload["scope"].split(" "):
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Not enough permissions",
+                        headers={"WWW-Authenticate": f'Bearer scope="{scope}"'},
+                    )
         return payload
 
 

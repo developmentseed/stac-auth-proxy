@@ -1,15 +1,18 @@
 """Configuration for the STAC Auth Proxy."""
 
 import importlib
-from typing import Literal, Optional, Sequence, TypeAlias
+from typing import Literal, Optional, Sequence, TypeAlias, Union
 
 from pydantic import BaseModel, Field
 from pydantic.networks import HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+METHODS = Literal["GET", "POST", "PUT", "DELETE", "PATCH"]
+EndpointMethodsNoScope: TypeAlias = dict[str, Sequence[METHODS]]
 EndpointMethods: TypeAlias = dict[
-    str, list[Literal["GET", "POST", "PUT", "DELETE", "PATCH"]]
+    str, Sequence[Union[METHODS, tuple[METHODS, Sequence[str]]]]
 ]
+
 _PREFIX_PATTERN = r"^/.*$"
 
 
@@ -44,7 +47,7 @@ class Settings(BaseSettings):
 
     # Auth
     default_public: bool = False
-    public_endpoints: EndpointMethods = {
+    public_endpoints: EndpointMethodsNoScope = {
         r"^/api.html$": ["GET"],
         r"^/api$": ["GET"],
         r"^/healthz": ["GET"],

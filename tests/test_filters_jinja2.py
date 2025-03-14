@@ -18,7 +18,7 @@ FILTER_EXPR_CASES = [
         id="simple_not_templated",
     ),
     pytest.param(
-        "{{ '(properties.private = false)' if user is none else true }}",
+        "{{ '(properties.private = false)' if payload is none else true }}",
         "true",
         "(properties.private = false)",
         id="simple_templated",
@@ -30,7 +30,7 @@ FILTER_EXPR_CASES = [
         id="complex_not_templated",
     ),
     pytest.param(
-        """{{ '{"op": "=", "args": [{"property": "private"}, true]}' if user is none else true }}""",
+        """{{ '{"op": "=", "args": [{"property": "private"}, true]}' if payload is none else true }}""",
         "true",
         """{"op": "=", "args": [{"property": "private"}, true]}""",
         id="complex_templated",

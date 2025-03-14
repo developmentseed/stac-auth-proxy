@@ -2,9 +2,9 @@
 
 import json
 import re
+from dataclasses import dataclass, field
+from typing import Sequence
 from urllib.parse import urlparse
-
-from starlette.requests import Request
 
 from ..config import EndpointMethods
 
@@ -26,18 +26,35 @@ def dict_to_bytes(d: dict) -> bytes:
     return json.dumps(d, separators=(",", ":")).encode("utf-8")
 
 
-def matches_route(request: Request, url_patterns: EndpointMethods) -> bool:
-    """
-    Test if the incoming request.path and request.method match any of the patterns
-    (and their methods) in url_patterns.
-    """
-    path = request.url.path  # e.g. '/collections/123'
-    method = request.method.casefold()  # e.g. 'post'
+def find_match(
+    path: str,
+    method: str,
+    private_endpoints: EndpointMethods,
+    public_endpoints: EndpointMethods,
+    default_public: bool,
+) -> "MatchResult":
+    """Check if the given path and method match any of the regex patterns and methods in the endpoints."""
+    endpoints = private_endpoints if default_public else public_endpoints
+    for pattern, endpoint_methods in endpoints.items():
+        if not re.match(pattern, path):
+            continue
+        for endpoint_method in endpoint_methods:
+            required_scopes: Sequence[str] = []
+            if isinstance(endpoint_method, tuple):
+                endpoint_method, required_scopes = endpoint_method
+            if method.casefold() == endpoint_method.casefold():
+                # If default_public, we're looking for a private endpoint.
+                # If not default_public, we're looking for a public endpoint.
+                return MatchResult(
+                    is_private=default_public,
+                    required_scopes=required_scopes,
+                )
+    return MatchResult(is_private=not default_public)
 
-    for pattern, allowed_methods in url_patterns.items():
-        if re.match(pattern, path) and method in [
-            m.casefold() for m in allowed_methods
-        ]:
-            return True
 
-    return False
+@dataclass
+class MatchResult:
+    """Result of a match between a path and method and a set of endpoints."""
+
+    is_private: bool
+    required_scopes: Sequence[str] = field(default_factory=list)

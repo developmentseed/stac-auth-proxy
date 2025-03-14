@@ -12,6 +12,7 @@ from fastapi import FastAPI
 
 from .config import Settings
 from .handlers import HealthzHandler, ReverseProxyHandler
+from .lifespan import LifespanManager, ServerHealthCheck
 from .middleware import (
     AddProcessTimeHeaderMiddleware,
     ApplyCql2FilterMiddleware,
@@ -27,12 +28,44 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     """FastAPI Application Factory."""
     settings = settings or Settings()
 
-    app = FastAPI(
-        openapi_url=None,  # Disable OpenAPI schema endpoint, we want to serve upstream's schema
+    #
+    # Application
+    #
+    upstream_urls = [
+        settings.upstream_url,
+        settings.oidc_discovery_internal_url or settings.oidc_discovery_url,
+    ]
+    lifespan = LifespanManager(
+        on_startup=(
+            [ServerHealthCheck(url=url) for url in upstream_urls]
+            if settings.wait_for_upstream
+            else []
+        )
     )
 
-    app.add_middleware(AddProcessTimeHeaderMiddleware)
+    app = FastAPI(
+        openapi_url=None,  # Disable OpenAPI schema endpoint, we want to serve upstream's schema
+        lifespan=lifespan,
+    )
 
+    #
+    # Handlers (place catch-all proxy handler last)
+    #
+    if settings.healthz_prefix:
+        app.include_router(
+            HealthzHandler(upstream_url=str(settings.upstream_url)).router,
+            prefix=settings.healthz_prefix,
+        )
+
+    app.add_api_route(
+        "/{path:path}",
+        ReverseProxyHandler(upstream=str(settings.upstream_url)).stream,
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    )
+
+    #
+    # Middleware (order is important, last added = first to run)
+    #
     if settings.openapi_spec_endpoint:
         app.add_middleware(
             OpenApiMiddleware,
@@ -44,10 +77,11 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         )
 
     if settings.items_filter:
-        app.add_middleware(ApplyCql2FilterMiddleware)
+        app.add_middleware(
+            ApplyCql2FilterMiddleware,
+        )
         app.add_middleware(
             BuildCql2FilterMiddleware,
-            # collections_filter=settings.collections_filter,
             items_filter=settings.items_filter(),
         )
 
@@ -57,18 +91,11 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         private_endpoints=settings.private_endpoints,
         default_public=settings.default_public,
         oidc_config_url=settings.oidc_discovery_url,
+        oidc_config_internal_url=settings.oidc_discovery_internal_url,
     )
 
-    if settings.healthz_prefix:
-        healthz_handler = HealthzHandler(upstream_url=str(settings.upstream_url))
-        app.include_router(healthz_handler.router, prefix="/healthz")
-
-    # Catchall for any endpoint
-    proxy_handler = ReverseProxyHandler(upstream=str(settings.upstream_url))
-    app.add_api_route(
-        "/{path:path}",
-        proxy_handler.stream,
-        methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    app.add_middleware(
+        AddProcessTimeHeaderMiddleware,
     )
 
     return app

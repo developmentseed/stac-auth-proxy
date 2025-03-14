@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     # External URLs
     upstream_url: HttpUrl
     oidc_discovery_url: HttpUrl
+    oidc_discovery_internal_url: Optional[HttpUrl] = None
+
+    wait_for_upstream: bool = True
 
     # Endpoints
     healthz_prefix: str = Field(pattern=_PREFIX_PATTERN, default="/healthz")

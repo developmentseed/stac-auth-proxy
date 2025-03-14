@@ -16,7 +16,7 @@ class HealthzHandler:
     def __post_init__(self):
         """Initialize the router."""
         self.router = APIRouter()
-        self.router.add_api_route("/", self.healthz, methods=["GET"])
+        self.router.add_api_route("", self.healthz, methods=["GET"])
         self.router.add_api_route("/upstream", self.healthz_upstream, methods=["GET"])
 
     async def healthz(self):

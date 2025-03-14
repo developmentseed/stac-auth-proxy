@@ -48,3 +48,143 @@ def test_default_public_false(source_api_server, path, method, token_builder):
         method=method, url=path, headers={"Authorization": f"Bearer {valid_auth_token}"}
     )
     assert response.status_code == 200
+
+
+@pytest.mark.parametrize(
+    "token_scopes, private_endpoints, path, method, expected_permitted",
+    [
+        pytest.param(
+            "",
+            {r"^/*": [("POST", ["collections:create"])]},
+            "/collections",
+            "POST",
+            False,
+            id="empty scopes + private endpoint",
+        ),
+        pytest.param(
+            "openid profile collections:createbutnotcreate",
+            {r"^/*": [("POST", ["collections:create"])]},
+            "/collections",
+            "POST",
+            False,
+            id="invalid scopes + private endpoint",
+        ),
+        pytest.param(
+            "openid profile collections:create somethingelse",
+            {r"^/*": [("POST", [])]},
+            "/collections",
+            "POST",
+            True,
+            id="valid scopes + private endpoint without required scopes",
+        ),
+        pytest.param(
+            "openid",
+            {r"^/collections/.*/items$": [("POST", ["collections:create"])]},
+            "/collections",
+            "GET",
+            True,
+            id="accessing public endpoint with private endpoint required scopes",
+        ),
+    ],
+)
+def test_scopes(
+    source_api_server,
+    token_builder,
+    token_scopes,
+    private_endpoints,
+    path,
+    method,
+    expected_permitted,
+):
+    """Private endpoints permit access with a valid token."""
+    test_app = app_factory(
+        upstream_url=source_api_server,
+        default_public=True,
+        private_endpoints=private_endpoints,
+    )
+    valid_auth_token = token_builder({"scope": token_scopes})
+    client = TestClient(test_app)
+
+    response = client.request(
+        method=method,
+        url=path,
+        headers={"Authorization": f"Bearer {valid_auth_token}"},
+    )
+    expected_status_code = 200 if expected_permitted else 401
+    assert response.status_code == expected_status_code
+
+
+# @pytest.mark.parametrize(
+#     "is_valid, path, method",
+#     [
+#         *[
+#             [True, *endpoint_method]
+#             for endpoint_method in [
+#                 ["/collections", "POST"],
+#                 ["/collections/foo", "PUT"],
+#                 ["/collections/foo", "PATCH"],
+#                 ["/collections/foo/items", "POST"],
+#                 ["/collections/foo/items/bar", "PUT"],
+#                 ["/collections/foo/items/bar", "PATCH"],
+#             ]
+#         ],
+#         *[
+#             [False, *endpoint_method]
+#             for endpoint_method in [
+#                 ["/collections/foo", "DELETE"],
+#                 ["/collections/foo/items/bar", "DELETE"],
+#             ]
+#         ],
+#     ],
+# )
+# def test_scopes(source_api_server, token_builder, is_valid, path, method):
+#     """Private endpoints permit access with a valid token."""
+#     test_app = app_factory(
+#         upstream_url=source_api_server,
+#         default_public=True,
+#         private_endpoints={
+#             r"^/collections$": [
+#                 ("POST", ["collections:create"]),
+#             ],
+#             r"^/collections/([^/]+)$": [
+#                 # ("PUT", ["collections:update"]),
+#                 # ("PATCH", ["collections:update"]),
+#                 ("DELETE", ["collections:delete"]),
+#             ],
+#             r"^/collections/([^/]+)/items$": [
+#                 ("POST", ["items:create"]),
+#             ],
+#             r"^/collections/([^/]+)/items/([^/]+)$": [
+#                 # ("PUT", ["items:update"]),
+#                 # ("PATCH", ["items:update"]),
+#                 ("DELETE", ["items:delete"]),
+#             ],
+#             r"^/collections/([^/]+)/bulk_items$": [
+#                 ("POST", ["items:create"]),
+#             ],
+#         },
+#     )
+#     valid_auth_token = token_builder(
+#         {
+#             "scopes": " ".join(
+#                 [
+#                     "collection:create",
+#                     "items:create",
+#                     "collections:update",
+#                     "items:update",
+#                 ]
+#             )
+#         }
+#     )
+#     client = TestClient(test_app)
+
+#     response = client.request(
+#         method=method,
+#         url=path,
+#         headers={"Authorization": f"Bearer {valid_auth_token}"},
+#         json={} if method != "DELETE" else None,
+#     )
+#     if is_valid:
+#         assert response.status_code == 200
+#     else:
+#         assert response.status_code == 403

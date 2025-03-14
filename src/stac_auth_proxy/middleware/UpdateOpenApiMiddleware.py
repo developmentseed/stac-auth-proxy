@@ -2,7 +2,6 @@
 
 import gzip
 import json
-import re
 import zlib
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -13,7 +12,7 @@ from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from ..config import EndpointMethods
-from ..utils.requests import dict_to_bytes
+from ..utils.requests import dict_to_bytes, find_match
 
 ENCODING_HANDLERS = {
     "gzip": gzip,
@@ -112,24 +111,15 @@ class OpenApiMiddleware:
         }
         for path, method_config in openapi_spec["paths"].items():
             for method, config in method_config.items():
-                requires_auth = (
-                    self.path_matches(path, method, self.private_endpoints)
-                    if self.default_public
-                    else not self.path_matches(path, method, self.public_endpoints)
+                match = find_match(
+                    path,
+                    method,
+                    self.private_endpoints,
+                    self.public_endpoints,
+                    self.default_public,
                 )
-                if requires_auth:
+                if match.is_private:
                     config.setdefault("security", []).append(
-                        {self.oidc_auth_scheme_name: []}
+                        {self.oidc_auth_scheme_name: match.required_scopes}
                     )
         return openapi_spec
-
-    @staticmethod
-    def path_matches(path: str, method: str, endpoints: EndpointMethods) -> bool:
-        """Check if the given path and method match any of the regex patterns and methods in the endpoints."""
-        for pattern, endpoint_methods in endpoints.items():
-            if not re.match(pattern, path):
-                continue
-            for endpoint_method in endpoint_methods:
-                if method.casefold() == endpoint_method.casefold():
-                    return True
-        return False

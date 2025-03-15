@@ -1,4 +1,9 @@
-# STAC Auth Proxy
+<div align="center">
+  <h1 style="font-family: monospace">stac auth proxy</h1>
+  <p align="center">Reverse proxy to apply auth*n scenarios to STAC APIs.</p>
+</div>
+
+---
 
 > [!WARNING]
 > This project is currently in active development and may change drastically in the near future while we work towards solidifying a first release.
@@ -11,69 +16,64 @@ STAC Auth Proxy is a proxy API that mediates between the client and an internall
 - 🎟️ Content Filtering: Apply CQL2 filters to client requests, filtering API content based on user context
 - 📖 OpenAPI Augmentation: Update [OpenAPI](https://swagger.io/specification/) with security requirements, keeping auto-generated docs (e.g. [Swagger UI](https://swagger.io/tools/swagger-ui/)) accurate
 
-## Installation
+## Usage
 
 > [!NOTE]
 > Currently, the project is only installable by downlaoding the repository. It will eventually be available on Docker ([#5](https://github.com/developmentseed/issues/5)) and PyPi ([#30](https://github.com/developmentseed/issues/30)).
 
-This project uses [`uv`](https://docs.astral.sh/uv/) to manage project dependencies and environment.
+### Installation
+
+For local development, his project uses [`uv`](https://docs.astral.sh/uv/) to manage project dependencies and environment.
 
 ```sh
 uv sync
 ```
 
-## Running
+Otherwise, the application can be installed as a standard Python module:
 
 ```sh
-uv run python -m stac_auth_proxy
+python3 install src
 ```
 
-## Configuration
+### Running
+
+The simplest way to run the project is by calling the module directly:
+
+```sh
+python -m stac_auth_proxy
+```
+
+Alternatively, the application's factory can be passed to Uvicorn:
+
+```sh
+uvicorn --factory stac_auth_proxy:create_app
+```
+
+### Configuration
 
 The application is configurable via environment variables.
 
-### Core Settings
-
-- `DEBUG`
-
-  - Enables debug mode and `/_debug` endpoint
-  - **Type:** boolean
-  - **Default:** `false`
-  - **Example:** `true`
-
 - `UPSTREAM_URL`
-
   - The STAC API to proxy requests to
   - **Type:** HTTP(S) URL
   - **Required:** Yes
   - **Example:** `https://your-stac-api.com/stac`
-
 - `OIDC_DISCOVERY_URL`
-
   - OpenID Connect discovery document URL
   - **Type:** HTTP(S) URL
   - **Required:** Yes
   - **Example:** `https://auth.example.com/.well-known/openid-configuration`
-
 - `OIDC_DISCOVERY_INTERNAL_URL`
   - The internal network OpenID Connect discovery document URL
   - **Type:** HTTP(S) URL
   - **Required:** No, defaults to value of `OIDC_DISCOVERY_URL`
   - **Example:** `http://auth/.well-known/openid-configuration`
-
-### Access Control
-
-Routes can be configured as requiring a valid authentication token by by specifying a blanket `default_public` rule and then explicit overrides (`private_endpoints` or `public_endpoints`).
-
 - `DEFAULT_PUBLIC`
-
   - **Description:** Default access policy for endpoints
   - **Type:** boolean
   - **Default:** `false`
   - **Example:** `false`, `1`, `True`
-
 - `PRIVATE_ENDPOINTS`
-
   - **Description:** Endpoints explicitely marked as requiring authentication, for use when `DEFAULT_PUBLIC == True`
   - **Type:** JSON object mapping regex patterns to HTTP methods OR to tuples of HTTP methods and an array of strings representing required scopes.
   - **Default:**
@@ -86,7 +86,6 @@ Routes can be configured as requiring a valid authentication token by by specify
       "^/collections/([^/]+)/bulk_items$": ["POST"]
     }
     ```
-
 - `PUBLIC_ENDPOINTS`
   - **Description:** Endpoints explicitely marked as not requiring authentication, for use when `DEFAULT_PUBLIC == False`
   - **Type:** JSON object mapping regex patterns to HTTP methods
@@ -97,19 +96,12 @@ Routes can be configured as requiring a valid authentication token by by specify
       "^/api$": ["GET"]
     }
     ```
-
-### API Documentation
-
 - `OPENAPI_SPEC_ENDPOINT`
   - Path to serve OpenAPI specification
   - **Type:** string or null
   - **Default:** `null` (disabled)
   - **Example:** `/api`
-
-### Filtering
-
 - `ITEMS_FILTER`
-
   - Configuration for item-level filtering
   - **Type:** JSON object with class configuration
   - **Default:** `null`
@@ -127,7 +119,6 @@ Routes can be configured as requiring a valid authentication token by by specify
       }
     }
     ```
-
 - `ITEMS_FILTER_ENDPOINTS`
   - Where to apply item filtering
   - **Type:** JSON object mapping regex patterns to HTTP methods

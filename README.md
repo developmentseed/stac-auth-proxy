@@ -130,6 +130,10 @@ The application is configurable via environment variables.
     }
     ```
 
+### Customization
+
+While this project aims to provide utility out-of-the-box as a runnable application, it's likely won't address every project's needs. In these situations, this codebase can instead be treated as a library of components that can be used to augment any webserver that makes use of the [ASGI protocol](https://asgi.readthedocs.io/en/latest/) (e.g. [Django](https://docs.djangoproject.com/en/3.0/topics/async/), [Falcon](https://falconframework.org/), [FastAPI](https://github.com/tiangolo/fastapi),[Litestar](https://litestar.dev/), [Responder](https://responder.readthedocs.io/en/latest/), [Sanic](https://sanic.dev/), [Starlette](https://www.starlette.io/)). Review [`app.py`](https://github.com/developmentseed/stac-auth-proxy/blob/main/src/stac_auth_proxy/app.py) to get a sense of how we make use of the various components to construct a FastAPI application.
+
 ## Architecture
 
 ### Middleware Stack

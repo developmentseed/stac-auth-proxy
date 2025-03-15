@@ -11,7 +11,26 @@ STAC Auth Proxy is a proxy API that mediates between the client and an internall
 - 🎟️ Content Filtering: Apply CQL2 filters to client requests, filtering API content based on user context
 - 📖 OpenAPI Augmentation: Update [OpenAPI](https://swagger.io/specification/) with security requirements, keeping auto-generated docs (e.g. [Swagger UI](https://swagger.io/tools/swagger-ui/)) accurate
 
+## Installation
+
+> [!NOTE]
+> Currently, the project is only installable by downlaoding the repository. It will eventually be available on Docker (#5) and PyPi (#30).
+
+This project uses [`uv`](https://docs.astral.sh/uv/) to manage project dependencies and environment.
+
+```sh
+uv sync
+```
+
+## Running
+
+```sh
+uv run python -m stac_auth_proxy
+```
+
 ## Configuration
+
+The application is configurable via environment variables.
 
 ### Core Settings
 
@@ -23,22 +42,28 @@ STAC Auth Proxy is a proxy API that mediates between the client and an internall
   - **Example:** `true`
 
 - `UPSTREAM_URL`
+
   - The STAC API to proxy requests to
   - **Type:** HTTP(S) URL
   - **Required:** Yes
   - **Example:** `https://your-stac-api.com/stac`
 
-### Authentication
-
 - `OIDC_DISCOVERY_URL`
+
   - OpenID Connect discovery document URL
   - **Type:** HTTP(S) URL
   - **Required:** Yes
   - **Example:** `https://auth.example.com/.well-known/openid-configuration`
 
+- `OIDC_DISCOVERY_INTERNAL_URL`
+  - The internal network OpenID Connect discovery document URL
+  - **Type:** HTTP(S) URL
+  - **Required:** No, defaults to value of `OIDC_DISCOVERY_URL`
+  - **Example:** `http://auth/.well-known/openid-configuration`
+
 ### Access Control
 
-Routes can be configured as requiring a valid authentication token by by specifying a blanket `default_public` rule and then explicit overrides (`private_endpoints` or `public_endpoints`) when exceptions are necessary.
+Routes can be configured as requiring a valid authentication token by by specifying a blanket `default_public` rule and then explicit overrides (`private_endpoints` or `public_endpoints`).
 
 - `DEFAULT_PUBLIC`
 
@@ -49,8 +74,8 @@ Routes can be configured as requiring a valid authentication token by by specify
 
 - `PRIVATE_ENDPOINTS`
 
-  - **Description:** Endpoints explicitely marked as requiring authentication
-  - **Type:** JSON object mapping regex patterns to HTTP methods
+  - **Description:** Endpoints explicitely marked as requiring authentication, for use when `DEFAULT_PUBLIC == True`
+  - **Type:** JSON object mapping regex patterns to HTTP methods OR to tuples of HTTP methods and an array of strings representing required scopes.
   - **Default:**
     ```json
     {
@@ -63,7 +88,7 @@ Routes can be configured as requiring a valid authentication token by by specify
     ```
 
 - `PUBLIC_ENDPOINTS`
-  - **Description:** Endpoints explicitely marked as not requiring authentication
+  - **Description:** Endpoints explicitely marked as not requiring authentication, for use when `DEFAULT_PUBLIC == False`
   - **Type:** JSON object mapping regex patterns to HTTP methods
   - **Default:**
     ```json
@@ -116,14 +141,6 @@ Routes can be configured as requiring a valid authentication token by by specify
 
 ## Architecture
 
-### Application Structure
-
-```mermaid
-graph TD
-    Client --> Proxy[STAC Auth Proxy]
-    Proxy --> STAC[Internal STAC API]
-```
-
 ### Middleware Stack
 
 The middleware stack is processed in reverse order (bottom to top):
@@ -136,17 +153,17 @@ The middleware stack is processed in reverse order (bottom to top):
 
 2. **BuildCql2FilterMiddleware**
 
-   - Builds CQL2 filters based on user context
-   - Different handling for GET vs POST/PUT/PATCH requests
+   - Builds CQL2 filters based on request context
    - Stores filter in request state
 
 3. **ApplyCql2FilterMiddleware**
 
+   - Retrieves filter from request state
    - Applies the built CQL2 filter to requests
    - Modifies query strings for GET requests
    - Modifies JSON bodies for POST/PUT/PATCH requests
 
-4. **OpenApiMiddleware** (optional)
+4. **OpenApiMiddleware**
 
    - Modifies OpenAPI specification
    - Adds security requirements
@@ -156,9 +173,17 @@ The middleware stack is processed in reverse order (bottom to top):
    - Adds processing time headers
    - Useful for monitoring/debugging
 
-### Request Flow
+### Data filtering via CQL2
 
-#### GET Request Flow
+In order to provide row-level content filtering, the system supports generating CQL2 filters based on request context. These CQL2 filters are then set on outgoing requests prior to the upstream API.
+
+> [!IMPORTANT]
+> The upstream STAC API must support the [STAC API Filter Extension](https://github.com/stac-api-extensions/filter/blob/main/README.md).
+
+> [!TIP]
+> Integration with external authorization systems (e.g. [Open Policy Agent](https://www.openpolicyagent.org/)) can be achieved by replacing the default `BuildCql2FilterMiddleware` with a custom async middleware that is capable of generating [`cql2.Expr` objects](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr).
+
+#### Example GET Request Flow
 
 ```mermaid
 sequenceDiagram
@@ -166,94 +191,23 @@ sequenceDiagram
     Note over Proxy: EnforceAuth checks credentials
     Note over Proxy: BuildCql2Filter creates filter immediately
     Note over Proxy: ApplyCql2Filter modifies query string
-    Proxy->>STAC API: Modified GET request
-    STAC API->>Client: Filtered response
+    Proxy->>STAC API: GET /collection?filter=(collection=landsat)
+    STAC API->>Client: Response
 ```
 
-#### POST Request Flow
+#### Filters
 
-```mermaid
-sequenceDiagram
-    Client->>Proxy: POST /search
-    Note over Proxy: EnforceAuth checks credentials
-    Note over Proxy: BuildCql2Filter accumulates body
-    Note over Proxy: BuildCql2Filter creates filter
-    Note over Proxy: ApplyCql2Filter modifies body
-    Proxy->>STAC API: Modified POST request
-    STAC API->>Client: Filtered response
-```
-
-## Key Components
-
-### CQL2 Filter System
-
-The CQL2 filtering system is split into two middlewares for separation of concerns:
-
-1. **Builder (`BuildCql2FilterMiddleware`)**
-
-   ```python
-   async def set_filter(body: Optional[dict] = None) -> None:
-       cql2_filter = await filter_builder({
-           "req": {
-               "path": request.url.path,
-               "method": request.method,
-               "query_params": dict(request.query_params),
-               "path_params": requests.extract_variables(request.url.path),
-               "headers": dict(request.headers),
-               "body": body,
-           },
-           **scope["state"],
-       })
-   ```
-
-   - Creates filters based on request context
-   - Handles both GET and POST requests differently
-   - Validates filters before applying
-
-2. **Applier (`ApplyCql2FilterMiddleware`)**
-   - Modifies requests to include the built filter
-   - GET: Modifies query string
-   - POST/PUT/PATCH: Modifies JSON body
-
-## Error Handling
-
-- JSON parsing errors are caught and logged
-- Filter validation before application
-- Authentication errors handled by middleware
-- Debug endpoint for troubleshooting (when enabled)
-
-This design provides a robust, secure, and efficient proxy layer for STAC APIs while maintaining flexibility for different deployment scenarios and requirements.
-
-### CQL2 Filters
-
-| Method   | Endpoint                                       | Action | Filter | Strategy                                                                                                   |
-| -------- | ---------------------------------------------- | ------ | ------ | ---------------------------------------------------------------------------------------------------------- |
-| `POST`   | `/search`                                      | Read   | Item   | Append body with generated CQL2 query.                                                                     |
-| `GET`    | `/search`                                      | Read   | Item   | Append query params with generated CQL2 query.                                                             |
-| `GET`    | `/collections/{collection_id}/items`           | Read   | Item   | Append query params with generated CQL2 query.                                                             |
-| `POST`   | `/collections/{collection_id}/items`           | Create | Item   | Validate body with generated CQL2 query.                                                                   |
-| `PUT`    | `/collections/{collection_id}/items/{item_id}` | Update | Item   | Fetch STAC Item and validate CQL2 query; merge STAC Item with body and validate with generated CQL2 query. |
-| `DELETE` | `/collections/{collection_id}/items/{item_id}` | Delete | Item   | Fetch STAC Item and validate with CQL2 query.                                                              |
-
-#### Recipes
-
-Only return collections that are mentioned in a `collections` array encoded within the auth token.
-
-```
-"A_CONTAINEDBY(id, ('{{ token.collections | join(\"', '\") }}' ))"
-```
-
-## Installation
-
-Set up connection to upstream STAC API and the OpenID Connect provider by setting the following environment variables:
-
-```bash
-export UPSTREAM_URL="https://some.url"
-export OIDC_DISCOVERY_URL="https://your-openid-connect-provider.com/.well-known/openid-configuration"
-```
-
-Install software:
-
-```bash
-uv run python -m stac_auth_proxy
-```
+| Supported | Method   | Endpoint                                       | Action | Filter     | Strategy                                                                                               |
+| --------- | -------- | ---------------------------------------------- | ------ | ---------- | ------------------------------------------------------------------------------------------------------ |
+| ✅        | `POST`   | `/search`                                      | Read   | Item       | Append body with generated CQL2 query.                                                                 |
+| ✅        | `GET`    | `/search`                                      | Read   | Item       | Append query params with generated CQL2 query.                                                         |
+| ❌ (#22)  | `POST`   | `/collections/`                                | Create | Collection | Validate body with generated CQL2 query.                                                               |
+| ❌ (#23)  | `GET`    | `/collections/{collection_id}`                 | Read   | Collection | Append query params with generated CQL2 query.                                                         |
+| ❌ (#22)  | `PUT`    | `/collections/{collection_id}}`                | Update | Collection | Fetch Collection and validate CQL2 query; merge Item with body and validate with generated CQL2 query. |
+| ❌ (#22)  | `DELETE` | `/collections/{collection_id}`                 | Delete | Collection | Fetch Collectiion and validate with CQL2 query.                                                        |
+| ✅        | `GET`    | `/collections/{collection_id}/items`           | Read   | Item       | Append query params with generated CQL2 query.                                                         |
+| ❌ (#25)  | `GET`    | `/collections/{collection_id}/items/{item_id}` | Read   | Item       | Validate response against CQL2 query.                                                                  |
+| ❌ (#21)  | `POST`   | `/collections/{collection_id}/items`           | Create | Item       | Validate body with generated CQL2 query.                                                               |
+| ❌ (#21)  | `PUT`    | `/collections/{collection_id}/items/{item_id}` | Update | Item       | Fetch Item and validate CQL2 query; merge Item with body and validate with generated CQL2 query.       |
+| ❌ (#21)  | `DELETE` | `/collections/{collection_id}/items/{item_id}` | Delete | Item       | Fetch Item and validate with CQL2 query.                                                               |
+| ❌ (#21)  | `POST`   | `/collections/{collection_id}/bulk_items`      | Create | Item       | Validate items in body with generated CQL2 query.                                                      |

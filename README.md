@@ -1,6 +1,6 @@
 <div align="center">
   <h1 style="font-family: monospace">stac auth proxy</h1>
-  <p align="center">Reverse proxy to apply auth*n scenarios to STAC APIs.</p>
+  <p align="center">Reverse proxy to apply auth*n to STAC APIs.</p>
 </div>
 
 ---
@@ -8,22 +8,22 @@
 > [!WARNING]
 > This project is currently in active development and may change drastically in the near future while we work towards solidifying a first release.
 
-STAC Auth Proxy is a proxy API that mediates between the client and an internally accessible STAC API in order to provide a flexible authentication, authorization, and content filtering mechanism.
+STAC Auth Proxy is a proxy API that mediates between the client and an internally accessible STAC API to provide a flexible authentication, authorization, and content-filtering mechanism.
 
 ## Features
 
 - 🔐 Authentication: Selectively apply OIDC auth to some or all endpoints & methods
 - 🎟️ Content Filtering: Apply CQL2 filters to client requests, filtering API content based on user context
-- 📖 OpenAPI Augmentation: Update [OpenAPI](https://swagger.io/specification/) with security requirements, keeping auto-generated docs (e.g. [Swagger UI](https://swagger.io/tools/swagger-ui/)) accurate
+- 📖 OpenAPI Augmentation: Update [OpenAPI](https://swagger.io/specification/) with security requirements, keeping auto-generated docs/UIs accurate (e.g. [Swagger UI](https://swagger.io/tools/swagger-ui/))
 
 ## Usage
 
 > [!NOTE]
-> Currently, the project is only installable by downlaoding the repository. It will eventually be available on Docker ([#5](https://github.com/developmentseed/issues/5)) and PyPi ([#30](https://github.com/developmentseed/issues/30)).
+> Currently, the project can only be installed by downloading the repository. It will eventually be available on Docker ([#5](https://github.com/developmentseed/issues/5)) and PyPi ([#30](https://github.com/developmentseed/issues/30)).
 
 ### Installation
 
-For local development, his project uses [`uv`](https://docs.astral.sh/uv/) to manage project dependencies and environment.
+For local development, we use [`uv`](https://docs.astral.sh/uv/) to manage project dependencies and environment.
 
 ```sh
 uv sync
@@ -32,7 +32,7 @@ uv sync
 Otherwise, the application can be installed as a standard Python module:
 
 ```sh
-python3 install src
+pip install -e .
 ```
 
 ### Running
@@ -66,7 +66,7 @@ The application is configurable via environment variables.
 - `OIDC_DISCOVERY_INTERNAL_URL`
   - The internal network OpenID Connect discovery document URL
   - **Type:** HTTP(S) URL
-  - **Required:** No, defaults to value of `OIDC_DISCOVERY_URL`
+  - **Required:** No, defaults to the value of `OIDC_DISCOVERY_URL`
   - **Example:** `http://auth/.well-known/openid-configuration`
 - `DEFAULT_PUBLIC`
   - **Description:** Default access policy for endpoints
@@ -74,8 +74,8 @@ The application is configurable via environment variables.
   - **Default:** `false`
   - **Example:** `false`, `1`, `True`
 - `PRIVATE_ENDPOINTS`
-  - **Description:** Endpoints explicitely marked as requiring authentication, for use when `DEFAULT_PUBLIC == True`
-  - **Type:** JSON object mapping regex patterns to HTTP methods OR to tuples of HTTP methods and an array of strings representing required scopes.
+  - **Description:** Endpoints explicitly marked as requiring authentication, for use when `DEFAULT_PUBLIC == True`
+  - **Type:** JSON object mapping regex patterns to HTTP methods OR tuples of HTTP methods and an array of strings representing required scopes
   - **Default:**
     ```json
     {
@@ -87,7 +87,7 @@ The application is configurable via environment variables.
     }
     ```
 - `PUBLIC_ENDPOINTS`
-  - **Description:** Endpoints explicitely marked as not requiring authentication, for use when `DEFAULT_PUBLIC == False`
+  - **Description:** Endpoints explicitly marked as not requiring authentication, for use when `DEFAULT_PUBLIC == False`
   - **Type:** JSON object mapping regex patterns to HTTP methods
   - **Default:**
     ```json
@@ -132,7 +132,7 @@ The application is configurable via environment variables.
 
 ### Customization
 
-While this project aims to provide utility out-of-the-box as a runnable application, it's likely won't address every project's needs. In these situations, this codebase can instead be treated as a library of components that can be used to augment any webserver that makes use of the [ASGI protocol](https://asgi.readthedocs.io/en/latest/) (e.g. [Django](https://docs.djangoproject.com/en/3.0/topics/async/), [Falcon](https://falconframework.org/), [FastAPI](https://github.com/tiangolo/fastapi),[Litestar](https://litestar.dev/), [Responder](https://responder.readthedocs.io/en/latest/), [Sanic](https://sanic.dev/), [Starlette](https://www.starlette.io/)). Review [`app.py`](https://github.com/developmentseed/stac-auth-proxy/blob/main/src/stac_auth_proxy/app.py) to get a sense of how we make use of the various components to construct a FastAPI application.
+While this project aims to provide utility out-of-the-box as a runnable application, it's likely won't address every project's needs. In these situations, this codebase can instead be treated as a library of components that can be used to augment any webserver that makes use of the [ASGI protocol](https://asgi.readthedocs.io/en/latest/) (e.g. [Django](https://docs.djangoproject.com/en/3.0/topics/async/), [Falcon](https://falconframework.org/), [FastAPI](https://github.com/tiangolo/fastapi), [Litestar](https://litestar.dev/), [Responder](https://responder.readthedocs.io/en/latest/), [Sanic](https://sanic.dev/), [Starlette](https://www.starlette.io/)). Review [`app.py`](https://github.com/developmentseed/stac-auth-proxy/blob/main/src/stac_auth_proxy/app.py) to get a sense of how we make use of the various components to construct a FastAPI application.
 
 ## Architecture
 
@@ -145,23 +145,23 @@ The middleware stack is processed in reverse order (bottom to top):
    - Handles authentication and authorization
    - Configurable public/private endpoints
    - OIDC integration
+   - Places auth token payload in request state
 
 2. **BuildCql2FilterMiddleware**
 
-   - Builds CQL2 filters based on request context
-   - Stores filter in request state
+   - Builds CQL2 filters based on request context/state
+   - Places [CQL2 expression](http://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) in request state
 
 3. **ApplyCql2FilterMiddleware**
 
-   - Retrieves filter from request state
-   - Applies the built CQL2 filter to requests
-   - Modifies query strings for GET requests
-   - Modifies JSON bodies for POST/PUT/PATCH requests
+   - Retrieves [CQL2 expression](http://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) from request state
+   - Augments request with CQL2 filter:
+     - Modifies query strings for GET requests
+     - Modifies JSON bodies for POST/PUT/PATCH requests
 
 4. **OpenApiMiddleware**
 
-   - Modifies OpenAPI specification
-   - Adds security requirements
+   - Modifies OpenAPI specification based on endpoint configuration, adding security requirements
    - Only active if `openapi_spec_endpoint` is configured
 
 5. **AddProcessTimeHeaderMiddleware**
@@ -170,7 +170,7 @@ The middleware stack is processed in reverse order (bottom to top):
 
 ### Data filtering via CQL2
 
-In order to provide row-level content filtering, the system supports generating CQL2 filters based on request context. These CQL2 filters are then set on outgoing requests prior to the upstream API.
+The system supports generating CQL2 filters based on request context to provide row-level content filtering. These CQL2 filters are then set on outgoing requests prior to the upstream API.
 
 > [!IMPORTANT]
 > The upstream STAC API must support the [STAC API Filter Extension](https://github.com/stac-api-extensions/filter/blob/main/README.md).

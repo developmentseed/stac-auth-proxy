@@ -14,7 +14,7 @@ STAC Auth Proxy is a proxy API that mediates between the client and an internall
 ## Installation
 
 > [!NOTE]
-> Currently, the project is only installable by downlaoding the repository. It will eventually be available on Docker (#5) and PyPi (#30).
+> Currently, the project is only installable by downlaoding the repository. It will eventually be available on Docker ([#5](https://github.com/developmentseed/issues/5)) and PyPi ([#30](https://github.com/developmentseed/issues/30)).
 
 This project uses [`uv`](https://docs.astral.sh/uv/) to manage project dependencies and environment.
 
@@ -197,17 +197,17 @@ sequenceDiagram
 
 #### Filters
 
-| Supported | Method   | Endpoint                                       | Action | Filter     | Strategy                                                                                               |
-| --------- | -------- | ---------------------------------------------- | ------ | ---------- | ------------------------------------------------------------------------------------------------------ |
-| ✅        | `POST`   | `/search`                                      | Read   | Item       | Append body with generated CQL2 query.                                                                 |
-| ✅        | `GET`    | `/search`                                      | Read   | Item       | Append query params with generated CQL2 query.                                                         |
-| ❌ (#22)  | `POST`   | `/collections/`                                | Create | Collection | Validate body with generated CQL2 query.                                                               |
-| ❌ (#23)  | `GET`    | `/collections/{collection_id}`                 | Read   | Collection | Append query params with generated CQL2 query.                                                         |
-| ❌ (#22)  | `PUT`    | `/collections/{collection_id}}`                | Update | Collection | Fetch Collection and validate CQL2 query; merge Item with body and validate with generated CQL2 query. |
-| ❌ (#22)  | `DELETE` | `/collections/{collection_id}`                 | Delete | Collection | Fetch Collectiion and validate with CQL2 query.                                                        |
-| ✅        | `GET`    | `/collections/{collection_id}/items`           | Read   | Item       | Append query params with generated CQL2 query.                                                         |
-| ❌ (#25)  | `GET`    | `/collections/{collection_id}/items/{item_id}` | Read   | Item       | Validate response against CQL2 query.                                                                  |
-| ❌ (#21)  | `POST`   | `/collections/{collection_id}/items`           | Create | Item       | Validate body with generated CQL2 query.                                                               |
-| ❌ (#21)  | `PUT`    | `/collections/{collection_id}/items/{item_id}` | Update | Item       | Fetch Item and validate CQL2 query; merge Item with body and validate with generated CQL2 query.       |
-| ❌ (#21)  | `DELETE` | `/collections/{collection_id}/items/{item_id}` | Delete | Item       | Fetch Item and validate with CQL2 query.                                                               |
-| ❌ (#21)  | `POST`   | `/collections/{collection_id}/bulk_items`      | Create | Item       | Validate items in body with generated CQL2 query.                                                      |
+| Supported                                                | Method   | Endpoint                                       | Action | Filter     | Strategy                                                                                               |
+| -------------------------------------------------------- | -------- | ---------------------------------------------- | ------ | ---------- | ------------------------------------------------------------------------------------------------------ |
+| ✅                                                       | `POST`   | `/search`                                      | Read   | Item       | Append body with generated CQL2 query.                                                                 |
+| ✅                                                       | `GET`    | `/search`                                      | Read   | Item       | Append query params with generated CQL2 query.                                                         |
+| ❌ ([#22](https://github.com/developmentseed/issues/22)) | `POST`   | `/collections/`                                | Create | Collection | Validate body with generated CQL2 query.                                                               |
+| ❌ ([#23](https://github.com/developmentseed/issues/23)) | `GET`    | `/collections/{collection_id}`                 | Read   | Collection | Append query params with generated CQL2 query.                                                         |
+| ❌ ([#22](https://github.com/developmentseed/issues/22)) | `PUT`    | `/collections/{collection_id}}`                | Update | Collection | Fetch Collection and validate CQL2 query; merge Item with body and validate with generated CQL2 query. |
+| ❌ ([#22](https://github.com/developmentseed/issues/22)) | `DELETE` | `/collections/{collection_id}`                 | Delete | Collection | Fetch Collectiion and validate with CQL2 query.                                                        |
+| ✅                                                       | `GET`    | `/collections/{collection_id}/items`           | Read   | Item       | Append query params with generated CQL2 query.                                                         |
+| ❌ ([#25](https://github.com/developmentseed/issues/25)) | `GET`    | `/collections/{collection_id}/items/{item_id}` | Read   | Item       | Validate response against CQL2 query.                                                                  |
+| ❌ ([#21](https://github.com/developmentseed/issues/21)) | `POST`   | `/collections/{collection_id}/items`           | Create | Item       | Validate body with generated CQL2 query.                                                               |
+| ❌ ([#21](https://github.com/developmentseed/issues/21)) | `PUT`    | `/collections/{collection_id}/items/{item_id}` | Update | Item       | Fetch Item and validate CQL2 query; merge Item with body and validate with generated CQL2 query.       |
+| ❌ ([#21](https://github.com/developmentseed/issues/21)) | `DELETE` | `/collections/{collection_id}/items/{item_id}` | Delete | Item       | Fetch Item and validate with CQL2 query.                                                               |
+| ❌ ([#21](https://github.com/developmentseed/issues/21)) | `POST`   | `/collections/{collection_id}/bulk_items`      | Create | Item       | Validate items in body with generated CQL2 query.                                                      |

@@ -1,6 +1,6 @@
 <div align="center">
   <h1 style="font-family: monospace">stac auth proxy</h1>
-  <p align="center">Reverse proxy to apply auth*n scenarios to STAC APIs.</p>
+  <p align="center">Reverse proxy to apply auth*n to STAC APIs.</p>
 </div>
 
 ---
@@ -32,7 +32,7 @@ uv sync
 Otherwise, the application can be installed as a standard Python module:
 
 ```sh
-pip install -e src
+pip install -e .
 ```
 
 ### Running
@@ -145,23 +145,23 @@ The middleware stack is processed in reverse order (bottom to top):
    - Handles authentication and authorization
    - Configurable public/private endpoints
    - OIDC integration
+   - Places auth token payload in request state
 
 2. **BuildCql2FilterMiddleware**
 
-   - Builds CQL2 filters based on request context
-   - Stores filter in request state
+   - Builds CQL2 filters based on request context/state
+   - Places [CQL2 expression](http://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) in request state
 
 3. **ApplyCql2FilterMiddleware**
 
-   - Retrieves filter from request state
-   - Applies the built CQL2 filter to requests
-   - Modifies query strings for GET requests
-   - Modifies JSON bodies for POST/PUT/PATCH requests
+   - Retrieves [CQL2 expression](http://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) from request state
+   - Augments request with CQL2 filter:
+     - Modifies query strings for GET requests
+     - Modifies JSON bodies for POST/PUT/PATCH requests
 
 4. **OpenApiMiddleware**
 
-   - Modifies OpenAPI specification
-   - Adds security requirements
+   - Modifies OpenAPI specification based on endpoint configuration, adding security requirements
    - Only active if `openapi_spec_endpoint` is configured
 
 5. **AddProcessTimeHeaderMiddleware**

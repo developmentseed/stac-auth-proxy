@@ -11,7 +11,7 @@ from typing import Optional
 from fastapi import FastAPI
 
 from .config import Settings
-from .handlers import HealthzHandler, ReverseProxyHandler
+from .handlers import HealthzHandler, ReverseProxyHandler, S3AssetSigner
 from .lifespan import LifespanManager, ServerHealthCheck
 from .middleware import (
     AddProcessTimeHeaderMiddleware,
@@ -57,6 +57,14 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             prefix=settings.healthz_prefix,
         )
 
+    if settings.signer_endpoint:
+        # TODO: Warn/error if endpoint is public
+        app.add_api_route(
+            settings.signer_endpoint,
+            S3AssetSigner(bucket_pattern=settings.signer_endpoint).endpoint,
+            methods=["POST"],
+        )
+
     app.add_api_route(
         "/{path:path}",
         ReverseProxyHandler(upstream=str(settings.upstream_url)).stream,
@@ -76,6 +84,11 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             default_public=settings.default_public,
         )
 
+        # signers={
+        #     schema: endpoint
+        #     for schema, endpoint in {"s3": settings.signer_endpoint}.items()
+        #     if endpoint
+        # },
     if settings.items_filter:
         app.add_middleware(
             ApplyCql2FilterMiddleware,

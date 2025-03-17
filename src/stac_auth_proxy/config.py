@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     healthz_prefix: str = Field(pattern=_PREFIX_PATTERN, default="/healthz")
     openapi_spec_endpoint: Optional[str] = Field(pattern=_PREFIX_PATTERN, default=None)
 
+    signer_endpoint: Optional[str] = Field(pattern=_PREFIX_PATTERN, default=None)
+    signer_asset_expression: Optional[str] = Field(default=r".*")
+
     # Auth
     default_public: bool = False
     public_endpoints: EndpointMethodsNoScope = {

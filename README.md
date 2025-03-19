@@ -53,28 +53,23 @@ uvicorn --factory stac_auth_proxy:create_app
 
 The application is configurable via environment variables.
 
-- `UPSTREAM_URL`
-  - The STAC API to proxy requests to
+- `UPSTREAM_URL`, STAC API URL
   - **Type:** HTTP(S) URL
   - **Required:** Yes
   - **Example:** `https://your-stac-api.com/stac`
-- `OIDC_DISCOVERY_URL`
-  - OpenID Connect discovery document URL
+- `OIDC_DISCOVERY_URL`, OpenID Connect discovery document URL
   - **Type:** HTTP(S) URL
   - **Required:** Yes
   - **Example:** `https://auth.example.com/.well-known/openid-configuration`
-- `OIDC_DISCOVERY_INTERNAL_URL`
-  - The internal network OpenID Connect discovery document URL
+- `OIDC_DISCOVERY_INTERNAL_URL`, internal network OpenID Connect discovery document URL
   - **Type:** HTTP(S) URL
   - **Required:** No, defaults to the value of `OIDC_DISCOVERY_URL`
   - **Example:** `http://auth/.well-known/openid-configuration`
-- `DEFAULT_PUBLIC`
-  - **Description:** Default access policy for endpoints
+- `DEFAULT_PUBLIC`, default access policy for endpoints
   - **Type:** boolean
   - **Required:** No, defaults to `false`
   - **Example:** `false`, `1`, `True`
-- `PRIVATE_ENDPOINTS`
-  - **Description:** Endpoints explicitly marked as requiring authentication, used when `DEFAULT_PUBLIC == True`
+- `PRIVATE_ENDPOINTS`, endpoints explicitly marked as requiring authentication, used when `DEFAULT_PUBLIC == True`
   - **Type:** JSON object mapping regex patterns to HTTP methods OR tuples of HTTP methods and an array of strings representing required scopes
   - **Required:** No, defaults to the following:
     ```json
@@ -86,8 +81,7 @@ The application is configurable via environment variables.
       "^/collections/([^/]+)/bulk_items$": ["POST"]
     }
     ```
-- `PUBLIC_ENDPOINTS`
-  - **Description:** Endpoints explicitly marked as not requiring authentication, used when `DEFAULT_PUBLIC == False`
+- `PUBLIC_ENDPOINTS`, endpoints explicitly marked as not requiring authentication, used when `DEFAULT_PUBLIC == False`
   - **Type:** JSON object mapping regex patterns to HTTP methods
   - **Required:** No, defaults to the following:
     ```json
@@ -96,16 +90,14 @@ The application is configurable via environment variables.
       "^/api$": ["GET"]
     }
     ```
-- `OPENAPI_SPEC_ENDPOINT`
-  - Path to serve OpenAPI specification
+- `OPENAPI_SPEC_ENDPOINT`, path to serve OpenAPI specification
   - **Type:** string or null
   - **Required:** No, defaults to `null` (disabled)
   - **Example:** `/api`
-- `ITEMS_FILTER`
-  - Configuration for item-level filtering
+- `ITEMS_FILTER`, configuration for item-level filtering
   - **Type:** JSON object with class configuration
   - **Required:** No, defaults to `null` (disabled)
-  - Components:
+  - **Components**:
     - `cls`: Python import path
     - `args`: List of positional arguments
     - `kwargs`: Dictionary of keyword arguments

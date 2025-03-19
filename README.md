@@ -133,31 +133,31 @@ While the project is designed to work out-of-the-box as an application, it might
 
 The majority of the proxy's functionality occurs within a chain of middlewares. Each request passes through this chain, wherein each middleware performs a specific task:
 
-1. **EnforceAuthMiddleware**
+1. **`EnforceAuthMiddleware`**
 
    - Handles authentication and authorization
    - Configurable public/private endpoints
    - OIDC integration
    - Places auth token payload in request state
 
-2. **BuildCql2FilterMiddleware**
+2. **`BuildCql2FilterMiddleware`**
 
    - Builds CQL2 filters based on request context/state
    - Places [CQL2 expression](http://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) in request state
 
-3. **ApplyCql2FilterMiddleware**
+3. **`ApplyCql2FilterMiddleware`**
 
    - Retrieves [CQL2 expression](http://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) from request state
    - Augments request with CQL2 filter:
      - Modifies query strings for `GET` requests
      - Modifies JSON bodies for `POST`/`PUT`/`PATCH` requests
 
-4. **OpenApiMiddleware**
+4. **`OpenApiMiddleware`**
 
    - Modifies OpenAPI specification based on endpoint configuration, adding security requirements
    - Only active if `openapi_spec_endpoint` is configured
 
-5. **AddProcessTimeHeaderMiddleware**
+5. **`AddProcessTimeHeaderMiddleware`**
    - Adds processing time headers
    - Useful for monitoring/debugging
 

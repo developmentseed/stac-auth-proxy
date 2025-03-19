@@ -69,7 +69,7 @@ class Settings(BaseSettings):
     # Filters
     items_filter: Optional[ClassInput] = None
     items_filter_endpoints: Optional[EndpointMethods] = {
-        r"^/search$": ["POST"],
+        r"^/search$": ["GET", "POST"],
         r"^/collections/([^/]+)/items$": ["GET", "POST"],
     }
 

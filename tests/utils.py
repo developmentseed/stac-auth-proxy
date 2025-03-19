@@ -2,10 +2,12 @@
 
 import json
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, cast
+from unittest.mock import MagicMock
 from urllib.parse import parse_qs, unquote
 
 import httpx
+from httpx import Headers, Request
 
 from stac_auth_proxy import Settings, create_app
 
@@ -68,3 +70,24 @@ def parse_query_string(qs: str) -> dict:
             result[key] = unquote(value)
 
     return result
+
+
+async def get_upstream_request(mock_upstream: MagicMock) -> "UpstreamRequest":
+    """Fetch the raw body and query params from the single upstream request."""
+    assert mock_upstream.call_count == 1
+    [request] = cast(list[Request], mock_upstream.call_args[0])
+    req_body = request._streamed_body
+    return UpstreamRequest(
+        body=req_body.decode(),
+        query_params=parse_query_string(request.url.query.decode("utf-8")),
+        headers=request.headers,
+    )
+
+
+@dataclass
+class UpstreamRequest:
+    """The raw body and query params from the single upstream request."""
+
+    body: str
+    query_params: dict
+    headers: Headers

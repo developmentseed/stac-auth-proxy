@@ -15,9 +15,9 @@ class ServerHealthCheck:
     """Health check for upstream API."""
 
     url: str | HttpUrl
-    max_retries: int = 5
-    retry_delay: float = 0.25
-    retry_delay_max: float = 10.0
+    max_retries: int = 10
+    retry_delay: float = 0.5
+    retry_delay_max: float = 5.0
     timeout: float = 5.0
 
     def __post_init__(self):

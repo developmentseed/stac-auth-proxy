@@ -1,14 +1,11 @@
 """Tests for Jinja2 CQL2 filter (simplified for readability)."""
 
 import json
-from typing import cast
-from unittest.mock import MagicMock
 
 import cql2
 import pytest
 from fastapi.testclient import TestClient
-from httpx import Request
-from utils import AppFactory, parse_query_string
+from utils import AppFactory, get_upstream_request
 
 FILTER_EXPR_CASES = [
     pytest.param(
@@ -148,14 +145,6 @@ def _build_client(
     return TestClient(app, headers=headers)
 
 
-async def _get_upstream_request(mock_upstream: MagicMock):
-    """Fetch the raw body and query params from the single upstream request."""
-    assert mock_upstream.call_count == 1
-    [request] = cast(list[Request], mock_upstream.call_args[0])
-    req_body = request._streamed_body
-    return req_body.decode(), parse_query_string(request.url.query.decode("utf-8"))
-
-
 @pytest.mark.parametrize(
     "filter_template_expr, expected_auth_filter, expected_anon_filter",
     FILTER_EXPR_CASES,
@@ -182,8 +171,8 @@ async def test_search_post(
     response.raise_for_status()
 
     # Retrieve the JSON body that was actually sent upstream
-    proxied_body_str = (await _get_upstream_request(mock_upstream))[0]
-    proxied_body = json.loads(proxied_body_str)
+    proxied_request = await get_upstream_request(mock_upstream)
+    proxied_body = json.loads(proxied_request.body)
 
     # Determine the expected combined filter
     proxy_filter = cql2.Expr(
@@ -231,8 +220,8 @@ async def test_search_get(
     response.raise_for_status()
 
     # For GET, we expect the upstream body to be empty, but URL params to be appended
-    proxied_body, upstream_query = await _get_upstream_request(mock_upstream)
-    assert proxied_body == ""
+    proxied_request = await get_upstream_request(mock_upstream)
+    assert proxied_request.body == ""
 
     # Determine the expected combined filter
     proxy_filter = cql2.Expr(
@@ -253,7 +242,7 @@ async def test_search_get(
         "filter-lang": filter_lang,
     }
     assert (
-        upstream_query == expected_output
+        proxied_request.query_params == expected_output
     ), "GET query should combine filter expressions."
 
 
@@ -284,15 +273,15 @@ async def test_items_list(
     response.raise_for_status()
 
     # For GET items, we also expect an empty body and appended querystring
-    proxied_body, proxied_query = await _get_upstream_request(mock_upstream)
-    assert proxied_body == ""
+    proxied_request = await get_upstream_request(mock_upstream)
+    assert proxied_request.body == ""
 
     # Only the appended filter (no input_filter merges in these particular tests),
     # but you could do similar merging logic if needed.
     proxy_filter = cql2.Expr(
         expected_auth_filter if is_authenticated else expected_anon_filter
     )
-    assert proxied_query == {
+    assert proxied_request.query_params == {
         "filter-lang": "cql2-text",
         "filter": (
             proxy_filter + cql2.Expr(qs_filter)

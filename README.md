@@ -19,7 +19,7 @@ STAC Auth Proxy is a proxy API that mediates between the client and an internall
 ## Usage
 
 > [!NOTE]
-> Currently, the project can only be installed by downloading the repository. It will eventually be available on Docker ([#5](https://github.com/developmentseed/issues/5)) and PyPi ([#30](https://github.com/developmentseed/issues/30)).
+> Currently, the project can only be installed by downloading the repository. It will eventually be available on Docker ([#5](https://github.com/developmentseed/stac-auth-proxy/issues/5)) and PyPi ([#30](https://github.com/developmentseed/stac-auth-proxy/issues/30)).
 
 ### Installation
 
@@ -125,7 +125,7 @@ The application is configurable via environment variables.
   - **Default:**
     ```json
     {
-      "^/search$": ["POST"],
+      "^/search$": ["GET", "POST"],
       "^/collections/([^/]+)/items$": ["GET", "POST"]
     }
     ```
@@ -138,7 +138,7 @@ While this project aims to provide utility out-of-the-box as a runnable applicat
 
 ### Middleware Stack
 
-The middleware stack is processed in reverse order (bottom to top):
+Requests pass through a chain of middleware, each performing individual tasks:
 
 1. **EnforceAuthMiddleware**
 
@@ -156,8 +156,8 @@ The middleware stack is processed in reverse order (bottom to top):
 
    - Retrieves [CQL2 expression](http://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) from request state
    - Augments request with CQL2 filter:
-     - Modifies query strings for GET requests
-     - Modifies JSON bodies for POST/PUT/PATCH requests
+     - Modifies query strings for `GET` requests
+     - Modifies JSON bodies for `POST`/`PUT`/`PATCH` requests
 
 4. **OpenApiMiddleware**
 
@@ -173,10 +173,10 @@ The middleware stack is processed in reverse order (bottom to top):
 The system supports generating CQL2 filters based on request context to provide row-level content filtering. These CQL2 filters are then set on outgoing requests prior to the upstream API.
 
 > [!IMPORTANT]
-> The upstream STAC API must support the [STAC API Filter Extension](https://github.com/stac-api-extensions/filter/blob/main/README.md).
+> The upstream STAC API must support the [STAC API Filter Extension](https://github.com/stac-api-extensions/filter/blob/main/README.md), including the [Features Filter](http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter) conformance class on to the Features resource (`/collections/{cid}/items`) [#37](https://github.com/developmentseed/stac-auth-proxy/issues/37).
 
 > [!TIP]
-> Integration with external authorization systems (e.g. [Open Policy Agent](https://www.openpolicyagent.org/)) can be achieved by replacing the default `BuildCql2FilterMiddleware` with a custom async middleware that is capable of generating [`cql2.Expr` objects](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr).
+> Integration with external authorization systems (e.g. [Open Policy Agent](https://www.openpolicyagent.org/)) can be achieved by specifying an `ITEMS_FILTER` that points to a class/function that, once initialized, returns a [`cql2.Expr` object](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) when called with the request context.
 
 #### Example GET Request Flow
 
@@ -196,13 +196,13 @@ sequenceDiagram
 | -------------------------------------------------------- | -------- | ---------------------------------------------- | ------ | ---------- | ------------------------------------------------------------------------------------------------------ |
 | ✅                                                       | `POST`   | `/search`                                      | Read   | Item       | Append body with generated CQL2 query.                                                                 |
 | ✅                                                       | `GET`    | `/search`                                      | Read   | Item       | Append query params with generated CQL2 query.                                                         |
-| ❌ ([#22](https://github.com/developmentseed/issues/22)) | `POST`   | `/collections/`                                | Create | Collection | Validate body with generated CQL2 query.                                                               |
-| ❌ ([#23](https://github.com/developmentseed/issues/23)) | `GET`    | `/collections/{collection_id}`                 | Read   | Collection | Append query params with generated CQL2 query.                                                         |
-| ❌ ([#22](https://github.com/developmentseed/issues/22)) | `PUT`    | `/collections/{collection_id}}`                | Update | Collection | Fetch Collection and validate CQL2 query; merge Item with body and validate with generated CQL2 query. |
-| ❌ ([#22](https://github.com/developmentseed/issues/22)) | `DELETE` | `/collections/{collection_id}`                 | Delete | Collection | Fetch Collectiion and validate with CQL2 query.                                                        |
+| ❌ ([#22](https://github.com/developmentseed/stac-auth-proxy/issues/22)) | `POST`   | `/collections/`                                | Create | Collection | Validate body with generated CQL2 query.                                                               |
+| ❌ ([#23](https://github.com/developmentseed/stac-auth-proxy/issues/23)) | `GET`    | `/collections/{collection_id}`                 | Read   | Collection | Append query params with generated CQL2 query.                                                         |
+| ❌ ([#22](https://github.com/developmentseed/stac-auth-proxy/issues/22)) | `PUT`    | `/collections/{collection_id}}`                | Update | Collection | Fetch Collection and validate CQL2 query; merge Item with body and validate with generated CQL2 query. |
+| ❌ ([#22](https://github.com/developmentseed/stac-auth-proxy/issues/22)) | `DELETE` | `/collections/{collection_id}`                 | Delete | Collection | Fetch Collectiion and validate with CQL2 query.                                                        |
 | ✅                                                       | `GET`    | `/collections/{collection_id}/items`           | Read   | Item       | Append query params with generated CQL2 query.                                                         |
-| ❌ ([#25](https://github.com/developmentseed/issues/25)) | `GET`    | `/collections/{collection_id}/items/{item_id}` | Read   | Item       | Validate response against CQL2 query.                                                                  |
-| ❌ ([#21](https://github.com/developmentseed/issues/21)) | `POST`   | `/collections/{collection_id}/items`           | Create | Item       | Validate body with generated CQL2 query.                                                               |
-| ❌ ([#21](https://github.com/developmentseed/issues/21)) | `PUT`    | `/collections/{collection_id}/items/{item_id}` | Update | Item       | Fetch Item and validate CQL2 query; merge Item with body and validate with generated CQL2 query.       |
-| ❌ ([#21](https://github.com/developmentseed/issues/21)) | `DELETE` | `/collections/{collection_id}/items/{item_id}` | Delete | Item       | Fetch Item and validate with CQL2 query.                                                               |
-| ❌ ([#21](https://github.com/developmentseed/issues/21)) | `POST`   | `/collections/{collection_id}/bulk_items`      | Create | Item       | Validate items in body with generated CQL2 query.                                                      |
+| ❌ ([#25](https://github.com/developmentseed/stac-auth-proxy/issues/25)) | `GET`    | `/collections/{collection_id}/items/{item_id}` | Read   | Item       | Validate response against CQL2 query.                                                                  |
+| ❌ ([#21](https://github.com/developmentseed/stac-auth-proxy/issues/21)) | `POST`   | `/collections/{collection_id}/items`           | Create | Item       | Validate body with generated CQL2 query.                                                               |
+| ❌ ([#21](https://github.com/developmentseed/stac-auth-proxy/issues/21)) | `PUT`    | `/collections/{collection_id}/items/{item_id}` | Update | Item       | Fetch Item and validate CQL2 query; merge Item with body and validate with generated CQL2 query.       |
+| ❌ ([#21](https://github.com/developmentseed/stac-auth-proxy/issues/21)) | `DELETE` | `/collections/{collection_id}/items/{item_id}` | Delete | Item       | Fetch Item and validate with CQL2 query.                                                               |
+| ❌ ([#21](https://github.com/developmentseed/stac-auth-proxy/issues/21)) | `POST`   | `/collections/{collection_id}/bulk_items`      | Create | Item       | Validate items in body with generated CQL2 query.                                                      |

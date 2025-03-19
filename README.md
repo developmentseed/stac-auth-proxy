@@ -156,8 +156,8 @@ The middleware stack is processed in reverse order (bottom to top):
 
    - Retrieves [CQL2 expression](http://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) from request state
    - Augments request with CQL2 filter:
-     - Modifies query strings for GET requests
-     - Modifies JSON bodies for POST/PUT/PATCH requests
+     - Modifies query strings for `GET` requests
+     - Modifies JSON bodies for `POST`/`PUT`/`PATCH` requests
 
 4. **OpenApiMiddleware**
 

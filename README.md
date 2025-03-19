@@ -138,7 +138,7 @@ While this project aims to provide utility out-of-the-box as a runnable applicat
 
 ### Middleware Stack
 
-The middleware stack is processed in reverse order (bottom to top):
+Requests pass through a chain of middleware, each performing individual tasks:
 
 1. **EnforceAuthMiddleware**
 

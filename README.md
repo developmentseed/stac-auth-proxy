@@ -90,7 +90,7 @@ The application is configurable via environment variables.
       "^/api$": ["GET"]
     }
     ```
-- `OPENAPI_SPEC_ENDPOINT`, path to serve OpenAPI specification
+- `OPENAPI_SPEC_ENDPOINT`, path of OpenAPI specification, used for augment spec response with auth configuration
   - **Type:** string or null
   - **Required:** No, defaults to `null` (disabled)
   - **Example:** `/api`

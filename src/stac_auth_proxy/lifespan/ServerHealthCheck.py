@@ -16,8 +16,8 @@ class ServerHealthCheck:
 
     url: str | HttpUrl
     max_retries: int = 10
-    retry_delay: float = 0.25
-    retry_delay_max: float = 10.0
+    retry_delay: float = 0.5
+    retry_delay_max: float = 5.0
     timeout: float = 5.0
 
     def __post_init__(self):

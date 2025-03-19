@@ -125,7 +125,7 @@ The application is configurable via environment variables.
   - **Default:**
     ```json
     {
-      "^/search$": ["POST"],
+      "^/search$": ["GET", "POST"],
       "^/collections/([^/]+)/items$": ["GET", "POST"]
     }
     ```
@@ -138,7 +138,7 @@ While this project aims to provide utility out-of-the-box as a runnable applicat
 
 ### Middleware Stack
 
-The middleware stack is processed in reverse order (bottom to top):
+Requests pass through a chain of middleware, each performing individual tasks:
 
 1. **EnforceAuthMiddleware**
 
@@ -156,8 +156,8 @@ The middleware stack is processed in reverse order (bottom to top):
 
    - Retrieves [CQL2 expression](http://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) from request state
    - Augments request with CQL2 filter:
-     - Modifies query strings for GET requests
-     - Modifies JSON bodies for POST/PUT/PATCH requests
+     - Modifies query strings for `GET` requests
+     - Modifies JSON bodies for `POST`/`PUT`/`PATCH` requests
 
 4. **OpenApiMiddleware**
 
@@ -176,7 +176,7 @@ The system supports generating CQL2 filters based on request context to provide 
 > The upstream STAC API must support the [STAC API Filter Extension](https://github.com/stac-api-extensions/filter/blob/main/README.md), including the [Features Filter](http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter) conformance class on to the Features resource (`/collections/{cid}/items`) [#37](https://github.com/developmentseed/stac-auth-proxy/issues/37).
 
 > [!TIP]
-> Integration with external authorization systems (e.g. [Open Policy Agent](https://www.openpolicyagent.org/)) can be achieved by replacing the default `BuildCql2FilterMiddleware` with a custom async middleware that is capable of generating [`cql2.Expr` objects](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr).
+> Integration with external authorization systems (e.g. [Open Policy Agent](https://www.openpolicyagent.org/)) can be achieved by specifying an `ITEMS_FILTER` that points to a class/function that, once initialized, returns a [`cql2.Expr` object](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) when called with the request context.
 
 #### Example GET Request Flow
 

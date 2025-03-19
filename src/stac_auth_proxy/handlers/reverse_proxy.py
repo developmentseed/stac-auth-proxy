@@ -44,6 +44,12 @@ class ReverseProxyHandler:
             headers=headers,
             content=request.stream(),
         )
+
+        # NOTE: HTTPX adds headers, so we need to trim them before sending request
+        for h in rp_req.headers:
+            if h not in headers:
+                del rp_req.headers[h]
+
         logger.debug(f"Proxying request to {rp_req.url}")
 
         start_time = time.perf_counter()

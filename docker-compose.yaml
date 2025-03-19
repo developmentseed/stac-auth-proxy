@@ -1,6 +1,6 @@
 services:
   stac:
-    image: ghcr.io/stac-utils/stac-fastapi-pgstac
+    image: ghcr.io/stac-utils/stac-fastapi-pgstac:5.0.0
     environment:
       APP_HOST: 0.0.0.0
       APP_PORT: 8001

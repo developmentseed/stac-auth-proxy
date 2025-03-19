@@ -1,9 +1,9 @@
 """Configuration for the STAC Auth Proxy."""
 
 import importlib
-from typing import Literal, Optional, Sequence, TypeAlias, Union
+from typing import Any, Literal, Optional, Sequence, TypeAlias, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from pydantic.networks import HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     # External URLs
     upstream_url: HttpUrl
     oidc_discovery_url: HttpUrl
-    oidc_discovery_internal_url: Optional[HttpUrl] = None
+    oidc_discovery_internal_url: HttpUrl
 
     wait_for_upstream: bool = True
 
@@ -66,8 +66,16 @@ class Settings(BaseSettings):
     # Filters
     items_filter: Optional[ClassInput] = None
     items_filter_endpoints: Optional[EndpointMethods] = {
-        r"^/search$": ["POST"],
+        r"^/search$": ["GET", "POST"],
         r"^/collections/([^/]+)/items$": ["GET", "POST"],
     }
 
     model_config = SettingsConfigDict()
+
+    @model_validator(mode="before")
+    @classmethod
+    def default_oidc_discovery_internal_url(cls, data: Any) -> Any:
+        """Set the internal OIDC discovery URL to the public URL if not set."""
+        if not data.get("oidc_discovery_internal_url"):
+            data["oidc_discovery_internal_url"] = data.get("oidc_discovery_url")
+        return data

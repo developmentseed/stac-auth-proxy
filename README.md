@@ -160,18 +160,6 @@ The system supports generating CQL2 filters based on request context to provide 
 > [!TIP]
 > Integration with external authorization systems (e.g. [Open Policy Agent](https://www.openpolicyagent.org/)) can be achieved by specifying an `ITEMS_FILTER` that points to a class/function that, once initialized, returns a [`cql2.Expr` object](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) when called with the request context.
 
-#### Example GET Request Flow
-
-```mermaid
-sequenceDiagram
-    Client->>Proxy: GET /collections
-    Note over Proxy: EnforceAuth checks credentials
-    Note over Proxy: BuildCql2Filter creates filter
-    Note over Proxy: ApplyCql2Filter applies filter to request
-    Proxy->>STAC API: GET /collection?filter=(collection=landsat)
-    STAC API->>Client: Response
-```
-
 #### Filters
 
 If enabled, filters are intended to be applied to the following endpoints:
@@ -236,3 +224,15 @@ If enabled, filters are intended to be applied to the following endpoints:
   - **Action:** Create Items
   - **Applied Filter:** `ITEMS_FILTER`
   - **Strategy:** Validate items in body with generated CQL2 query.
+
+#### Example GET Request Flow
+
+```mermaid
+sequenceDiagram
+    Client->>Proxy: GET /collections
+    Note over Proxy: EnforceAuth checks credentials
+    Note over Proxy: BuildCql2Filter creates filter
+    Note over Proxy: ApplyCql2Filter applies filter to request
+    Proxy->>STAC API: GET /collection?filter=(collection=landsat)
+    STAC API->>Client: Response
+```

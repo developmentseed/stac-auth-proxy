@@ -125,7 +125,7 @@ The application is configurable via environment variables.
   - **Default:**
     ```json
     {
-      "^/search$": ["POST"],
+      "^/search$": ["GET", "POST"],
       "^/collections/([^/]+)/items$": ["GET", "POST"]
     }
     ```

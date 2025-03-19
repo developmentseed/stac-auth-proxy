@@ -74,7 +74,7 @@ The application is configurable via environment variables.
   - **Required:** No, defaults to `false`
   - **Example:** `false`, `1`, `True`
 - `PRIVATE_ENDPOINTS`
-  - **Description:** Endpoints explicitly marked as requiring authentication, for use when `DEFAULT_PUBLIC == True`
+  - **Description:** Endpoints explicitly marked as requiring authentication, used when `DEFAULT_PUBLIC == True`
   - **Type:** JSON object mapping regex patterns to HTTP methods OR tuples of HTTP methods and an array of strings representing required scopes
   - **Required:** No, defaults to the following:
     ```json
@@ -87,7 +87,7 @@ The application is configurable via environment variables.
     }
     ```
 - `PUBLIC_ENDPOINTS`
-  - **Description:** Endpoints explicitly marked as not requiring authentication, for use when `DEFAULT_PUBLIC == False`
+  - **Description:** Endpoints explicitly marked as not requiring authentication, used when `DEFAULT_PUBLIC == False`
   - **Type:** JSON object mapping regex patterns to HTTP methods
   - **Required:** No, defaults to the following:
     ```json

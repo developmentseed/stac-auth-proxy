@@ -94,7 +94,7 @@ The application is configurable via environment variables.
   - **Type:** string or null
   - **Required:** No, defaults to `null` (disabled)
   - **Example:** `/api`
-- `ITEMS_FILTER`, configuration for item-level filtering
+- `ITEMS_FILTER`, cql2 expression generator for item-level filtering
   - **Type:** JSON object with class configuration
   - **Required:** No, defaults to `null` (disabled)
   - **Components**:

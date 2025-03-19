@@ -1,6 +1,6 @@
 <div align="center">
   <h1 style="font-family: monospace">stac auth proxy</h1>
-  <p align="center">Reverse proxy to apply auth*n to STAC APIs.</p>
+  <p align="center">Reverse proxy to apply auth*n your STAC API.</p>
 </div>
 
 ---
@@ -8,7 +8,7 @@
 > [!WARNING]
 > This project is currently in active development and may change drastically in the near future while we work towards solidifying a first release.
 
-STAC Auth Proxy is a proxy API that mediates between the client and an internally accessible STAC API to provide a flexible authentication, authorization, and content-filtering mechanism.
+STAC Auth Proxy is a proxy API that mediates between the client and your internally accessible STAC API to provide flexible authentication, authorization, and content-filtering mechanisms.
 
 ## Features
 
@@ -71,12 +71,12 @@ The application is configurable via environment variables.
 - `DEFAULT_PUBLIC`
   - **Description:** Default access policy for endpoints
   - **Type:** boolean
-  - **Default:** `false`
+  - **Required:** No, defaults to `false`
   - **Example:** `false`, `1`, `True`
 - `PRIVATE_ENDPOINTS`
   - **Description:** Endpoints explicitly marked as requiring authentication, for use when `DEFAULT_PUBLIC == True`
   - **Type:** JSON object mapping regex patterns to HTTP methods OR tuples of HTTP methods and an array of strings representing required scopes
-  - **Default:**
+  - **Required:** No, defaults to the following:
     ```json
     {
       "^/collections$": ["POST"],
@@ -89,7 +89,7 @@ The application is configurable via environment variables.
 - `PUBLIC_ENDPOINTS`
   - **Description:** Endpoints explicitly marked as not requiring authentication, for use when `DEFAULT_PUBLIC == False`
   - **Type:** JSON object mapping regex patterns to HTTP methods
-  - **Default:**
+  - **Required:** No, defaults to the following:
     ```json
     {
       "^/api.html$": ["GET"],
@@ -99,12 +99,12 @@ The application is configurable via environment variables.
 - `OPENAPI_SPEC_ENDPOINT`
   - Path to serve OpenAPI specification
   - **Type:** string or null
-  - **Default:** `null` (disabled)
+  - **Required:** No, defaults to `null` (disabled)
   - **Example:** `/api`
 - `ITEMS_FILTER`
   - Configuration for item-level filtering
   - **Type:** JSON object with class configuration
-  - **Default:** `null`
+  - **Required:** No, defaults to `null` (disabled)
   - Components:
     - `cls`: Python import path
     - `args`: List of positional arguments
@@ -122,7 +122,7 @@ The application is configurable via environment variables.
 - `ITEMS_FILTER_ENDPOINTS`
   - Where to apply item filtering
   - **Type:** JSON object mapping regex patterns to HTTP methods
-  - **Default:**
+  - **Required:** No, defaults to the following:
     ```json
     {
       "^/search$": ["GET", "POST"],
@@ -132,13 +132,13 @@ The application is configurable via environment variables.
 
 ### Customization
 
-While this project aims to provide utility out-of-the-box as a runnable application, it's likely won't address every project's needs. In these situations, this codebase can instead be treated as a library of components that can be used to augment any webserver that makes use of the [ASGI protocol](https://asgi.readthedocs.io/en/latest/) (e.g. [Django](https://docs.djangoproject.com/en/3.0/topics/async/), [Falcon](https://falconframework.org/), [FastAPI](https://github.com/tiangolo/fastapi), [Litestar](https://litestar.dev/), [Responder](https://responder.readthedocs.io/en/latest/), [Sanic](https://sanic.dev/), [Starlette](https://www.starlette.io/)). Review [`app.py`](https://github.com/developmentseed/stac-auth-proxy/blob/main/src/stac_auth_proxy/app.py) to get a sense of how we make use of the various components to construct a FastAPI application.
+While the project is designed to work out-of-the-box as an application, it might not address every projects needs. When the need for customization arises, the codebase can instead be treated as a library of components that can be used to augment any [ASGI](https://asgi.readthedocs.io/en/latest/)-compliant webserver (e.g. [Django](https://docs.djangoproject.com/en/3.0/topics/async/), [Falcon](https://falconframework.org/), [FastAPI](https://github.com/tiangolo/fastapi), [Litestar](https://litestar.dev/), [Responder](https://responder.readthedocs.io/en/latest/), [Sanic](https://sanic.dev/), [Starlette](https://www.starlette.io/)). Review [`app.py`](https://github.com/developmentseed/stac-auth-proxy/blob/main/src/stac_auth_proxy/app.py) to get a sense of how we make use of the various components to construct a FastAPI application.
 
 ## Architecture
 
 ### Middleware Stack
 
-Requests pass through a chain of middleware, each performing individual tasks:
+The majority of the proxy's functionality occurs within a chain of middlewares. Each request passes through this chain, wherein each middleware performs a specific task:
 
 1. **EnforceAuthMiddleware**
 

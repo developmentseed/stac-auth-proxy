@@ -166,8 +166,8 @@ The system supports generating CQL2 filters based on request context to provide 
 sequenceDiagram
     Client->>Proxy: GET /collections
     Note over Proxy: EnforceAuth checks credentials
-    Note over Proxy: BuildCql2Filter creates filter immediately
-    Note over Proxy: ApplyCql2Filter modifies query string
+    Note over Proxy: BuildCql2Filter creates filter
+    Note over Proxy: ApplyCql2Filter applies filter to request
     Proxy->>STAC API: GET /collection?filter=(collection=landsat)
     STAC API->>Client: Response
 ```

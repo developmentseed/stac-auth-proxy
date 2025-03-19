@@ -65,6 +65,18 @@ The application is configurable via environment variables.
   - **Type:** HTTP(S) URL
   - **Required:** No, defaults to the value of `OIDC_DISCOVERY_URL`
   - **Example:** `http://auth/.well-known/openid-configuration`
+- `WAIT_FOR_UPSTREAM`, wait for upstream API to become available before starting proxy
+  - **Type:** boolean
+  - **Required:** No, defaults to `true`
+  - **Example:** `false`, `1`, `True`
+- `HEALTHZ_PREFIX`, prefix for health check endpoints
+  - **Type:** string
+  - **Required:** No, defaults to `/healthz`
+  - **Example:** `''` (disabled)
+- `OPENAPI_SPEC_ENDPOINT`, path of OpenAPI specification, used for augment spec response with auth configuration
+  - **Type:** string or null
+  - **Required:** No, defaults to `null` (disabled)
+  - **Example:** `/api`
 - `DEFAULT_PUBLIC`, default access policy for endpoints
   - **Type:** boolean
   - **Required:** No, defaults to `false`
@@ -90,10 +102,6 @@ The application is configurable via environment variables.
       "^/api$": ["GET"]
     }
     ```
-- `OPENAPI_SPEC_ENDPOINT`, path of OpenAPI specification, used for augment spec response with auth configuration
-  - **Type:** string or null
-  - **Required:** No, defaults to `null` (disabled)
-  - **Example:** `/api`
 - `ITEMS_FILTER`, cql2 expression generator for item-level filtering
   - **Type:** JSON object with class configuration
   - **Required:** No, defaults to `null` (disabled)

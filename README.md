@@ -53,33 +53,33 @@ uvicorn --factory stac_auth_proxy:create_app
 
 The application is configurable via environment variables.
 
-- **Core**
-  - `UPSTREAM_URL`, STAC API URL
+- Core
+  - **`UPSTREAM_URL`**, STAC API URL
     - **Type:** HTTP(S) URL
     - **Required:** Yes
     - **Example:** `https://your-stac-api.com/stac`
-  - `WAIT_FOR_UPSTREAM`, wait for upstream API to become available before starting proxy
+  - **`WAIT_FOR_UPSTREAM`**, wait for upstream API to become available before starting proxy
     - **Type:** boolean
     - **Required:** No, defaults to `true`
     - **Example:** `false`, `1`, `True`
-  - `HEALTHZ_PREFIX`, path prefix for health check endpoints
+  - **`HEALTHZ_PREFIX`**, path prefix for health check endpoints
     - **Type:** string
     - **Required:** No, defaults to `/healthz`
     - **Example:** `''` (disabled)
-- **Authentication**
-  - `OIDC_DISCOVERY_URL`, OpenID Connect discovery document URL
+- Authentication
+  - **`OIDC_DISCOVERY_URL`**, OpenID Connect discovery document URL
     - **Type:** HTTP(S) URL
     - **Required:** Yes
     - **Example:** `https://auth.example.com/.well-known/openid-configuration`
-  - `OIDC_DISCOVERY_INTERNAL_URL`, internal network OpenID Connect discovery document URL
+  - **`OIDC_DISCOVERY_INTERNAL_URL`**, internal network OpenID Connect discovery document URL
     - **Type:** HTTP(S) URL
     - **Required:** No, defaults to the value of `OIDC_DISCOVERY_URL`
     - **Example:** `http://auth/.well-known/openid-configuration`
-  - `DEFAULT_PUBLIC`, default access policy for endpoints
+  - **`DEFAULT_PUBLIC`**, default access policy for endpoints
     - **Type:** boolean
     - **Required:** No, defaults to `false`
     - **Example:** `false`, `1`, `True`
-  - `PRIVATE_ENDPOINTS`, endpoints explicitly marked as requiring authentication, used when `DEFAULT_PUBLIC == True`
+  - **`PRIVATE_ENDPOINTS`**, endpoints explicitly marked as requiring authentication, used when `DEFAULT_PUBLIC == True`
     - **Type:** JSON object mapping regex patterns to HTTP methods OR tuples of HTTP methods and an array of strings representing required scopes
     - **Required:** No, defaults to the following:
       ```json
@@ -91,7 +91,7 @@ The application is configurable via environment variables.
         "^/collections/([^/]+)/bulk_items$": ["POST"]
       }
       ```
-  - `PUBLIC_ENDPOINTS`, endpoints explicitly marked as not requiring authentication, used when `DEFAULT_PUBLIC == False`
+  - **`PUBLIC_ENDPOINTS`**, endpoints explicitly marked as not requiring authentication, used when `DEFAULT_PUBLIC == False`
     - **Type:** JSON object mapping regex patterns to HTTP methods
     - **Required:** No, defaults to the following:
       ```json
@@ -100,12 +100,12 @@ The application is configurable via environment variables.
         "^/api$": ["GET"]
       }
       ```
-  - `OPENAPI_SPEC_ENDPOINT`, path of OpenAPI specification, used for augmenting spec response with auth configuration
+  - **`OPENAPI_SPEC_ENDPOINT`**, path of OpenAPI specification, used for augmenting spec response with auth configuration
     - **Type:** string or null
     - **Required:** No, defaults to `null` (disabled)
     - **Example:** `/api`
-- **Filtering**
-  - `ITEMS_FILTER`, [cql2 expression](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) generator for item-level filtering
+- Filtering
+  - **`ITEMS_FILTER`**, [cql2 expression](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) generator for item-level filtering
     - **Type:** JSON object with class configuration
     - **Required:** No, defaults to `null` (disabled)
     - **Components**:

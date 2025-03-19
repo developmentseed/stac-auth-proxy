@@ -111,16 +111,6 @@ The application is configurable via environment variables.
       }
     }
     ```
-- `ITEMS_FILTER_ENDPOINTS`
-  - Where to apply item filtering
-  - **Type:** JSON object mapping regex patterns to HTTP methods
-  - **Required:** No, defaults to the following:
-    ```json
-    {
-      "^/search$": ["GET", "POST"],
-      "^/collections/([^/]+)/items$": ["GET", "POST"]
-    }
-    ```
 
 ### Customization
 

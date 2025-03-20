@@ -16,6 +16,7 @@ from .lifespan import LifespanManager, ServerHealthCheck
 from .middleware import (
     AddProcessTimeHeaderMiddleware,
     ApplyCql2FilterMiddleware,
+    AuthenticationExtensionMiddleware,
     BuildCql2FilterMiddleware,
     EnforceAuthMiddleware,
     OpenApiMiddleware,
@@ -61,6 +62,11 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             S3AssetSigner(bucket_pattern=settings.signer_asset_expression).endpoint,
             methods=["POST"],
         )
+        app.add_middleware(
+            AuthenticationExtensionMiddleware,
+            endpoint=settings.signer_endpoint,
+            asset_expression=settings.signer_asset_expression,
+        )
 
     app.add_api_route(
         "/{path:path}",
@@ -81,11 +87,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             default_public=settings.default_public,
         )
 
-        # signers={
-        #     schema: endpoint
-        #     for schema, endpoint in {"s3": settings.signer_endpoint}.items()
-        #     if endpoint
-        # },
     if settings.items_filter:
         app.add_middleware(
             ApplyCql2FilterMiddleware,

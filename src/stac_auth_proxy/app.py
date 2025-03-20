@@ -58,7 +58,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         # TODO: Warn/error if endpoint is public
         app.add_api_route(
             settings.signer_endpoint,
-            S3AssetSigner(bucket_pattern=settings.signer_endpoint).endpoint,
+            S3AssetSigner(bucket_pattern=settings.signer_asset_expression).endpoint,
             methods=["POST"],
         )
 

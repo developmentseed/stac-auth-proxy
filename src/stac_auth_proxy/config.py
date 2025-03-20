@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     openapi_spec_endpoint: Optional[str] = Field(pattern=_PREFIX_PATTERN, default=None)
 
     signer_endpoint: Optional[str] = Field(pattern=_PREFIX_PATTERN, default=None)
-    signer_asset_expression: Optional[str] = Field(default=r".*")
+    signer_asset_expression: str = Field(default=r".*")
 
     # Auth
     default_public: bool = False

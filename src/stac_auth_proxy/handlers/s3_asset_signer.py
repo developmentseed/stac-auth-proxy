@@ -1,3 +1,5 @@
+"""Asset signer for S3 assets."""
+
 import logging
 import re
 from dataclasses import dataclass
@@ -9,7 +11,10 @@ from fastapi import HTTPException
 
 @dataclass
 class S3AssetSigner:
+    """Asset signer for S3 assets."""
+
     bucket_pattern: str = r".*"
+    max_expiration: int = 3600
 
     def endpoint(self, payload: "S3AssetSignerPayload", expiration: int = 3600) -> str:
         """Generate a presigned URL to share an S3 object."""
@@ -20,7 +25,7 @@ class S3AssetSigner:
             return boto3.client("s3").generate_presigned_url(
                 "get_object",
                 Params={"Bucket": payload.bucket_name, "Key": payload.object_name},
-                ExpiresIn=expiration,
+                ExpiresIn=min(expiration, self.max_expiration),
             )
         except ClientError as e:
             logging.error(e)

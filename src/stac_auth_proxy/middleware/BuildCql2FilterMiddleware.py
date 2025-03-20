@@ -75,7 +75,6 @@ class BuildCql2FilterMiddleware:
     def _get_filter(self, path: str) -> Optional[Callable[..., Expr]]:
         """Get the CQL2 filter builder for the given path."""
         endpoint_filters = [
-            # TODO: Use collections_filter_endpoints & items_filter_endpoints
             (filters.is_collection_endpoint, self.collections_filter),
             (filters.is_item_endpoint, self.items_filter),
             (filters.is_search_endpoint, self.items_filter),

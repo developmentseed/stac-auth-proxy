@@ -62,11 +62,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             S3AssetSigner(bucket_pattern=settings.signer_asset_expression).endpoint,
             methods=["POST"],
         )
-        app.add_middleware(
-            AuthenticationExtensionMiddleware,
-            endpoint=settings.signer_endpoint,
-            asset_expression=settings.signer_asset_expression,
-        )
 
     app.add_api_route(
         "/{path:path}",
@@ -77,6 +72,15 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     #
     # Middleware (order is important, last added = first to run)
     #
+    app.add_middleware(
+        AuthenticationExtensionMiddleware,
+        signing_endpoint=settings.signer_endpoint,
+        signed_asset_expression=settings.signer_asset_expression,
+        default_public=settings.default_public,
+        public_endpoints=settings.public_endpoints,
+        private_endpoints=settings.private_endpoints,
+    )
+
     if settings.openapi_spec_endpoint:
         app.add_middleware(
             OpenApiMiddleware,

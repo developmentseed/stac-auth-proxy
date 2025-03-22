@@ -60,6 +60,11 @@ services:
   mock-oidc:
     build:
       context: ./examples/mock_oidc_server
+    environment:
+      CLIENT_ID: stac
+      CLIENT_SECRET: secret
+      REDIRECT_URI: http://localhost:8000/docs/oauth2-redirect
+      ISSUER: http://localhost:3000
     ports:
       - "3000:3000"
     volumes:

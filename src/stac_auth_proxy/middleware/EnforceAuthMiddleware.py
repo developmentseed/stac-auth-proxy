@@ -55,6 +55,12 @@ class EnforceAuthMiddleware:
                         netloc=oidc_url.netloc, scheme=oidc_url.scheme
                     )
                 )
+                if jwks_uri != oidc_config["jwks_uri"]:
+                    logger.warning(
+                        "JWKS URI has been rewritten from %s to %s",
+                        oidc_config["jwks_uri"],
+                        jwks_uri,
+                    )
                 self._jwks_client = jwt.PyJWKClient(jwks_uri)
             except httpx.HTTPStatusError as e:
                 logger.error(
@@ -131,8 +137,6 @@ class EnforceAuthMiddleware:
 
         # Parse & validate token
         try:
-            print(f"{token=}")
-            print(f"{ self.jwks_client.get_signing_key_from_jwt(token)=}")
             key = self.jwks_client.get_signing_key_from_jwt(token).key
             payload = jwt.decode(
                 token,

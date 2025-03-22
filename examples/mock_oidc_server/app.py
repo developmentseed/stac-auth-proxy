@@ -6,7 +6,7 @@ import base64
 import hashlib
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlencode
@@ -90,14 +90,12 @@ def generate_key_pair():
         {
             "keys": [
                 {
-                    "jwk": {
-                        "kty": "RSA",
-                        "use": "sig",
-                        "kid": "1",  # Key ID
-                        "alg": "RS256",
-                        "n": int_to_base64url(public_numbers.n),
-                        "e": int_to_base64url(public_numbers.e),
-                    },
+                    "kty": "RSA",
+                    "use": "sig",
+                    "kid": "1",  # Key ID
+                    "alg": "RS256",
+                    "n": int_to_base64url(public_numbers.n),
+                    "e": int_to_base64url(public_numbers.e),
                 }
             ]
         },
@@ -126,7 +124,7 @@ def generate_token(
     subject: str, expires_delta: timedelta = timedelta(minutes=15)
 ) -> str:
     """Generate a JWT token."""
-    now = datetime.now(datetime.UTC)
+    now = datetime.now(UTC)
     claims = {
         "iss": ISSUER,
         "sub": subject,

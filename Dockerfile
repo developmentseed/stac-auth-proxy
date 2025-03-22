@@ -14,4 +14,4 @@ ENV PYTHONUNBUFFERED=1
 
 RUN uv sync --no-dev --locked
 
-CMD ["uv", "run", "--locked", "python", "-m", "stac_auth_proxy"]
+CMD ["uv", "run", "--locked", "--no-dev", "python", "-m", "stac_auth_proxy"]

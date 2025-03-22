@@ -2,15 +2,17 @@
 
 import gzip
 import json
+import re
 import zlib
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 import brotli
-from starlette.datastructures import MutableHeaders
+from starlette.datastructures import Headers, MutableHeaders
 from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+# TODO: Consider using a single middleware to handle all compression/decompression
 ENCODING_HANDLERS = {
     "gzip": gzip,
     "deflate": zlib,
@@ -22,6 +24,9 @@ class JsonResponseMiddleware(ABC):
     """Base class for middleware that transforms JSON response bodies."""
 
     app: ASGIApp
+    json_content_type_expr: str = (
+        r"application/vnd\.oai\.openapi\+json;.*|application/json|application/geo\+json"
+    )
 
     @abstractmethod
     def should_transform_response(self, request: Request) -> bool:
@@ -35,7 +40,7 @@ class JsonResponseMiddleware(ABC):
         -------
             bool: True if the response should be transformed
         """
-        pass
+        return request.headers.get("accept") == "application/json"
 
     @abstractmethod
     def transform_json(self, data: Any) -> Any:
@@ -62,16 +67,23 @@ class JsonResponseMiddleware(ABC):
 
         start_message: Optional[Message] = None
         body = b""
+        not_json = False
 
         async def process_message(message: Message) -> None:
             nonlocal start_message
             nonlocal body
-
+            nonlocal not_json
             if message["type"] == "http.response.start":
                 # Delay sending start message until we've processed the body
+                if not re.match(
+                    self.json_content_type_expr,
+                    Headers(scope=message).get("content-type", ""),
+                ):
+                    not_json = True
+                    return await send(message)
                 start_message = message
                 return
-            elif message["type"] != "http.response.body":
+            elif message["type"] != "http.response.body" or not_json:
                 return await send(message)
 
             body += message["body"]
@@ -94,9 +106,10 @@ class JsonResponseMiddleware(ABC):
                 )
 
             # Transform the JSON body
-            data = json.loads(body)
-            transformed = self.transform_json(data)
-            body = json.dumps(transformed).encode()
+            if body:
+                data = json.loads(body)
+                transformed = self.transform_json(data)
+                body = json.dumps(transformed).encode()
 
             # Re-compress if necessary
             if handler:

@@ -47,8 +47,8 @@ services:
       context: .
     environment:
       UPSTREAM_URL: ${UPSTREAM_URL:-http://stac:8001}
-      OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL:-http://localhost:3000/.well-known/openid-configuration}
-      OIDC_DISCOVERY_INTERNAL_URL: ${OIDC_DISCOVERY_INTERNAL_URL:-http://mock-oidc:3000/.well-known/openid-configuration}
+      OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL:-http://localhost:8888/.well-known/openid-configuration}
+      OIDC_DISCOVERY_INTERNAL_URL: ${OIDC_DISCOVERY_INTERNAL_URL:-http://mock-oidc:8888/.well-known/openid-configuration}
     env_file:
       - path: .env
         required: false
@@ -64,9 +64,11 @@ services:
       CLIENT_ID: stac
       CLIENT_SECRET: secret
       REDIRECT_URI: http://localhost:8000/docs/oauth2-redirect
-      ISSUER: http://localhost:3000
+      ISSUER: http://localhost:8888
+      SCOPES: item:create,item:update,item:delete,collection:create,collection:update,collection:delete
+      PORT: 8888
     ports:
-      - "3000:3000"
+      - "8888:8888"
     volumes:
       - ./examples/mock_oidc_server:/app
 

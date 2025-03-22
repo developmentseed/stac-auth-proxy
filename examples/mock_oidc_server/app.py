@@ -1,11 +1,12 @@
 # type: ignore
+# ruff: noqa
 """Mock OIDC server for demo/experimentation."""
-
 
 import base64
 import hashlib
 import json
 import os
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Optional
@@ -38,44 +39,54 @@ REDIRECT_URI = os.environ.get(
     "REDIRECT_URI", "http://localhost:8000/docs/oauth2-redirect"
 )
 ISSUER = os.environ.get("ISSUER", "http://localhost:3000")
-
-# Key paths - determine from current file location
-APP_DIR = Path(__file__).parent
-PRIVATE_KEY_PATH = APP_DIR / "private_key.pem"
-JWKS_PATH = APP_DIR / "jwks.json"
+SCOPES = os.environ.get("SCOPES", "")
+KEY_ID = "1"
 
 
-def load_or_generate_keys():
-    """Load keys from files if they exist, otherwise generate and save them."""
-    # If both files exist, load them
-    if PRIVATE_KEY_PATH.exists() and JWKS_PATH.exists():
-        private_key = PRIVATE_KEY_PATH.read_text()
-        jwks = json.loads(JWKS_PATH.read_text())
-        return private_key, jwks
+@dataclass
+class KeyPair:
+    cache_dir: Path
 
-    # Otherwise, generate new keys
-    private_key, jwks = generate_key_pair()
+    jwks: dict = field(init=False)
+    private_key: str = field(init=False)
 
-    # Save the keys
-    PRIVATE_KEY_PATH.write_text(private_key)
-    JWKS_PATH.write_text(json.dumps(jwks, indent=2))
+    def __post_init__(self):
+        private_key_path = self.cache_dir / "private_key.pem"
+        jwks_path = self.cache_dir / "jwks.json"
 
-    return private_key, jwks
+        if private_key_path.exists() and jwks_path.exists():
+            self.jwks = json.loads(jwks_path.read_text())
+            self.private_key = private_key_path.read_text()
+            return
 
+        # Generate keys
+        private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        private_pem = private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+        public_key = private_key.public_key()
+        public_numbers = public_key.public_numbers()
 
-# Generate RSA key pair
-def generate_key_pair():
-    """Generate RSA key pair and return private and public keys."""
-    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    private_pem = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
-    )
-    public_key = private_key.public_key()
-    public_numbers = public_key.public_numbers()
+        self.jwks = {
+            "keys": [
+                {
+                    "kty": "RSA",
+                    "use": "sig",
+                    "kid": KEY_ID,
+                    "alg": "RS256",
+                    "n": int_to_base64url(public_numbers.n),
+                    "e": int_to_base64url(public_numbers.e),
+                }
+            ]
+        }
+        self.private_key = private_pem.decode("utf-8")
 
-    # Convert public key components to base64url format
+        private_key_path.write_text(self.private_key)
+        jwks_path.write_text(json.dumps(self.jwks, indent=2))
+
+    @staticmethod
     def int_to_base64url(value):
         """Convert an integer to base64url format."""
         value_hex = format(value, "x")
@@ -85,25 +96,9 @@ def generate_key_pair():
         value_bytes = bytes.fromhex(value_hex)
         return base64.urlsafe_b64encode(value_bytes).rstrip(b"=").decode("ascii")
 
-    return (
-        private_pem.decode("utf-8"),
-        {
-            "keys": [
-                {
-                    "kty": "RSA",
-                    "use": "sig",
-                    "kid": "1",  # Key ID
-                    "alg": "RS256",
-                    "n": int_to_base64url(public_numbers.n),
-                    "e": int_to_base64url(public_numbers.e),
-                }
-            ]
-        },
-    )
-
 
 # Load or generate key pair on startup
-PRIVATE_KEY, JWKS = load_or_generate_keys()
+KEY_PAIR = KeyPair(Path(__file__).parent)
 
 # In-memory storage
 authorization_codes = {}
@@ -111,7 +106,7 @@ pkce_challenges = {}
 access_tokens = {}
 
 # Mock client registry
-clients = {
+CLIENT_REGISTRY = {
     CLIENT_ID: {
         "client_secret": CLIENT_SECRET,
         "redirect_uris": [REDIRECT_URI],
@@ -120,25 +115,17 @@ clients = {
 }
 
 
-def generate_token(
-    subject: str, expires_delta: timedelta = timedelta(minutes=15)
-) -> str:
-    """Generate a JWT token."""
-    now = datetime.now(UTC)
-    claims = {
-        "iss": ISSUER,
-        "sub": subject,
-        "iat": now,
-        "exp": now + expires_delta,
-        "scope": "openid profile",
-        "kid": "1",  # Match the key ID from JWKS
+@app.get("/")
+async def root():
+    return {
+        "message": "If you're using this in production, you are going to have a bad time."
     }
-    return jwt.encode(claims, PRIVATE_KEY, algorithm="RS256", headers={"kid": "1"})
 
 
 @app.get("/.well-known/openid-configuration")
 async def openid_configuration():
     """Return OpenID Connect configuration."""
+    scopes_set = set(["openid", "profile", *SCOPES.split(",")])
     return {
         "issuer": ISSUER,
         "authorization_endpoint": f"{ISSUER}/authorize",
@@ -147,7 +134,7 @@ async def openid_configuration():
         "response_types_supported": ["code"],
         "subject_types_supported": ["public"],
         "id_token_signing_alg_values_supported": ["RS256"],
-        "scopes_supported": ["openid", "profile"],
+        "scopes_supported": sorted(scopes_set),
         "token_endpoint_auth_methods_supported": ["client_secret_post", "none"],
         "claims_supported": ["sub", "iss", "iat", "exp"],
         "code_challenge_methods_supported": ["S256"],
@@ -157,7 +144,7 @@ async def openid_configuration():
 @app.get("/.well-known/jwks.json")
 async def jwks():
     """Return JWKS (JSON Web Key Set)."""
-    return JWKS
+    return KEY_PAIR.jwks
 
 
 @app.get("/authorize")
@@ -175,11 +162,11 @@ async def authorize(
         raise HTTPException(status_code=400, detail="Invalid response type")
 
     # Validate client
-    if client_id not in clients:
+    if client_id not in CLIENT_REGISTRY:
         raise HTTPException(status_code=400, detail="Invalid client_id")
 
     # Validate redirect URI
-    if redirect_uri not in clients[client_id]["redirect_uris"]:
+    if redirect_uri not in CLIENT_REGISTRY[client_id]["redirect_uris"]:
         raise HTTPException(status_code=400, detail="Invalid redirect_uri")
 
     # Validate PKCE if provided
@@ -194,7 +181,7 @@ async def authorize(
     authorization_codes[code] = {
         "client_id": client_id,
         "redirect_uri": redirect_uri,
-        "scope": scope,
+        "scope": " ".join(sorted(set(("openid profile " + scope).split(" ")))),
     }
 
     # Store PKCE challenge if provided
@@ -252,7 +239,7 @@ async def token(
         if not client_secret:
             raise HTTPException(status_code=400, detail="Client secret required")
 
-        if client_secret != clients[client_id]["client_secret"]:
+        if client_secret != CLIENT_REGISTRY[client_id]["client_secret"]:
             raise HTTPException(status_code=400, detail="Invalid client secret")
 
     # Clean up the used code and PKCE challenge
@@ -261,21 +248,37 @@ async def token(
         del pkce_challenges[code]
 
     # Generate access token
-    access_token = generate_token("user123")
+    now = datetime.now(UTC)
+    expires_delta = timedelta(minutes=15)
 
-    response = JSONResponse(
+    return JSONResponse(
         content={
-            "access_token": access_token,
+            "access_token": jwt.encode(
+                {
+                    "iss": ISSUER,
+                    "sub": "user123",
+                    "iat": now,
+                    "exp": now + expires_delta,
+                    "scope": auth_details["scope"],
+                    "kid": KEY_ID,
+                },
+                KEY_PAIR.private_key,
+                algorithm="RS256",
+                headers={"kid": KEY_ID},
+            ),
             "token_type": "Bearer",
-            "expires_in": 900,  # 15 minutes
+            "expires_in": expires_delta.seconds,
             "scope": auth_details["scope"],
         }
     )
-
-    return response
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=3000)
+    uvicorn.run(
+        "app:app",
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 8888)),
+        reload=True,
+    )

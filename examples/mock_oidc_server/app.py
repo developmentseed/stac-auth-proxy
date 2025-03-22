@@ -1,10 +1,13 @@
-# ruff: noqa
 # type: ignore
+"""Mock OIDC server for demo/experimentation."""
+
 
 import base64
 import hashlib
+import json
 import os
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Optional
 from urllib.parse import urlencode
 
@@ -29,7 +32,35 @@ app.add_middleware(
 )
 
 # Configuration
-ISSUER = "http://localhost:3000"
+CLIENT_ID = os.environ.get("CLIENT_ID", "stac")
+CLIENT_SECRET = os.environ.get("CLIENT_SECRET", "secret")
+REDIRECT_URI = os.environ.get(
+    "REDIRECT_URI", "http://localhost:8000/docs/oauth2-redirect"
+)
+ISSUER = os.environ.get("ISSUER", "http://localhost:3000")
+
+# Key paths - determine from current file location
+APP_DIR = Path(__file__).parent
+PRIVATE_KEY_PATH = APP_DIR / "private_key.pem"
+JWKS_PATH = APP_DIR / "jwks.json"
+
+
+def load_or_generate_keys():
+    """Load keys from files if they exist, otherwise generate and save them."""
+    # If both files exist, load them
+    if PRIVATE_KEY_PATH.exists() and JWKS_PATH.exists():
+        private_key = PRIVATE_KEY_PATH.read_text()
+        jwks = json.loads(JWKS_PATH.read_text())
+        return private_key, jwks
+
+    # Otherwise, generate new keys
+    private_key, jwks = generate_key_pair()
+
+    # Save the keys
+    PRIVATE_KEY_PATH.write_text(private_key)
+    JWKS_PATH.write_text(json.dumps(jwks, indent=2))
+
+    return private_key, jwks
 
 
 # Generate RSA key pair
@@ -73,8 +104,8 @@ def generate_key_pair():
     )
 
 
-# Generate key pair on startup
-PRIVATE_KEY, JWKS = generate_key_pair()
+# Load or generate key pair on startup
+PRIVATE_KEY, JWKS = load_or_generate_keys()
 
 # In-memory storage
 authorization_codes = {}
@@ -83,9 +114,9 @@ access_tokens = {}
 
 # Mock client registry
 clients = {
-    "stac": {
-        "client_secret": "secret",
-        "redirect_uris": ["http://localhost:8000/docs/oauth2-redirect"],
+    CLIENT_ID: {
+        "client_secret": CLIENT_SECRET,
+        "redirect_uris": [REDIRECT_URI],
         "grant_types": ["authorization_code"],
     }
 }

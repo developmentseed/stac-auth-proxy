@@ -53,82 +53,75 @@ uvicorn --factory stac_auth_proxy:create_app
 
 The application is configurable via environment variables.
 
-- `UPSTREAM_URL`
-  - The STAC API to proxy requests to
-  - **Type:** HTTP(S) URL
-  - **Required:** Yes
-  - **Example:** `https://your-stac-api.com/stac`
-- `OIDC_DISCOVERY_URL`
-  - OpenID Connect discovery document URL
-  - **Type:** HTTP(S) URL
-  - **Required:** Yes
-  - **Example:** `https://auth.example.com/.well-known/openid-configuration`
-- `OIDC_DISCOVERY_INTERNAL_URL`
-  - The internal network OpenID Connect discovery document URL
-  - **Type:** HTTP(S) URL
-  - **Required:** No, defaults to the value of `OIDC_DISCOVERY_URL`
-  - **Example:** `http://auth/.well-known/openid-configuration`
-- `DEFAULT_PUBLIC`
-  - **Description:** Default access policy for endpoints
-  - **Type:** boolean
-  - **Required:** No, defaults to `false`
-  - **Example:** `false`, `1`, `True`
-- `PRIVATE_ENDPOINTS`
-  - **Description:** Endpoints explicitly marked as requiring authentication, for use when `DEFAULT_PUBLIC == True`
-  - **Type:** JSON object mapping regex patterns to HTTP methods OR tuples of HTTP methods and an array of strings representing required scopes
-  - **Required:** No, defaults to the following:
-    ```json
-    {
-      "^/collections$": ["POST"],
-      "^/collections/([^/]+)$": ["PUT", "PATCH", "DELETE"],
-      "^/collections/([^/]+)/items$": ["POST"],
-      "^/collections/([^/]+)/items/([^/]+)$": ["PUT", "PATCH", "DELETE"],
-      "^/collections/([^/]+)/bulk_items$": ["POST"]
-    }
-    ```
-- `PUBLIC_ENDPOINTS`
-  - **Description:** Endpoints explicitly marked as not requiring authentication, for use when `DEFAULT_PUBLIC == False`
-  - **Type:** JSON object mapping regex patterns to HTTP methods
-  - **Required:** No, defaults to the following:
-    ```json
-    {
-      "^/api.html$": ["GET"],
-      "^/api$": ["GET"]
-    }
-    ```
-- `OPENAPI_SPEC_ENDPOINT`
-  - Path to serve OpenAPI specification
-  - **Type:** string or null
-  - **Required:** No, defaults to `null` (disabled)
-  - **Example:** `/api`
-- `ITEMS_FILTER`
-  - Configuration for item-level filtering
-  - **Type:** JSON object with class configuration
-  - **Required:** No, defaults to `null` (disabled)
-  - Components:
-    - `cls`: Python import path
-    - `args`: List of positional arguments
-    - `kwargs`: Dictionary of keyword arguments
-  - **Example:**
-    ```json
-    {
-      "cls": "my_package.filters.OrganizationFilter",
-      "args": ["org1"],
-      "kwargs": {
-        "field_name": "properties.organization"
+- Core
+  - **`UPSTREAM_URL`**, STAC API URL
+    - **Type:** HTTP(S) URL
+    - **Required:** Yes
+    - **Example:** `https://your-stac-api.com/stac`
+  - **`WAIT_FOR_UPSTREAM`**, wait for upstream API to become available before starting proxy
+    - **Type:** boolean
+    - **Required:** No, defaults to `true`
+    - **Example:** `false`, `1`, `True`
+  - **`HEALTHZ_PREFIX`**, path prefix for health check endpoints
+    - **Type:** string
+    - **Required:** No, defaults to `/healthz`
+    - **Example:** `''` (disabled)
+- Authentication
+  - **`OIDC_DISCOVERY_URL`**, OpenID Connect discovery document URL
+    - **Type:** HTTP(S) URL
+    - **Required:** Yes
+    - **Example:** `https://auth.example.com/.well-known/openid-configuration`
+  - **`OIDC_DISCOVERY_INTERNAL_URL`**, internal network OpenID Connect discovery document URL
+    - **Type:** HTTP(S) URL
+    - **Required:** No, defaults to the value of `OIDC_DISCOVERY_URL`
+    - **Example:** `http://auth/.well-known/openid-configuration`
+  - **`DEFAULT_PUBLIC`**, default access policy for endpoints
+    - **Type:** boolean
+    - **Required:** No, defaults to `false`
+    - **Example:** `false`, `1`, `True`
+  - **`PRIVATE_ENDPOINTS`**, endpoints explicitly marked as requiring authentication, used when `DEFAULT_PUBLIC == True`
+    - **Type:** JSON object mapping regex patterns to HTTP methods OR tuples of HTTP methods and an array of strings representing required scopes
+    - **Required:** No, defaults to the following:
+      ```json
+      {
+        "^/collections$": ["POST"],
+        "^/collections/([^/]+)$": ["PUT", "PATCH", "DELETE"],
+        "^/collections/([^/]+)/items$": ["POST"],
+        "^/collections/([^/]+)/items/([^/]+)$": ["PUT", "PATCH", "DELETE"],
+        "^/collections/([^/]+)/bulk_items$": ["POST"]
       }
-    }
-    ```
-- `ITEMS_FILTER_ENDPOINTS`
-  - Where to apply item filtering
-  - **Type:** JSON object mapping regex patterns to HTTP methods
-  - **Required:** No, defaults to the following:
-    ```json
-    {
-      "^/search$": ["GET", "POST"],
-      "^/collections/([^/]+)/items$": ["GET", "POST"]
-    }
-    ```
+      ```
+  - **`PUBLIC_ENDPOINTS`**, endpoints explicitly marked as not requiring authentication, used when `DEFAULT_PUBLIC == False`
+    - **Type:** JSON object mapping regex patterns to HTTP methods
+    - **Required:** No, defaults to the following:
+      ```json
+      {
+        "^/api.html$": ["GET"],
+        "^/api$": ["GET"]
+      }
+      ```
+  - **`OPENAPI_SPEC_ENDPOINT`**, path of OpenAPI specification, used for augmenting spec response with auth configuration
+    - **Type:** string or null
+    - **Required:** No, defaults to `null` (disabled)
+    - **Example:** `/api`
+- Filtering
+  - **`ITEMS_FILTER`**, [cql2 expression](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) generator for item-level filtering
+    - **Type:** JSON object with class configuration
+    - **Required:** No, defaults to `null` (disabled)
+    - **Components**:
+      - `cls`: Python import path
+      - `args`: List of positional arguments
+      - `kwargs`: Dictionary of keyword arguments
+    - **Example:**
+      ```json
+      {
+        "cls": "my_package.filters.OrganizationFilter",
+        "args": ["org1"],
+        "kwargs": {
+          "field_name": "properties.organization"
+        }
+      }
+      ```
 
 ### Customization
 
@@ -140,31 +133,31 @@ While the project is designed to work out-of-the-box as an application, it might
 
 The majority of the proxy's functionality occurs within a chain of middlewares. Each request passes through this chain, wherein each middleware performs a specific task:
 
-1. **EnforceAuthMiddleware**
+1. **`EnforceAuthMiddleware`**
 
    - Handles authentication and authorization
    - Configurable public/private endpoints
    - OIDC integration
    - Places auth token payload in request state
 
-2. **BuildCql2FilterMiddleware**
+2. **`BuildCql2FilterMiddleware`**
 
    - Builds CQL2 filters based on request context/state
    - Places [CQL2 expression](http://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) in request state
 
-3. **ApplyCql2FilterMiddleware**
+3. **`ApplyCql2FilterMiddleware`**
 
    - Retrieves [CQL2 expression](http://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) from request state
    - Augments request with CQL2 filter:
      - Modifies query strings for `GET` requests
      - Modifies JSON bodies for `POST`/`PUT`/`PATCH` requests
 
-4. **OpenApiMiddleware**
+4. **`OpenApiMiddleware`**
 
    - Modifies OpenAPI specification based on endpoint configuration, adding security requirements
    - Only active if `openapi_spec_endpoint` is configured
 
-5. **AddProcessTimeHeaderMiddleware**
+5. **`AddProcessTimeHeaderMiddleware`**
    - Adds processing time headers
    - Useful for monitoring/debugging
 
@@ -178,31 +171,79 @@ The system supports generating CQL2 filters based on request context to provide 
 > [!TIP]
 > Integration with external authorization systems (e.g. [Open Policy Agent](https://www.openpolicyagent.org/)) can be achieved by specifying an `ITEMS_FILTER` that points to a class/function that, once initialized, returns a [`cql2.Expr` object](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) when called with the request context.
 
+#### Filters
+
+If enabled, filters are intended to be applied to the following endpoints:
+
+- `GET /search`
+  - **Supported:** ✅
+  - **Action:** Read Item
+  - **Applied Filter:** `ITEMS_FILTER`
+  - **Strategy:** Append query params with generated CQL2 query.
+- `POST /search`
+  - **Supported:** ✅
+  - **Action:** Read Item
+  - **Applied Filter:** `ITEMS_FILTER`
+  - **Strategy:** Append body with generated CQL2 query.
+- `GET /collections/{collection_id}`
+  - **Supported:** ❌ ([#23](https://github.com/developmentseed/stac-auth-proxy/issues/23))
+  - **Action:** Read Collection
+  - **Applied Filter:** `COLLECTIONS_FILTER`
+  - **Strategy:** Append query params with generated CQL2 query.
+- `GET /collections/{collection_id}/items`
+  - **Supported:** ✅
+  - **Action:** Read Item
+  - **Applied Filter:** `ITEMS_FILTER`
+  - **Strategy:** Append query params with generated CQL2 query.
+- `GET /collections/{collection_id}/items/{item_id}`
+  - **Supported:** ❌ ([#25](https://github.com/developmentseed/stac-auth-proxy/issues/25))
+  - **Action:** Read Item
+  - **Applied Filter:** `ITEMS_FILTER`
+  - **Strategy:** Validate response against CQL2 query.
+- `POST /collections/`
+  - **Supported:** ❌ ([#22](https://github.com/developmentseed/stac-auth-proxy/issues/22))
+  - **Action:** Create Collection
+  - **Applied Filter:** `COLLECTIONS_FILTER`
+  - **Strategy:** Validate body with generated CQL2 query.
+- `PUT /collections/{collection_id}}`
+  - **Supported:** ❌ ([#22](https://github.com/developmentseed/stac-auth-proxy/issues/22))
+  - **Action:** Update Collection
+  - **Applied Filter:** `COLLECTIONS_FILTER`
+  - **Strategy:** Fetch Collection and validate CQL2 query; merge Item with body and validate with generated CQL2 query.
+- `DELETE /collections/{collection_id}`
+  - **Supported:** ❌ ([#22](https://github.com/developmentseed/stac-auth-proxy/issues/22))
+  - **Action:** Delete Collection
+  - **Applied Filter:** `COLLECTIONS_FILTER`
+  - **Strategy:** Fetch Collectiion and validate with CQL2 query.
+- `POST /collections/{collection_id}/items`
+  - **Supported:** ❌ ([#21](https://github.com/developmentseed/stac-auth-proxy/issues/21))
+  - **Action:** Create Item
+  - **Applied Filter:** `ITEMS_FILTER`
+  - **Strategy:** Validate body with generated CQL2 query.
+- `PUT /collections/{collection_id}/items/{item_id}`
+  - **Supported:** ❌ ([#21](https://github.com/developmentseed/stac-auth-proxy/issues/21))
+  - **Action:** Update Item
+  - **Applied Filter:** `ITEMS_FILTER`
+  - **Strategy:** Fetch Item and validate CQL2 query; merge Item with body and validate with generated CQL2 query.
+- `DELETE /collections/{collection_id}/items/{item_id}`
+  - **Supported:** ❌ ([#21](https://github.com/developmentseed/stac-auth-proxy/issues/21))
+  - **Action:** Delete Item
+  - **Applied Filter:** `ITEMS_FILTER`
+  - **Strategy:** Fetch Item and validate with CQL2 query.
+- `POST /collections/{collection_id}/bulk_items`
+  - **Supported:** ❌ ([#21](https://github.com/developmentseed/stac-auth-proxy/issues/21))
+  - **Action:** Create Items
+  - **Applied Filter:** `ITEMS_FILTER`
+  - **Strategy:** Validate items in body with generated CQL2 query.
+
 #### Example GET Request Flow
 
 ```mermaid
 sequenceDiagram
     Client->>Proxy: GET /collections
     Note over Proxy: EnforceAuth checks credentials
-    Note over Proxy: BuildCql2Filter creates filter immediately
-    Note over Proxy: ApplyCql2Filter modifies query string
+    Note over Proxy: BuildCql2Filter creates filter
+    Note over Proxy: ApplyCql2Filter applies filter to request
     Proxy->>STAC API: GET /collection?filter=(collection=landsat)
     STAC API->>Client: Response
 ```
-
-#### Filters
-
-| Supported                                                | Method   | Endpoint                                       | Action | Filter     | Strategy                                                                                               |
-| -------------------------------------------------------- | -------- | ---------------------------------------------- | ------ | ---------- | ------------------------------------------------------------------------------------------------------ |
-| ✅                                                       | `POST`   | `/search`                                      | Read   | Item       | Append body with generated CQL2 query.                                                                 |
-| ✅                                                       | `GET`    | `/search`                                      | Read   | Item       | Append query params with generated CQL2 query.                                                         |
-| ❌ ([#22](https://github.com/developmentseed/stac-auth-proxy/issues/22)) | `POST`   | `/collections/`                                | Create | Collection | Validate body with generated CQL2 query.                                                               |
-| ❌ ([#23](https://github.com/developmentseed/stac-auth-proxy/issues/23)) | `GET`    | `/collections/{collection_id}`                 | Read   | Collection | Append query params with generated CQL2 query.                                                         |
-| ❌ ([#22](https://github.com/developmentseed/stac-auth-proxy/issues/22)) | `PUT`    | `/collections/{collection_id}}`                | Update | Collection | Fetch Collection and validate CQL2 query; merge Item with body and validate with generated CQL2 query. |
-| ❌ ([#22](https://github.com/developmentseed/stac-auth-proxy/issues/22)) | `DELETE` | `/collections/{collection_id}`                 | Delete | Collection | Fetch Collectiion and validate with CQL2 query.                                                        |
-| ✅                                                       | `GET`    | `/collections/{collection_id}/items`           | Read   | Item       | Append query params with generated CQL2 query.                                                         |
-| ❌ ([#25](https://github.com/developmentseed/stac-auth-proxy/issues/25)) | `GET`    | `/collections/{collection_id}/items/{item_id}` | Read   | Item       | Validate response against CQL2 query.                                                                  |
-| ❌ ([#21](https://github.com/developmentseed/stac-auth-proxy/issues/21)) | `POST`   | `/collections/{collection_id}/items`           | Create | Item       | Validate body with generated CQL2 query.                                                               |
-| ❌ ([#21](https://github.com/developmentseed/stac-auth-proxy/issues/21)) | `PUT`    | `/collections/{collection_id}/items/{item_id}` | Update | Item       | Fetch Item and validate CQL2 query; merge Item with body and validate with generated CQL2 query.       |
-| ❌ ([#21](https://github.com/developmentseed/stac-auth-proxy/issues/21)) | `DELETE` | `/collections/{collection_id}/items/{item_id}` | Delete | Item       | Fetch Item and validate with CQL2 query.                                                               |
-| ❌ ([#21](https://github.com/developmentseed/stac-auth-proxy/issues/21)) | `POST`   | `/collections/{collection_id}/bulk_items`      | Create | Item       | Validate items in body with generated CQL2 query.                                                      |

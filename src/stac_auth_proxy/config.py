@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     public_endpoints: EndpointMethodsNoScope = {
         r"^/api.html$": ["GET"],
         r"^/api$": ["GET"],
+        r"^/docs/oauth2-redirect": ["GET"],
         r"^/healthz": ["GET"],
     }
     private_endpoints: EndpointMethods = {

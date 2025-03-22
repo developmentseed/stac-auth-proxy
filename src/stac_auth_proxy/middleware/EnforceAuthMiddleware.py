@@ -3,6 +3,7 @@
 import logging
 from dataclasses import dataclass
 from typing import Annotated, Any, Optional, Sequence
+from urllib.parse import urlparse, urlunparse
 
 import httpx
 import jwt
@@ -45,7 +46,16 @@ class EnforceAuthMiddleware:
                 response = httpx.get(origin_url)
                 response.raise_for_status()
                 oidc_config = response.json()
-                self._jwks_client = jwt.PyJWKClient(oidc_config["jwks_uri"])
+
+                # NOTE: We manually replace the origin of the jwks_uri in the event that
+                # the jwks_uri is not available from within the proxy.
+                oidc_url = urlparse(origin_url)
+                jwks_uri = urlunparse(
+                    urlparse(oidc_config["jwks_uri"])._replace(
+                        netloc=oidc_url.netloc, scheme=oidc_url.scheme
+                    )
+                )
+                self._jwks_client = jwt.PyJWKClient(jwks_uri)
             except httpx.HTTPStatusError as e:
                 logger.error(
                     "Received a non-200 response when fetching OIDC config: %s",
@@ -121,6 +131,8 @@ class EnforceAuthMiddleware:
 
         # Parse & validate token
         try:
+            print(f"{token=}")
+            print(f"{ self.jwks_client.get_signing_key_from_jwt(token)=}")
             key = self.jwks_client.get_signing_key_from_jwt(token).key
             payload = jwt.decode(
                 token,

@@ -47,8 +47,8 @@ services:
       context: .
     environment:
       UPSTREAM_URL: ${UPSTREAM_URL:-http://stac:8001}
-      OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL:-http://127.0.0.1:3000/.well-known/openid-configuration}
-      OIDC_DISCOVERY_INTERNAL_URL: ${OIDC_DISCOVERY_INTERNAL_URL:-http://auth0:3000/.well-known/openid-configuration}
+      OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL:-http://localhost:3000/.well-known/openid-configuration}
+      OIDC_DISCOVERY_INTERNAL_URL: ${OIDC_DISCOVERY_INTERNAL_URL:-http://mock-oidc:3000/.well-known/openid-configuration}
     env_file:
       - path: .env
         required: false
@@ -56,6 +56,14 @@ services:
       - "8000:8000"
     volumes:
       - ./src:/app/src
+
+  mock-oidc:
+    build:
+      context: ./mock_oidc_server
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./mock_oidc_server:/app
 
   # dex:
   #   image: ghcr.io/dexidp/dex:v2.42.0-alpine
@@ -122,18 +130,18 @@ services:
   #       } EOF
   #     '
 
-  auth0:
-    image: public.ecr.aws/primaassicurazioni/localauth0:0.8.2
-    healthcheck:
-      test: ["CMD", "/localauth0", "healthcheck"]
-    ports:
-      - "3000:3000"
-      - "3001:3001"
-    environment:
-      LOCALAUTH0_CONFIG: |
-        issuer = "https://prima.localauth0.com/"
-        [user_info]
-        given_name = "Locie"
+  # auth0:
+  #   image: public.ecr.aws/primaassicurazioni/localauth0:0.8.2
+  #   healthcheck:
+  #     test: ["CMD", "/localauth0", "healthcheck"]
+  #   ports:
+  #     - "3000:3000"
+  #     - "3001:3001"
+  #   environment:
+  #     LOCALAUTH0_CONFIG: |
+  #       issuer = "https://prima.localauth0.com/"
+  #       [user_info]
+  #       given_name = "Locie"
 
 networks:
   default:

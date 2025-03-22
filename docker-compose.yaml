@@ -47,8 +47,8 @@ services:
       context: .
     environment:
       UPSTREAM_URL: ${UPSTREAM_URL:-http://stac:8001}
-      OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL:-http://127.0.0.1:5556/dex/.well-known/openid-configuration}
-      OIDC_DISCOVERY_INTERNAL_URL: ${OIDC_DISCOVERY_INTERNAL_URL:-http://dex:5556/dex/.well-known/openid-configuration}
+      OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL:-http://127.0.0.1:3000/.well-known/openid-configuration}
+      OIDC_DISCOVERY_INTERNAL_URL: ${OIDC_DISCOVERY_INTERNAL_URL:-http://auth0:3000/.well-known/openid-configuration}
     env_file:
       - path: .env
         required: false
@@ -57,13 +57,83 @@ services:
     volumes:
       - ./src:/app/src
 
-  dex:
-    image: ghcr.io/dexidp/dex:latest
+  # dex:
+  #   image: ghcr.io/dexidp/dex:v2.42.0-alpine
+  #   ports:
+  #     - "5556:5556"
+  #   volumes:
+  #     - ./examples/dex/config.yaml:/etc/dex/cfg/config.yaml
+  #   entrypoint: ["dex", "serve", "/etc/dex/cfg/config.yaml"]
+
+  # hydra:
+  #   image: oryd/hydra:v2.2.0
+  #   ports:
+  #     - "4444:4444"
+  #     - "4445:4445"
+  #   environment:
+  #     - DSN=memory
+  #     - URLS_SELF_ISSUER=http://localhost:4444
+  #     - URLS_CONSENT=http://localhost:3000/consent
+  #     - URLS_LOGIN=http://localhost:3000/login
+  #     - SECRETS_SYSTEM=youReallyNeedToChangeThis
+  #     - LOG_LEAK_SENSITIVE_VALUES=true
+  #     - SERVE_PUBLIC_CORS_ENABLED=true
+  #     - SERVE_PUBLIC_CORS_ALLOWED_ORIGINS=*
+  #     - SERVE_PUBLIC_CORS_ALLOWED_METHODS=POST,GET,PUT,DELETE,OPTIONS
+  #     - SERVE_PUBLIC_CORS_ALLOWED_HEADERS=Authorization,Content-Type,Accept
+  #     - SERVE_PUBLIC_CORS_EXPOSED_HEADERS=Content-Type
+  #     - SERVE_PUBLIC_CORS_DEBUG=true
+  #     - SERVE_TLS_KEY_PATH=
+  #     - SERVE_TLS_CERT_PATH=
+  #   command: serve all --dev
+
+  # login-consent-app:
+  #   image: oryd/hydra-login-consent-node:v2.0.3
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - HYDRA_ADMIN_URL=http://hydra:4445
+  #     - NODE_TLS_REJECT_UNAUTHORIZED=0
+
+  # hydra-setup:
+  #   image: curlimages/curl:8.5.0
+  #   depends_on:
+  #     - hydra
+  #   entrypoint: ["/bin/sh", "-c"]
+  #   command: |
+  #     '
+  #     until curl -s http://hydra:4445/health/ready; do
+  #       echo "Waiting for Hydra to be ready..."
+  #       sleep 1
+  #     done
+
+  #     echo "Registering OIDC client..."
+  #     curl --verbose -X POST http://hydra:4445/admin/clients \
+  #       -H "Content-Type: application/json" \
+  #       -d @- <<EOF
+  #       { 
+  #         "client_id": "stac", 
+  #         "client_secret": "secret", 
+  #         "grant_types": ["authorization_code", "refresh_token"], 
+  #         "response_types": ["code", "id_token"], 
+  #         "redirect_uris": ["http://localhost:8000/docs/oauth2-redirect"], 
+  #         "scope": "openid offline", 
+  #         "token_endpoint_auth_method": "client_secret_post" 
+  #       } EOF
+  #     '
+
+  auth0:
+    image: public.ecr.aws/primaassicurazioni/localauth0:0.8.2
+    healthcheck:
+      test: ["CMD", "/localauth0", "healthcheck"]
     ports:
-      - "5556:5556"
-    volumes:
-      - ./examples/dex/config.yaml:/etc/dex/cfg/config.yaml
-    entrypoint: ["dex", "serve", "/etc/dex/cfg/config.yaml"]
+      - "3000:3000"
+      - "3001:3001"
+    environment:
+      LOCALAUTH0_CONFIG: |
+        issuer = "https://prima.localauth0.com/"
+        [user_info]
+        given_name = "Locie"
 
 networks:
   default:

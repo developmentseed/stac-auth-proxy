@@ -26,7 +26,7 @@ services:
     command: bash -c "./scripts/wait-for-it.sh database:5432 && python -m stac_fastapi.pgstac.app"
 
   database:
-    image: ghcr.io/stac-utils/pgstac:v0.8.5
+    image: ghcr.io/stac-utils/pgstac:v0.9.5
     environment:
       POSTGRES_USER: username
       POSTGRES_PASSWORD: password

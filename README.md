@@ -96,8 +96,10 @@ The application is configurable via environment variables.
     - **Required:** No, defaults to the following:
       ```json
       {
-        "^/api.html$": ["GET"],
-        "^/api$": ["GET"]
+        r"^/api.html$": ["GET"],
+        r"^/api$": ["GET"],
+        r"^/docs/oauth2-redirect": ["GET"],
+        r"^/healthz": ["GET"],
       }
       ```
   - **`OPENAPI_SPEC_ENDPOINT`**, path of OpenAPI specification, used for augmenting spec response with auth configuration

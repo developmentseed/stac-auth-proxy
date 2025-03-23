@@ -14,12 +14,16 @@ from urllib.parse import urlencode
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from fastapi import FastAPI, Form, HTTPException
+from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
 from jose import jwt
 
 app = FastAPI()
+
+# Configure templates
+templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 # Configure CORS
 app.add_middleware(
@@ -39,7 +43,7 @@ REDIRECT_URI = os.environ.get(
     "REDIRECT_URI", "http://localhost:8000/docs/oauth2-redirect"
 )
 ISSUER = os.environ.get("ISSUER", "http://localhost:3000")
-SCOPES = os.environ.get("SCOPES", "")
+AVAILABLE_SCOPES = os.environ.get("SCOPES", "")
 KEY_ID = "1"
 
 
@@ -104,6 +108,7 @@ KEY_PAIR = KeyPair(Path(__file__).parent)
 authorization_codes = {}
 pkce_challenges = {}
 access_tokens = {}
+auth_requests = {}
 
 # Mock client registry
 CLIENT_REGISTRY = {
@@ -125,7 +130,7 @@ async def root():
 @app.get("/.well-known/openid-configuration")
 async def openid_configuration():
     """Return OpenID Connect configuration."""
-    scopes_set = set(["openid", "profile", *SCOPES.split(",")])
+    scopes_set = set(["openid", "profile", *AVAILABLE_SCOPES.split(",")])
     return {
         "issuer": ISSUER,
         "authorization_endpoint": f"{ISSUER}/authorize",
@@ -149,6 +154,7 @@ async def jwks():
 
 @app.get("/authorize")
 async def authorize(
+    request: Request,
     response_type: str,
     client_id: str,
     redirect_uri: str,
@@ -174,23 +180,60 @@ async def authorize(
         if code_challenge_method != "S256":
             raise HTTPException(status_code=400, detail="Only S256 PKCE is supported")
 
+    # Store the auth request details
+    request_id = os.urandom(16).hex()
+    auth_requests[request_id] = {
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "state": state,
+        "scope": scope,
+        "code_challenge": code_challenge,
+        "code_challenge_method": code_challenge_method,
+    }
+
+    # Show login page
+    scopes = sorted(set(("openid profile " + scope).split()))
+    return templates.TemplateResponse(
+        "login.html",
+        {
+            "request": request,
+            "request_id": request_id,
+            "client_id": client_id,
+            "scopes": scopes,
+        },
+    )
+
+
+@app.post("/login")
+async def login(request_id: str = Form(...)):
+    """Handle login form submission."""
+    # Retrieve the stored auth request
+    if request_id not in auth_requests:
+        raise HTTPException(status_code=400, detail="Invalid request")
+
+    auth_request = auth_requests.pop(request_id)
+
     # Generate authorization code
     code = os.urandom(32).hex()
 
     # Store authorization details
     authorization_codes[code] = {
-        "client_id": client_id,
-        "redirect_uri": redirect_uri,
-        "scope": " ".join(sorted(set(("openid profile " + scope).split(" ")))),
+        "client_id": auth_request["client_id"],
+        "redirect_uri": auth_request["redirect_uri"],
+        "scope": " ".join(
+            sorted(set(("openid profile " + auth_request["scope"]).split(" ")))
+        ),
     }
 
     # Store PKCE challenge if provided
-    if code_challenge:
-        pkce_challenges[code] = code_challenge
+    if auth_request["code_challenge"]:
+        pkce_challenges[code] = auth_request["code_challenge"]
 
     # Redirect back to client with the code
-    params = {"code": code, "state": state}
-    return RedirectResponse(url=f"{redirect_uri}?{urlencode(params)}")
+    params = {"code": code, "state": auth_request["state"]}
+    return RedirectResponse(
+        url=f"{auth_request['redirect_uri']}?{urlencode(params)}", status_code=303
+    )
 
 
 @app.post("/token")

@@ -9,9 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 METHODS = Literal["GET", "POST", "PUT", "DELETE", "PATCH"]
 EndpointMethodsNoScope: TypeAlias = dict[str, Sequence[METHODS]]
-EndpointMethods: TypeAlias = dict[
-    str, Sequence[Union[METHODS, tuple[METHODS, Sequence[str]]]]
-]
+EndpointMethods: TypeAlias = dict[str, Sequence[Union[METHODS, tuple[METHODS, str]]]]
 
 _PREFIX_PATTERN = r"^/.*$"
 
@@ -53,6 +51,7 @@ class Settings(BaseSettings):
     public_endpoints: EndpointMethodsNoScope = {
         r"^/api.html$": ["GET"],
         r"^/api$": ["GET"],
+        r"^/docs/oauth2-redirect": ["GET"],
         r"^/healthz": ["GET"],
     }
     private_endpoints: EndpointMethods = {

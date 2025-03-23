@@ -51,27 +51,82 @@ def test_default_public_false(source_api_server, path, method, token_builder):
 
 
 @pytest.mark.parametrize(
+    "rules,token,permitted",
+    [
+        [
+            [("POST", "collection:create")],
+            {"scope": "collection:create"},
+            True,
+        ],
+        [
+            [("POST", "collection:create")],
+            {"scope": ""},
+            False,
+        ],
+        [
+            [("POST", "collection:create")],
+            {"scope": "openid"},
+            False,
+        ],
+        [
+            [("POST", "collection:create")],
+            {"scope": "openid collection:create"},
+            True,
+        ],
+        [
+            [("POST", "foo collection:create")],
+            {"scope": "openid collection:create foo"},
+            True,
+        ],
+        [
+            [("GET", "collection:read"), ("POST", "collection:create")],
+            {"scope": "openid collection:read"},
+            False,
+        ],
+    ],
+)
+def test_default_public_false_with_scopes(
+    source_api_server, rules, token, permitted, token_builder
+):
+    """Private endpoints permit access with a valid token."""
+    test_app = app_factory(
+        upstream_url=source_api_server,
+        default_public=False,
+        private_endpoints={r"^/collections$": rules},
+    )
+    valid_auth_token = token_builder(token)
+
+    client = TestClient(test_app)
+    response = client.request(
+        method="POST",
+        url="/collections",
+        headers={"Authorization": f"Bearer {valid_auth_token}"},
+    )
+    assert response.status_code == (200 if permitted else 401)
+
+
+@pytest.mark.parametrize(
     "token_scopes, private_endpoints, path, method, expected_permitted",
     [
         pytest.param(
             "",
-            {r"^/*": [("POST", ["collections:create"])]},
+            {r"^/*": [("POST", "collection:create")]},
             "/collections",
             "POST",
             False,
             id="empty scopes + private endpoint",
         ),
         pytest.param(
-            "openid profile collections:createbutnotcreate",
-            {r"^/*": [("POST", ["collections:create"])]},
+            "openid profile collection:createbutnotcreate",
+            {r"^/*": [("POST", "collection:create")]},
             "/collections",
             "POST",
             False,
             id="invalid scopes + private endpoint",
         ),
         pytest.param(
-            "openid profile collections:create somethingelse",
-            {r"^/*": [("POST", [])]},
+            "openid profile collection:create somethingelse",
+            {r"^/*": [("POST", "")]},
             "/collections",
             "POST",
             True,
@@ -79,7 +134,7 @@ def test_default_public_false(source_api_server, path, method, token_builder):
         ),
         pytest.param(
             "openid",
-            {r"^/collections/.*/items$": [("POST", ["collections:create"])]},
+            {r"^/collections/.*/items$": [("POST", "collection:create")]},
             "/collections",
             "GET",
             True,

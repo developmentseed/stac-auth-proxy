@@ -37,11 +37,6 @@ app.add_middleware(
 )
 
 # Configuration
-CLIENT_ID = os.environ.get("CLIENT_ID", "stac")
-CLIENT_SECRET = os.environ.get("CLIENT_SECRET", "secret")
-REDIRECT_URI = os.environ.get(
-    "REDIRECT_URI", "http://localhost:8000/docs/oauth2-redirect"
-)
 ISSUER = os.environ.get("ISSUER", "http://localhost:3000")
 AVAILABLE_SCOPES = os.environ.get("SCOPES", "")
 KEY_ID = "1"
@@ -110,15 +105,6 @@ pkce_challenges = {}
 access_tokens = {}
 auth_requests = {}
 
-# Mock client registry
-CLIENT_REGISTRY = {
-    CLIENT_ID: {
-        "client_secret": CLIENT_SECRET,
-        "redirect_uris": [REDIRECT_URI],
-        "grant_types": ["authorization_code"],
-    }
-}
-
 
 @app.get("/")
 async def root():
@@ -166,14 +152,6 @@ async def authorize(
     """Handle authorization request."""
     if response_type != "code":
         raise HTTPException(status_code=400, detail="Invalid response type")
-
-    # Validate client
-    if client_id not in CLIENT_REGISTRY:
-        raise HTTPException(status_code=400, detail="Invalid client_id")
-
-    # Validate redirect URI
-    if redirect_uri not in CLIENT_REGISTRY[client_id]["redirect_uris"]:
-        raise HTTPException(status_code=400, detail="Invalid redirect_uri")
 
     # Validate PKCE if provided
     if code_challenge is not None:
@@ -277,13 +255,6 @@ async def token(
 
         if computed_challenge != code_challenge:
             raise HTTPException(status_code=400, detail="Invalid code verifier")
-    else:
-        # If not PKCE, verify client secret
-        if not client_secret:
-            raise HTTPException(status_code=400, detail="Client secret required")
-
-        if client_secret != CLIENT_REGISTRY[client_id]["client_secret"]:
-            raise HTTPException(status_code=400, detail="Invalid client secret")
 
     # Clean up the used code and PKCE challenge
     del authorization_codes[code]

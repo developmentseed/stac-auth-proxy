@@ -37,7 +37,9 @@ def _check_endpoint_match(
             for endpoint_method in endpoint_methods:
                 required_scopes: Sequence[str] = []
                 if isinstance(endpoint_method, tuple):
-                    endpoint_method, required_scopes = endpoint_method
+                    endpoint_method, _required_scopes = endpoint_method
+                    if _required_scopes:  # Ignore empty scopes, e.g. `["POST", ""]`
+                        required_scopes = _required_scopes.split(" ")
                 if method.casefold() == endpoint_method.casefold():
                     return True, required_scopes
     return False, []

@@ -39,12 +39,12 @@ app.add_middleware(
 # Configuration
 ISSUER = os.environ.get("ISSUER", "http://localhost:3000")
 AVAILABLE_SCOPES = os.environ.get("SCOPES", "")
-KEY_ID = "1"
 
 
 @dataclass
 class KeyPair:
     cache_dir: Path
+    key_id: str = "1"
 
     jwks: dict = field(init=False)
     private_key: str = field(init=False)
@@ -73,7 +73,7 @@ class KeyPair:
                 {
                     "kty": "RSA",
                     "use": "sig",
-                    "kid": KEY_ID,
+                    "kid": self.key_id,
                     "alg": "RS256",
                     "n": int_to_base64url(public_numbers.n),
                     "e": int_to_base64url(public_numbers.e),
@@ -274,11 +274,11 @@ async def token(
                     "iat": now,
                     "exp": now + expires_delta,
                     "scope": auth_details["scope"],
-                    "kid": KEY_ID,
+                    "kid": KEY_PAIR.key_id,
                 },
                 KEY_PAIR.private_key,
                 algorithm="RS256",
-                headers={"kid": KEY_ID},
+                headers={"kid": KEY_PAIR.key_id},
             ),
             "token_type": "Bearer",
             "expires_in": expires_delta.seconds,

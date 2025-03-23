@@ -65,7 +65,9 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
         # Match STAC catalog, collection, or item URLs with a single regex
         return bool(
             re.match(
-                r"^(/|/collections(/[^/]+(/items/[^/]+)?)?|/search)$", request.url.path
+                # catalog, collections, collection, items, item, search
+                r"^(/|/collections(/[^/]+(/items(/[^/]+)?)?)?|/search)$",
+                request.url.path,
             )
         )
 

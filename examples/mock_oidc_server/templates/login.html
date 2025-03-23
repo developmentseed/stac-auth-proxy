@@ -1,99 +1,123 @@
 <!DOCTYPE html>
 <html>
-<head>
+  <head>
     <title>Mock OIDC Login</title>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f5f5f5;
-        }
-        .login-container {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            max-width: 400px;
-            width: 100%;
-        }
-        h1 {
-            color: #333;
-            margin-bottom: 1.5rem;
-        }
-        .info {
-            color: #666;
-            margin-bottom: 1rem;
-        }
-        .scopes {
-            background: #f8f9fa;
-            border-radius: 4px;
-            padding: 1rem;
-            margin-bottom: 2rem;
-            text-align: left;
-        }
-        .scopes h2 {
-            color: #495057;
-            font-size: 1rem;
-            margin: 0 0 0.5rem 0;
-        }
-        .scope-list {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-        }
-        .scope-list li {
-            color: #666;
-            padding: 0.25rem 0;
-            font-size: 0.9rem;
-            font-family: monospace;
-        }
-        .scope-list li::before {
-            content: "✓";
-            color: #28a745;
-            margin-right: 0.5rem;
-        }
-        form {
-            display: flex;
-            justify-content: center;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 0.75rem 2rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: background-color 0.2s;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f5f5f5;
+      }
+      .login-container {
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        max-width: 400px;
+        width: 100%;
+      }
+      h1 {
+        color: #333;
+        margin-bottom: 1.5rem;
+      }
+      .info {
+        color: #666;
+        margin-bottom: 1rem;
+      }
+      .mock-notice {
+        background: #ffe;
+        border: 1px solid #ffeeba;
+        color: #856404;
+        padding: 1rem;
+        border-radius: 4px;
+        margin-bottom: 1.5rem;
+        font-size: 0.9rem;
+        text-align: left;
+        font-style: italic;
+      }
+      .mock-notice strong {
+        display: block;
+        margin-bottom: 0.5rem;
+      }
+      .scopes {
+        background: #f8f9fa;
+        border-radius: 4px;
+        padding: 1rem;
+        margin-bottom: 2rem;
+        text-align: left;
+      }
+      .scopes h2 {
+        color: #495057;
+        font-size: 1rem;
+        margin: 0 0 0.5rem 0;
+      }
+      .scope-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .scope-list li {
+        color: #666;
+        padding: 0.25rem 0;
+        font-size: 0.9rem;
+        font-family: monospace;
+      }
+      .scope-list li::before {
+        content: "✓";
+        color: #28a745;
+        margin-right: 0.5rem;
+      }
+      form {
+        display: flex;
+        justify-content: center;
+      }
+      button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: background-color 0.2s;
+        text-transform: uppercase;
+        font-weight: bold;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="login-container">
-        <h1>Mock OIDC Login</h1>
-        <p class="info">
-            Application <strong>{{ client_id }}</strong> is requesting access to your account.
-        </p>
-        <div class="scopes">
-            <h2>Requested Permissions:</h2>
-            <ul class="scope-list">
-                {% for scope in scopes %}
-                <li>{{ scope }}</li>
-                {% endfor %}
-            </ul>
-        </div>
-        <form method="POST" action="/login">
-            <input type="hidden" name="request_id" value="{{ request_id }}">
-            <button type="submit">Continue with Login</button>
-        </form>
+      <h1>Fake Login</h1>
+      <div class="mock-notice">
+        <strong>⚠️ This is a mock authentication server.</strong>
+        This is a development/testing server that will automatically generate a
+        token for a mock user (<code>user123</code>) when you click continue.
+      </div>
+      <p class="info">
+        Application <strong>{{ client_id }}</strong> is requesting access to
+        your account.
+      </p>
+      <div class="scopes">
+        <h2>Requested Permissions:</h2>
+        <ul class="scope-list">
+          {% for scope in scopes %}
+          <li>{{ scope }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      <form method="POST" action="/login">
+        <input type="hidden" name="request_id" value="{{ request_id }}" />
+        <button type="submit">Login</button>
+      </form>
     </div>
-</body>
-</html> 
+  </body>
+</html>

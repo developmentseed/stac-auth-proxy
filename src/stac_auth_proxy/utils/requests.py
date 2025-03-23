@@ -26,6 +26,23 @@ def dict_to_bytes(d: dict) -> bytes:
     return json.dumps(d, separators=(",", ":")).encode("utf-8")
 
 
+def _check_endpoint_match(
+    path: str,
+    method: str,
+    endpoints: EndpointMethods,
+) -> tuple[bool, Sequence[str]]:
+    """Check if the path and method match any endpoint in the given endpoints map."""
+    for pattern, endpoint_methods in endpoints.items():
+        if re.match(pattern, path):
+            for endpoint_method in endpoint_methods:
+                required_scopes: Sequence[str] = []
+                if isinstance(endpoint_method, tuple):
+                    endpoint_method, required_scopes = endpoint_method
+                if method.casefold() == endpoint_method.casefold():
+                    return True, required_scopes
+    return False, []
+
+
 def find_match(
     path: str,
     method: str,
@@ -34,22 +51,25 @@ def find_match(
     default_public: bool,
 ) -> "MatchResult":
     """Check if the given path and method match any of the regex patterns and methods in the endpoints."""
-    endpoints = private_endpoints if default_public else public_endpoints
-    for pattern, endpoint_methods in endpoints.items():
-        if not re.match(pattern, path):
-            continue
-        for endpoint_method in endpoint_methods:
-            required_scopes: Sequence[str] = []
-            if isinstance(endpoint_method, tuple):
-                endpoint_method, required_scopes = endpoint_method
-            if method.casefold() == endpoint_method.casefold():
-                # If default_public, we're looking for a private endpoint.
-                # If not default_public, we're looking for a public endpoint.
-                return MatchResult(
-                    is_private=default_public,
-                    required_scopes=required_scopes,
-                )
-    return MatchResult(is_private=not default_public)
+    primary_endpoints = private_endpoints if default_public else public_endpoints
+    matched, required_scopes = _check_endpoint_match(path, method, primary_endpoints)
+    if matched:
+        return MatchResult(
+            is_private=default_public,
+            required_scopes=required_scopes,
+        )
+
+    # If default_public and no match found in private_endpoints, it's public
+    if default_public:
+        return MatchResult(is_private=False)
+
+    # If not default_public, check private_endpoints for required scopes
+    matched, required_scopes = _check_endpoint_match(path, method, private_endpoints)
+    if matched:
+        return MatchResult(is_private=True, required_scopes=required_scopes)
+
+    # Default case: if not default_public and no explicit match, it's private
+    return MatchResult(is_private=True)
 
 
 @dataclass

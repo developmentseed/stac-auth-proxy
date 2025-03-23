@@ -48,7 +48,7 @@ services:
     environment:
       UPSTREAM_URL: ${UPSTREAM_URL:-http://stac:8001}
       OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL:-http://localhost:8888/.well-known/openid-configuration}
-      OIDC_DISCOVERY_INTERNAL_URL: ${OIDC_DISCOVERY_INTERNAL_URL:-http://mock-oidc:8888/.well-known/openid-configuration}
+      OIDC_DISCOVERY_INTERNAL_URL: ${OIDC_DISCOVERY_INTERNAL_URL:-http://oidc:8888/.well-known/openid-configuration}
     env_file:
       - path: .env
         required: false
@@ -57,7 +57,7 @@ services:
     volumes:
       - ./src:/app/src
 
-  mock-oidc:
+  oidc:
     build:
       context: ./examples/mock_oidc_server
     environment:

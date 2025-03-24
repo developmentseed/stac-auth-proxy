@@ -79,7 +79,7 @@ The application is configurable via environment variables.
     - **Type:** boolean
     - **Required:** No, defaults to `false`
     - **Example:** `false`, `1`, `True`
-  - **`PRIVATE_ENDPOINTS`**, endpoints explicitly marked as requiring authentication, used when `DEFAULT_PUBLIC == True`
+  - **`PRIVATE_ENDPOINTS`**, endpoints explicitly marked as requiring authentication and possibly scopes
     - **Type:** JSON object mapping regex patterns to HTTP methods OR tuples of an HTTP method and string representing required scopes
     - **Required:** No, defaults to the following:
       ```json

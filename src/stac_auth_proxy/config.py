@@ -23,7 +23,8 @@ class ClassInput(BaseModel):
 
     def __call__(self):
         """Dynamically load a class and instantiate it with args & kwargs."""
-        module_path, class_name = self.cls.rsplit(".", 1)
+        assert self.cls.count(":")
+        module_path, class_name = self.cls.rsplit(":", 1)
         module = importlib.import_module(module_path)
         cls = getattr(module, class_name)
         return cls(*self.args, **self.kwargs)

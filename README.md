@@ -107,23 +107,18 @@ The application is configurable via environment variables.
     - **Required:** No, defaults to `null` (disabled)
     - **Example:** `/api`
 - Filtering
-  - **`ITEMS_FILTER`**, [cql2 expression](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) generator for item-level filtering
+  - **`ITEMS_FILTER_CLS`**, [cql2 expression](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) generator for item-level filtering
     - **Type:** JSON object with class configuration
     - **Required:** No, defaults to `null` (disabled)
-    - **Components**:
-      - `cls`: Python import path
-      - `args`: List of positional arguments
-      - `kwargs`: Dictionary of keyword arguments
-    - **Example:**
-      ```json
-      {
-        "cls": "my_package.filters:OrganizationFilter",
-        "args": ["org1"],
-        "kwargs": {
-          "field_name": "properties.organization"
-        }
-      }
-      ```
+    - **Example:** `my_package.filters:OrganizationFilter`
+  - **`ITEMS_FILTER_ARGS`**, [cql2 expression](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) generator for item-level filtering
+    - **Type:** List of positional arguments used to initialize the class
+    - **Required:** No, defaults to `[]`
+    - **Example:**: `["org1"]`
+  - **`ITEMS_FILTER_KWARGS`**, [cql2 expression](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) generator for item-level filtering
+    - **Type:** Dictionary of keyword arguments used to initialize the class
+    - **Required:** No, defaults to `{}`
+    - **Example:** `{ "field_name": "properties.organization" }`
 
 ### Customization
 

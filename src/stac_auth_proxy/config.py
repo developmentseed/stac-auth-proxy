@@ -69,7 +69,9 @@ class Settings(BaseSettings):
     # Filters
     items_filter: Optional[ClassInput] = None
 
-    model_config = SettingsConfigDict()
+    model_config = SettingsConfigDict(
+        env_nested_delimiter="_",
+    )
 
     @model_validator(mode="before")
     @classmethod

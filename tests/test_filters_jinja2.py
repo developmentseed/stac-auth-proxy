@@ -132,7 +132,7 @@ def _build_client(
     app = app_factory(
         upstream_url=src_api_server,
         items_filter={
-            "cls": "stac_auth_proxy.filters.Template",
+            "cls": "stac_auth_proxy.filters:Template",
             "args": [template_expr.strip()],
         },
         default_public=True,

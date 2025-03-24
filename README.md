@@ -117,7 +117,7 @@ The application is configurable via environment variables.
     - **Example:**
       ```json
       {
-        "cls": "my_package.filters.OrganizationFilter",
+        "cls": "my_package.filters:OrganizationFilter",
         "args": ["org1"],
         "kwargs": {
           "field_name": "properties.organization"

@@ -125,7 +125,17 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
         # ---
         # Annotate assets with "auth:refs": [signing_scheme]
         if self.signing_endpoint:
-            for asset in doc.get("assets", {}).values():
+            assets = chain(
+                # Item
+                doc.get("assets", {}).values(),
+                # Items/Search
+                (
+                    asset
+                    for item in doc.get("features", [])
+                    for asset in item.get("assets", {}).values()
+                ),
+            )
+            for asset in assets:
                 if "href" not in asset:
                     logger.warning("Asset %s has no href", asset)
                     continue
@@ -134,7 +144,9 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
 
         # Annotate links with "auth:refs": [auth_scheme]
         links = chain(
+            # Item/Collection
             doc.get("links", []),
+            # Collections/Items/Search
             (
                 link
                 for prop in ["features", "collections"]

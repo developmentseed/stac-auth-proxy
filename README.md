@@ -1,6 +1,6 @@
 <div align="center">
   <h1 style="font-family: monospace">stac auth proxy</h1>
-  <p align="center">Reverse proxy to apply auth*n your STAC API.</p>
+  <p align="center">Reverse proxy to apply auth*n to your STAC API.</p>
 </div>
 
 ---

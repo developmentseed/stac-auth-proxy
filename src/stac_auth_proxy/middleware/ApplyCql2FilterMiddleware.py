@@ -30,7 +30,6 @@ class ApplyCql2FilterMiddleware:
         if request.method == "GET":
             cql2_filter = getattr(request.state, self.state_key, None)
             if cql2_filter:
-                # TODO: Differentiate between list/search and lookup
                 scope["query_string"] = filters.append_qs_filter(
                     request.url.query, cql2_filter
                 )

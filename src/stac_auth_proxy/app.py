@@ -9,6 +9,7 @@ import logging
 from typing import Optional
 
 from fastapi import FastAPI
+from starlette_cramjam.middleware import CompressionMiddleware
 
 from .config import Settings
 from .handlers import HealthzHandler, ReverseProxyHandler, S3AssetSigner
@@ -65,7 +66,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     app.add_api_route(
         "/{path:path}",
-        ReverseProxyHandler(upstream=str(settings.upstream_url)).stream,
+        ReverseProxyHandler(upstream=str(settings.upstream_url)).proxy_request,
         methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     )
 
@@ -107,6 +108,10 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         private_endpoints=settings.private_endpoints,
         default_public=settings.default_public,
         oidc_config_url=settings.oidc_discovery_internal_url,
+    )
+
+    app.add_middleware(
+        CompressionMiddleware,
     )
 
     app.add_middleware(

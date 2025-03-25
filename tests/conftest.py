@@ -1,6 +1,7 @@
 """Pytest fixtures."""
 
 import os
+import socket
 import threading
 from typing import Any, AsyncGenerator
 from unittest.mock import DEFAULT, AsyncMock, MagicMock, patch
@@ -119,19 +120,29 @@ def source_api():
 
 
 @pytest.fixture(scope="session")
-def source_api_server(source_api):
+def free_port():
+    """Get a free port."""
+    sock = socket.socket()
+    # Needed for Github Actions, https://stackoverflow.com/a/4466035
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(("", 0))
+    return sock.getsockname()[1]
+
+
+@pytest.fixture(scope="session")
+def source_api_server(source_api, free_port):
     """Run the source API in a background thread."""
-    host, port = "127.0.0.1", 9119
+    host = "127.0.0.1"
     server = uvicorn.Server(
         uvicorn.Config(
             source_api,
             host=host,
-            port=port,
+            port=free_port,
         )
     )
     thread = threading.Thread(target=server.run)
     thread.start()
-    yield f"http://{host}:{port}"
+    yield f"http://{host}:{free_port}"
     server.should_exit = True
     thread.join()
 

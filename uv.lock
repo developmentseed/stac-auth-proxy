@@ -1145,6 +1145,7 @@ dependencies = [
     { name = "jinja2" },
     { name = "pydantic-settings" },
     { name = "pyjwt" },
+    { name = "starlette-cramjam" },
     { name = "uvicorn" },
 ]
 
@@ -1170,6 +1171,7 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.4" },
     { name = "pydantic-settings", specifier = ">=2.6.1" },
     { name = "pyjwt", specifier = ">=2.10.1" },
+    { name = "starlette-cramjam", specifier = ">=0.4.0" },
     { name = "uvicorn", specifier = ">=0.32.1" },
 ]
 

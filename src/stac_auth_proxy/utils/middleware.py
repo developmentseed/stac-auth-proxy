@@ -1,23 +1,13 @@
 """Utilities for middleware response handling."""
 
-import gzip
 import json
 import re
-import zlib
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
-import brotli
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
-
-# TODO: Consider using a single middleware to handle all compression/decompression
-ENCODING_HANDLERS = {
-    "gzip": gzip,
-    "deflate": zlib,
-    "br": brotli,
-}
 
 
 class JsonResponseMiddleware(ABC):
@@ -89,31 +79,16 @@ class JsonResponseMiddleware(ABC):
             body += message["body"]
 
             # Skip body chunks until all chunks have been received
-            if message["more_body"]:
+            if message.get("more_body"):
                 return
 
-            # Handle compression/decompression
             headers = MutableHeaders(scope=start_message)
-            content_encoding = headers.get("content-encoding", "").lower()
-            handler = None
-            if content_encoding:
-                handler = ENCODING_HANDLERS.get(content_encoding)
-                assert handler, f"Unsupported content encoding: {content_encoding}"
-                body = (
-                    handler.decompress(body)
-                    if content_encoding != "deflate"
-                    else handler.decompress(body, -zlib.MAX_WBITS)
-                )
 
             # Transform the JSON body
             if body:
                 data = json.loads(body)
                 transformed = self.transform_json(data)
                 body = json.dumps(transformed).encode()
-
-            # Re-compress if necessary
-            if handler:
-                body = handler.compress(body)
 
             # Update content-length header
             headers["content-length"] = str(len(body))

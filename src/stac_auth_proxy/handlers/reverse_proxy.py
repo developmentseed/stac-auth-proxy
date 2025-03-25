@@ -6,9 +6,8 @@ from dataclasses import dataclass, field
 
 import httpx
 from fastapi import Request
-from starlette.background import BackgroundTask
 from starlette.datastructures import MutableHeaders
-from starlette.responses import StreamingResponse
+from starlette.responses import Response
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +27,7 @@ class ReverseProxyHandler:
             timeout=self.timeout,
         )
 
-    async def proxy_request(self, request: Request) -> httpx.Response:
+    async def proxy_request(self, request: Request) -> Response:
         """Proxy a request to the upstream STAC API."""
         headers = MutableHeaders(request.headers)
         headers.setdefault("X-Forwarded-For", request.client.host)
@@ -60,14 +59,15 @@ class ReverseProxyHandler:
             f"Received response status {rp_resp.status_code!r} from {rp_req.url} in {proxy_time:.3f}s"
         )
         rp_resp.headers["X-Upstream-Time"] = f"{proxy_time:.3f}"
-        return rp_resp
 
-    async def stream(self, request: Request) -> StreamingResponse:
-        """Transparently proxy a request to the upstream STAC API."""
-        rp_resp = await self.proxy_request(request)
-        return StreamingResponse(
-            rp_resp.aiter_raw(),
+        # We read the content here to make use of HTTPX's decompression, ensuring we have
+        # non-compressed content for the middleware to work with.
+        content = await rp_resp.aread()
+        if rp_resp.headers.get("Content-Encoding"):
+            del rp_resp.headers["Content-Encoding"]
+
+        return Response(
+            content=content,
             status_code=rp_resp.status_code,
-            headers=rp_resp.headers,
-            background=BackgroundTask(rp_resp.aclose),
+            headers=dict(rp_resp.headers),
         )

@@ -1,24 +1,15 @@
 """Middleware to add auth information to the OpenAPI spec served by upstream API."""
 
-import gzip
 import json
-import zlib
 from dataclasses import dataclass
 from typing import Any, Optional
 
-import brotli
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from ..config import EndpointMethods
 from ..utils.requests import dict_to_bytes, find_match
-
-ENCODING_HANDLERS = {
-    "gzip": gzip,
-    "deflate": zlib,
-    "br": brotli,
-}
 
 
 @dataclass(frozen=True)
@@ -57,28 +48,14 @@ class OpenApiMiddleware:
             body += message["body"]
 
             # Skip body chunks until all chunks have been received
-            if message["more_body"]:
+            if message.get("more_body"):
                 return
 
             # Maybe decompress the body
             headers = MutableHeaders(scope=start_message)
-            content_encoding = headers.get("content-encoding", "").lower()
-            handler = None
-            if content_encoding:
-                handler = ENCODING_HANDLERS.get(content_encoding)
-                assert handler, f"Unsupported content encoding: {content_encoding}"
-                body = (
-                    handler.decompress(body)
-                    if content_encoding != "deflate"
-                    else handler.decompress(body, -zlib.MAX_WBITS)
-                )
 
             # Augment the spec
             body = dict_to_bytes(self.augment_spec(json.loads(body)))
-
-            # Maybe re-compress the body
-            if handler:
-                body = handler.compress(body)
 
             # Update the content-length header
             headers["content-length"] = str(len(body))

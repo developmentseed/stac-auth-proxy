@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 
 import httpx
 from pydantic import HttpUrl
+from starlette.datastructures import Headers
 from starlette.requests import Request
 from starlette.types import ASGIApp
 
@@ -40,6 +41,8 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
         "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
     )
 
+    json_content_type_expr: str = r"application/json|geo\+json)"
+
     def __post_init__(self):
         """Load after initialization."""
         if self.oidc_config_url and not self.auth_scheme:
@@ -60,15 +63,23 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
                 },
             }
 
-    def should_transform_response(self, request: Request) -> bool:
+    def should_transform_response(
+        self, request: Request, response_headers: Headers
+    ) -> bool:
         """Determine if the response should be transformed."""
         # Match STAC catalog, collection, or item URLs with a single regex
-        return bool(
-            re.match(
-                # catalog, collections, collection, items, item, search
-                r"^(/|/collections(/[^/]+(/items(/[^/]+)?)?)?|/search)$",
-                request.url.path,
-            )
+        return all(
+            [
+                re.match(
+                    # catalog, collections, collection, items, item, search
+                    r"^(/|/collections(/[^/]+(/items(/[^/]+)?)?)?|/search)$",
+                    request.url.path,
+                ),
+                re.match(
+                    self.json_content_type_expr,
+                    response_headers.get("content-type", ""),
+                ),
+            ]
         )
 
     def transform_json(self, doc: dict[str, Any]) -> dict[str, Any]:

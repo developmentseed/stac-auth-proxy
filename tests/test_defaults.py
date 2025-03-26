@@ -49,8 +49,8 @@ def test_default_public_true(source_api_server, path, method, expected_status):
         },
         default_public=True,
     )
-    client = TestClient(test_app)
-    response = client.request(method=method, url=path)
+    with TestClient(test_app) as client:
+        response = client.request(method=method, url=path)
     assert response.status_code == expected_status
 
 
@@ -88,6 +88,6 @@ def test_default_public_false(source_api_server, path, method, expected_status):
         private_endpoints={},
         default_public=False,
     )
-    client = TestClient(test_app)
-    response = client.request(method=method, url=path)
+    with TestClient(test_app) as client:
+        response = client.request(method=method, url=path)
     assert response.status_code == expected_status

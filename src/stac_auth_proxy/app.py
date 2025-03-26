@@ -9,11 +9,12 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Optional
 
+import httpx
 from fastapi import FastAPI
 from starlette_cramjam.middleware import CompressionMiddleware
 
 from .config import Settings
-from .handlers import HealthzHandler, ReverseProxyHandler
+from .handlers import HealthzHandler, proxy_request
 from .middleware import (
     AddProcessTimeHeaderMiddleware,
     ApplyCql2FilterMiddleware,
@@ -43,7 +44,13 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             for url in [settings.upstream_url, settings.oidc_discovery_internal_url]:
                 await check_server_health(url=url)
 
+        # Create HTTP client
+        app.state.client = httpx.AsyncClient(
+            base_url=str(settings.upstream_url),
+            timeout=httpx.Timeout(timeout=15.0),
+        )
         yield
+        await app.state.client.aclose()
 
     app = FastAPI(
         openapi_url=None,  # Disable OpenAPI schema endpoint, we want to serve upstream's schema
@@ -61,7 +68,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     app.add_api_route(
         "/{path:path}",
-        ReverseProxyHandler(upstream=str(settings.upstream_url)).proxy_request,
+        proxy_request,
         methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     )
 

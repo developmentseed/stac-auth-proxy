@@ -1,6 +1,6 @@
 """Handlers to process requests."""
 
 from .healthz import HealthzHandler
-from .reverse_proxy import ReverseProxyHandler
+from .reverse_proxy import proxy_request
 
-__all__ = ["ReverseProxyHandler", "HealthzHandler"]
+__all__ = ["proxy_request", "HealthzHandler"]

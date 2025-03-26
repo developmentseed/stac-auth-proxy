@@ -15,9 +15,9 @@ from stac_auth_proxy import Settings, create_app
 class AppFactory:
     """Factory for creating test apps with default settings."""
 
-    def __init__(self, **defaults):
+    def __init__(self, wait_for_upstream=False, **defaults):
         """Initialize the factory with default settings."""
-        self.defaults = defaults
+        self.defaults = {**defaults, "wait_for_upstream": wait_for_upstream}
 
     def __call__(self, *, upstream_url, **overrides) -> Callable:
         """Create a new app with the given overrides."""

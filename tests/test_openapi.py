@@ -16,8 +16,8 @@ def test_no_openapi_spec_endpoint(source_api_server: str):
         upstream_url=source_api_server,
         openapi_spec_endpoint=None,
     )
-    client = TestClient(app)
-    response = client.get("/api")
+    with TestClient(app) as client:
+        response = client.get("/api")
     assert response.status_code == 200
     openapi = response.json()
     assert "info" in openapi
@@ -34,8 +34,8 @@ def test_no_private_endpoints(source_api_server: str):
         private_endpoints={},
         default_public=True,
     )
-    client = TestClient(app)
-    response = client.get("/api")
+    with TestClient(app) as client:
+        response = client.get("/api")
     assert response.status_code == 200
     openapi = response.json()
     assert "info" in openapi
@@ -49,8 +49,8 @@ def test_oidc_in_openapi_spec(source_api: FastAPI, source_api_server: str):
         upstream_url=source_api_server,
         openapi_spec_endpoint=source_api.openapi_url,
     )
-    client = TestClient(app)
-    response = client.get(source_api.openapi_url)
+    with TestClient(app) as client:
+        response = client.get(source_api.openapi_url)
     assert response.status_code == 200
     openapi = response.json()
     assert "info" in openapi
@@ -68,12 +68,11 @@ def test_oidc_in_openapi_spec_compressed(
         upstream_url=source_api_server,
         openapi_spec_endpoint=source_api.openapi_url,
     )
-    client = TestClient(app)
-
     # Test with gzip acceptance
-    response = client.get(
-        source_api.openapi_url, headers={"Accept-Encoding": compression_type}
-    )
+    with TestClient(app) as client:
+        response = client.get(
+            source_api.openapi_url, headers={"Accept-Encoding": compression_type}
+        )
     assert response.status_code == 200
     assert response.headers.get("content-encoding") == compression_type
     assert response.headers.get("content-type") == "application/json"
@@ -100,9 +99,8 @@ def test_oidc_in_openapi_spec_private_endpoints(
         default_public=True,
         private_endpoints=private_endpoints,
     )
-    client = TestClient(app)
-
-    openapi = client.get(source_api.openapi_url).raise_for_status().json()
+    with TestClient(app) as client:
+        openapi = client.get(source_api.openapi_url).raise_for_status().json()
 
     expected_auth = {
         "/collections": ["POST"],
@@ -136,9 +134,9 @@ def test_oidc_in_openapi_spec_public_endpoints(
         default_public=False,
         public_endpoints=public,
     )
-    client = TestClient(app)
 
-    openapi = client.get(source_api.openapi_url).raise_for_status().json()
+    with TestClient(app) as client:
+        openapi = client.get(source_api.openapi_url).raise_for_status().json()
 
     expected_auth = {"/queryables": ["GET"]}
     for path, method_config in openapi["paths"].items():

@@ -1,6 +1,7 @@
 """Tests for Jinja2 CQL2 filter (simplified for readability)."""
 
 import json
+from contextlib import contextmanager
 
 import cql2
 import pytest
@@ -121,6 +122,7 @@ app_factory = AppFactory(
 )
 
 
+@contextmanager
 def _build_client(
     *,
     src_api_server: str,
@@ -142,7 +144,8 @@ def _build_client(
         if is_authenticated
         else {}
     )
-    return TestClient(app, headers=headers)
+    with TestClient(app, headers=headers) as client:
+        yield client
 
 
 @pytest.mark.parametrize(
@@ -162,12 +165,13 @@ async def test_search_post(
     token_builder,
 ):
     """Test that POST /search merges the upstream query with the templated filter."""
-    response = _build_client(
+    with _build_client(
         src_api_server=source_api_server,
         template_expr=filter_template_expr,
         is_authenticated=is_authenticated,
         token_builder=token_builder,
-    ).post("/search", json=input_query)
+    ) as client:
+        response = client.post("/search", json=input_query)
     response.raise_for_status()
 
     # Retrieve the JSON body that was actually sent upstream
@@ -210,13 +214,13 @@ async def test_search_get(
     token_builder,
 ):
     """Test that GET /search merges the upstream query params with the templated filter."""
-    client = _build_client(
+    with _build_client(
         src_api_server=source_api_server,
         template_expr=filter_template_expr,
         is_authenticated=is_authenticated,
         token_builder=token_builder,
-    )
-    response = client.get("/search", params=input_query)
+    ) as client:
+        response = client.get("/search", params=input_query)
     response.raise_for_status()
 
     # For GET, we expect the upstream body to be empty, but URL params to be appended
@@ -263,13 +267,13 @@ async def test_items_list(
     token_builder,
 ):
     """Test that GET /collections/foo/items merges query params with the templated filter."""
-    client = _build_client(
+    with _build_client(
         src_api_server=source_api_server,
         template_expr=filter_template_expr,
         is_authenticated=is_authenticated,
         token_builder=token_builder,
-    )
-    response = client.get("/collections/foo/items", params=input_query)
+    ) as client:
+        response = client.get("/collections/foo/items", params=input_query)
     response.raise_for_status()
 
     # For GET items, we also expect an empty body and appended querystring

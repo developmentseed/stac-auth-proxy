@@ -43,8 +43,8 @@ The simplest way to run the project is by invoking the application via Docker:
 docker run \
   -it --rm \
   -p 8000:8000 \
-  -e UPSTREAM_URL=https://google.com \
-  -e OIDC_DISCOVERY_URL=https://auth.openveda.cloud/realms/veda/.well-known/openid-configuration \
+  -e UPSTREAM_URL=https://my-stac-api \
+  -e OIDC_DISCOVERY_URL=https://my-auth-server/.well-known/openid-configuration \
   ghcr.io/developmentseed/stac-auth-proxy:latest
 ```
 

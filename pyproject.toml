@@ -1,5 +1,5 @@
 [project]
-authors = [{name = "Your Name", email = "your.email@example.com"}]
+authors = [{name = "Anthony Lukach", email = "anthonylukach@gmail.com"}]
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.8",
@@ -10,7 +10,7 @@ dependencies = [
   "brotli>=1.1.0",
   "cql2>=0.3.5",
   "fastapi>=0.115.5",
-  "httpx>=0.28.0",
+  "httpx[http2]>=0.28.0",
   "jinja2>=3.1.4",
   "pydantic-settings>=2.6.1",
   "pyjwt>=2.10.1",

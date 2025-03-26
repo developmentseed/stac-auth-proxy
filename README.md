@@ -18,9 +18,6 @@ STAC Auth Proxy is a proxy API that mediates between the client and your interna
 
 ## Usage
 
-> [!NOTE]
-> Currently, the project can only be installed by downloading the repository. It will eventually be available on Docker ([#5](https://github.com/developmentseed/stac-auth-proxy/issues/5)) and PyPi ([#30](https://github.com/developmentseed/stac-auth-proxy/issues/30)).
-
 ### Installation
 
 For local development, we use [`uv`](https://docs.astral.sh/uv/) to manage project dependencies and environment.
@@ -35,15 +32,27 @@ Otherwise, the application can be installed as a standard Python module:
 pip install -e .
 ```
 
+> [!NOTE]
+> This project will be available on PyPi in the near future ([#30](https://github.com/developmentseed/stac-auth-proxy/issues/30)).
+
 ### Running
 
-The simplest way to run the project is by calling the module directly:
+The simplest way to run the project is by invoking the application via Docker:
+
+```sh
+docker run \
+  -it --rm \
+  -p 8000:8000 \
+  -e UPSTREAM_URL=https://google.com \
+  -e OIDC_DISCOVERY_URL=https://auth.openveda.cloud/realms/veda/.well-known/openid-configuration \
+  ghcr.io/developmentseed/stac-auth-proxy:latest
+```
+
+Alternatively, the module can be invoked directly or the application's factory can be passed to Uvicorn:
 
 ```sh
 python -m stac_auth_proxy
 ```
-
-Alternatively, the application's factory can be passed to Uvicorn:
 
 ```sh
 uvicorn --factory stac_auth_proxy:create_app

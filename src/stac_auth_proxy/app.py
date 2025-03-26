@@ -6,14 +6,14 @@ authentication, authorization, and proxying of requests to some internal STAC AP
 """
 
 import logging
+from contextlib import asynccontextmanager
 from typing import Optional
 
 from fastapi import FastAPI
 from starlette_cramjam.middleware import CompressionMiddleware
 
 from .config import Settings
-from .handlers import HealthzHandler, ReverseProxyHandler, S3AssetSigner
-from .lifespan import LifespanManager, ServerHealthCheck
+from .handlers import HealthzHandler, ReverseProxyHandler
 from .middleware import (
     AddProcessTimeHeaderMiddleware,
     ApplyCql2FilterMiddleware,
@@ -22,6 +22,7 @@ from .middleware import (
     EnforceAuthMiddleware,
     OpenApiMiddleware,
 )
+from .utils.lifespan import check_server_health
 
 logger = logging.getLogger(__name__)
 
@@ -33,14 +34,17 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     #
     # Application
     #
-    upstream_urls = (
-        [settings.upstream_url, settings.oidc_discovery_internal_url]
-        if settings.wait_for_upstream
-        else []
-    )
-    lifespan = LifespanManager(
-        on_startup=([ServerHealthCheck(url=url) for url in upstream_urls])
-    )
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        assert settings
+
+        # Wait for upstream servers to become available
+        if settings.wait_for_upstream:
+            for url in [settings.upstream_url, settings.oidc_discovery_internal_url]:
+                await check_server_health(url=url)
+
+        yield
 
     app = FastAPI(
         openapi_url=None,  # Disable OpenAPI schema endpoint, we want to serve upstream's schema

@@ -1,7 +1,8 @@
 name: CI/CD
 
 on:
-  - push
+  push:
+  release:
 
 jobs:
   lint:

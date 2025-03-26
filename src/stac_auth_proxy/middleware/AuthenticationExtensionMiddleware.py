@@ -25,15 +25,11 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
 
     app: ASGIApp
 
-    signing_endpoint: Optional[str]
-    signed_asset_expression: str
-
     default_public: bool
     private_endpoints: EndpointMethods
     public_endpoints: EndpointMethods
 
     oidc_config_url: Optional[HttpUrl] = None
-    signing_scheme_name: str = "signed_url_auth"
     auth_scheme_name: str = "oauth"
     auth_scheme: dict[str, Any] = field(default_factory=dict)
     extension_url: str = (
@@ -88,60 +84,9 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
         scheme_loc = doc["properties"] if "properties" in doc else doc
         schemes = scheme_loc.setdefault("auth:schemes", {})
         schemes[self.auth_scheme_name] = self.auth_scheme
-        if self.signing_endpoint:
-            schemes[self.signing_scheme_name] = {
-                "type": "signedUrl",
-                "description": "Requires an authentication API",
-                "flows": {
-                    "authorizationCode": {
-                        "authorizationApi": self.signing_endpoint,
-                        "method": "POST",
-                        "parameters": {
-                            "bucket": {
-                                "in": "body",
-                                "required": True,
-                                "description": "asset bucket",
-                                "schema": {
-                                    "type": "string",
-                                    "examples": "example-bucket",
-                                },
-                            },
-                            "key": {
-                                "in": "body",
-                                "required": True,
-                                "description": "asset key",
-                                "schema": {
-                                    "type": "string",
-                                    "examples": "path/to/example/asset.xyz",
-                                },
-                            },
-                        },
-                        "responseField": "signed_url",
-                    }
-                },
-            }
 
         # auth:refs
         # ---
-        # Annotate assets with "auth:refs": [signing_scheme]
-        if self.signing_endpoint:
-            assets = chain(
-                # Item
-                doc.get("assets", {}).values(),
-                # Items/Search
-                (
-                    asset
-                    for item in doc.get("features", [])
-                    for asset in item.get("assets", {}).values()
-                ),
-            )
-            for asset in assets:
-                if "href" not in asset:
-                    logger.warning("Asset %s has no href", asset)
-                    continue
-                if re.match(self.signed_asset_expression, asset["href"]):
-                    asset.setdefault("auth:refs", []).append(self.signing_scheme_name)
-
         # Annotate links with "auth:refs": [auth_scheme]
         links = chain(
             # Item/Collection

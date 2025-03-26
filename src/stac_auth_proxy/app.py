@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from starlette_cramjam.middleware import CompressionMiddleware
 
 from .config import Settings
-from .handlers import HealthzHandler, ReverseProxyHandler, S3AssetSigner
+from .handlers import HealthzHandler, ReverseProxyHandler
 from .middleware import (
     AddProcessTimeHeaderMiddleware,
     ApplyCql2FilterMiddleware,
@@ -60,14 +60,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             prefix=settings.healthz_prefix,
         )
 
-    if settings.signer_endpoint:
-        # TODO: Warn/error if endpoint is public
-        app.add_api_route(
-            settings.signer_endpoint,
-            S3AssetSigner(bucket_pattern=settings.signer_asset_expression).endpoint,
-            methods=["POST"],
-        )
-
     app.add_api_route(
         "/{path:path}",
         ReverseProxyHandler(upstream=str(settings.upstream_url)).proxy_request,
@@ -79,8 +71,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     #
     app.add_middleware(
         AuthenticationExtensionMiddleware,
-        signing_endpoint=settings.signer_endpoint,
-        signed_asset_expression=settings.signer_asset_expression,
         default_public=settings.default_public,
         public_endpoints=settings.public_endpoints,
         private_endpoints=settings.private_endpoints,

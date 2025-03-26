@@ -1,7 +1,10 @@
 name: CI/CD
 
 on:
-  - push
+  push:
+    branches: [ "main" ]
+  release:
+    types: [ published ]
 
 jobs:
   lint:

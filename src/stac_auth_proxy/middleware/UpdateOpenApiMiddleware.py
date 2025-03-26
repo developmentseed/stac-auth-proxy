@@ -1,8 +1,10 @@
 """Middleware to add auth information to the OpenAPI spec served by upstream API."""
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
+from starlette.datastructures import Headers
 from starlette.requests import Request
 from starlette.types import ASGIApp
 
@@ -23,9 +25,21 @@ class OpenApiMiddleware(JsonResponseMiddleware):
     default_public: bool
     oidc_auth_scheme_name: str = "oidcAuth"
 
-    def should_transform_response(self, request: Request) -> bool:
+    json_content_type_expr: str = r"application/(vnd\.oai\.openapi\+json?|json)"
+
+    def should_transform_response(
+        self, request: Request, response_headers: Headers
+    ) -> bool:
         """Only transform responses for the OpenAPI spec path."""
-        return request.url.path == self.openapi_spec_path
+        return all(
+            [
+                re.match(self.openapi_spec_path, request.url.path),
+                re.match(
+                    self.json_content_type_expr,
+                    response_headers.get("content-type", ""),
+                ),
+            ]
+        )
 
     def transform_json(self, openapi_spec: dict[str, Any]) -> dict[str, Any]:
         """Augment the OpenAPI spec with auth information."""

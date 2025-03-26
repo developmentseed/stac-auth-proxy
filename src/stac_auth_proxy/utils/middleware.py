@@ -30,7 +30,9 @@ class JsonResponseMiddleware(ABC):
         -------
             bool: True if the response should be transformed
         """
-        return request.headers.get("accept") == "application/json"
+        return bool(
+            re.match(self.json_content_type_expr, request.headers.get("accept", ""))
+        )
 
     @abstractmethod
     def transform_json(self, data: Any) -> Any:

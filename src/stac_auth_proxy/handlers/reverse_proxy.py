@@ -25,6 +25,7 @@ class ReverseProxyHandler:
         self.client = self.client or httpx.AsyncClient(
             base_url=self.upstream,
             timeout=self.timeout,
+            http2=True,
         )
 
     async def proxy_request(self, request: Request) -> Response:

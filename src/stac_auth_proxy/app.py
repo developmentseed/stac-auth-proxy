@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from starlette_cramjam.middleware import CompressionMiddleware
 
 from .config import Settings
-from .handlers import HealthzHandler, ReverseProxyHandler
+from .handlers import HealthzHandler, ReverseProxyHandler, S3AssetSigner
 from .middleware import (
     AddProcessTimeHeaderMiddleware,
     ApplyCql2FilterMiddleware,

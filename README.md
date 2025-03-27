@@ -254,9 +254,9 @@ sequenceDiagram
     STAC API->>Client: Response
 ```
 
-[^21]: [#21](https://github.com/developmentseed/stac-auth-proxy/issues/21)
-[^22]: [#22](https://github.com/developmentseed/stac-auth-proxy/issues/21)
-[^23]: [#23](https://github.com/developmentseed/stac-auth-proxy/issues/23)
-[^25]: [#25](https://github.com/developmentseed/stac-auth-proxy/issues/21)
-[^30]: [#30](https://github.com/developmentseed/stac-auth-proxy/issues/30)
-[^37]: [#37](https://github.com/developmentseed/stac-auth-proxy/issues/37)
+[^21]: https://github.com/developmentseed/stac-auth-proxy/issues/21
+[^22]: https://github.com/developmentseed/stac-auth-proxy/issues/22
+[^23]: https://github.com/developmentseed/stac-auth-proxy/issues/23
+[^25]: https://github.com/developmentseed/stac-auth-proxy/issues/25
+[^30]: https://github.com/developmentseed/stac-auth-proxy/issues/30
+[^37]: https://github.com/developmentseed/stac-auth-proxy/issues/37

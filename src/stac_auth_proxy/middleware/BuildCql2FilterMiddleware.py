@@ -53,7 +53,6 @@ class BuildCql2FilterMiddleware:
             setattr(request.state, self.state_key, cql2_filter)
 
         # For GET requests, we can build the filter immediately
-        # NOTE: It appears that FastAPI will not call receive function for GET requests
         if request.method == "GET":
             await set_filter()
             return await self.app(scope, receive, send)
@@ -61,6 +60,10 @@ class BuildCql2FilterMiddleware:
         total_body = b""
 
         async def receive_build_filter() -> Message:
+            """
+            Receive the body of the request and build the filter.
+            NOTE: This is not called for GET requests.
+            """
             nonlocal total_body
 
             message = await receive()

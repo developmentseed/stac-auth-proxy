@@ -1,4 +1,47 @@
+# Default values for stac-auth-proxy
+
+replicaCount: 1
+
 image:
   repository: ghcr.io/developmentseed/stac-auth-proxy
   pullPolicy: IfNotPresent
-  tag: "latest" 
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  host: "stac-proxy.example.com"  # This should be overridden in production
+  tls:
+    enabled: true
+    secretName: ""  # If empty, will be auto-generated as "{host}-tls"
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+# Pod-level security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+
+# Container-level security context
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+nodeSelector: {}
+tolerations: []
+affinity: {} 

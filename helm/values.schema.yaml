@@ -1,18 +1,152 @@
-image:
-  type: object
-  properties:
-    repository:
+"$schema": "https://json-schema.org/draft-07/schema#"
+type: object
+properties:
+  replicaCount:
+    type: integer
+    minimum: 1
+    description: "Number of replicas for the deployment"
+
+  image:
+    type: object
+    properties:
+      repository:
+        type: string
+        description: "Docker image repository"
+        default: "ghcr.io/developmentseed/stac-auth-proxy"
+      pullPolicy:
+        type: string
+        enum: ["IfNotPresent", "Always", "Never"]
+        description: "Kubernetes image pull policy"
+      tag:
+        type: string
+        description: "Docker image tag"
+        default: "latest"
+
+  service:
+    type: object
+    required: ["type", "port"]
+    properties:
+      type:
+        type: string
+        enum: ["ClusterIP", "NodePort", "LoadBalancer"]
+        description: "Kubernetes service type"
+      port:
+        type: integer
+        minimum: 1
+        maximum: 65535
+        description: "Service port number"
+
+  ingress:
+    type: object
+    properties:
+      enabled:
+        type: boolean
+        description: "Enable ingress resource"
+      className:
+        type: string
+        description: "Ingress class name (e.g., nginx)"
+      annotations:
+        type: object
+        additionalProperties:
+          type: string
+        description: "Annotations for the ingress resource"
+      host:
+        type: string
+        description: "Hostname for the ingress"
+      tls:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+            description: "Enable TLS configuration"
+          secretName:
+            type: string
+            description: "Name of the TLS secret (optional, will be auto-generated if empty)"
+        required: ["enabled"]
+
+  resources:
+    type: object
+    properties:
+      limits:
+        type: object
+        properties:
+          cpu:
+            type: string
+            pattern: "^[0-9]+m?$|^[0-9]+\\.[0-9]+$"
+            description: "CPU limit (e.g., 500m, 1.5)"
+          memory:
+            type: string
+            pattern: "^[0-9]+(Ki|Mi|Gi|Ti|Pi|Ei|[kMGTPE]i?)?$"
+            description: "Memory limit (e.g., 512Mi, 1Gi)"
+      requests:
+        type: object
+        properties:
+          cpu:
+            type: string
+            pattern: "^[0-9]+m?$|^[0-9]+\\.[0-9]+$"
+            description: "CPU request (e.g., 200m, 0.5)"
+          memory:
+            type: string
+            pattern: "^[0-9]+(Ki|Mi|Gi|Ti|Pi|Ei|[kMGTPE]i?)?$"
+            description: "Memory request (e.g., 256Mi, 1Gi)"
+
+  securityContext:
+    type: object
+    properties:
+      runAsNonRoot:
+        type: boolean
+        description: "Requires the container to run without root privileges"
+      runAsUser:
+        type: integer
+        description: "The UID to run the entrypoint of the container process"
+      runAsGroup:
+        type: integer
+        description: "The GID to run the entrypoint of the container process"
+    description: "Pod-level security context"
+
+  containerSecurityContext:
+    type: object
+    properties:
+      allowPrivilegeEscalation:
+        type: boolean
+        description: "Controls whether a process can gain more privileges than its parent process"
+      capabilities:
+        type: object
+        properties:
+          drop:
+            type: array
+            items:
+              type: string
+            description: "List of capabilities to drop"
+    description: "Container-level security context"
+
+  nodeSelector:
+    type: object
+    additionalProperties:
       type: string
-      description: "Docker image repository"
-      default: "ghcr.io/developmentseed/stac-auth-proxy"
-    pullPolicy:
-      type: string
-      enum: ["IfNotPresent", "Always", "Never"]
-      description: "Kubernetes image pull policy"
-    tag:
-      type: string
-      description: "Docker image tag"
-      default: "latest"
+    description: "Node labels for pod assignment"
+
+  tolerations:
+    type: array
+    items:
+      type: object
+      properties:
+        key:
+          type: string
+        operator:
+          type: string
+          enum: ["Exists", "Equal"]
+        value:
+          type: string
+        effect:
+          type: string
+          enum: ["NoSchedule", "PreferNoSchedule", "NoExecute"]
+    description: "Pod tolerations"
+
+  affinity:
+    type: object
+    additionalProperties: true
+    description: "Pod affinity rules"
 
 required:
   - service 

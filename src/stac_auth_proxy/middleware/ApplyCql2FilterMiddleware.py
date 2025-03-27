@@ -45,13 +45,13 @@ class ApplyCql2FilterMiddleware:
                 cql2_filter = getattr(request.state, self.state_key, None)
                 if cql2_filter:
                     try:
-                        body = message.get("body", b"{}")
+                        body = json.loads(message.get("body", b"{}"))
                     except json.JSONDecodeError as e:
                         logger.warning("Failed to parse request body as JSON")
                         # TODO: Return a 400 error
                         raise e
 
-                    new_body = filters.append_body_filter(json.loads(body), cql2_filter)
+                    new_body = filters.append_body_filter(body, cql2_filter)
                     message["body"] = json.dumps(new_body).encode("utf-8")
                 return message
 

@@ -1,7 +1,6 @@
 """Utility functions."""
 
 import json
-import re
 from typing import Optional
 from urllib.parse import parse_qs
 
@@ -30,23 +29,6 @@ def append_body_filter(
         "filter": filter.to_text() if filter_lang == "cql2-text" else filter.to_json(),
         "filter-lang": filter_lang,
     }
-
-
-def is_collection_endpoint(path: str) -> bool:
-    """Check if the path is a collection endpoint."""
-    # TODO: Expand this to cover all cases where a collection filter should be applied
-    return path == "/collections"
-
-
-def is_item_endpoint(path: str) -> bool:
-    """Check if the path is an item endpoint."""
-    # TODO: Expand this to cover all cases where an item filter should be applied
-    return bool(re.compile(r"^(/collections/([^/]+)/items$|/search)").match(path))
-
-
-def is_search_endpoint(path: str) -> bool:
-    """Check if the path is a search endpoint."""
-    return path == "/search"
 
 
 def dict_to_query_string(params: dict) -> str:

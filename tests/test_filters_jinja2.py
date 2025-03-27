@@ -307,7 +307,11 @@ def test_item_get(
         "properties": {"private": True},
     }
     response = client.get("/collections/foo/items/bar")
-    expected_status = 404 if is_authenticated else 200
+    expected_status = 200 if is_authenticated else 404
+    expected_body = (
+        {"id": "bar", "properties": {"private": True}}
+        if is_authenticated
+        else {"message": "Not found"}
+    )
     assert response.status_code == expected_status
-    if is_authenticated:
-        assert response.json() == {"id": "bar", "properties": {"private": True}}
+    assert response.json() == expected_body

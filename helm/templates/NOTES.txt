@@ -1,5 +1,71 @@
-ingress:
-  annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: "0"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+Thank you for installing {{ .Chart.Name }}.
+
+Your STAC Auth Proxy has been deployed with the following configuration:
+
+1. Application Access:
+{{- if .Values.ingress.enabled }}
+{{- if .Values.ingress.host }}
+   Your proxy is available at:
+   {{- if .Values.ingress.tls.enabled }}
+   https://{{ .Values.ingress.host }}
+   {{- else }}
+   http://{{ .Values.ingress.host }}
+   {{- end }}
+{{- end }}
+{{- else if contains "NodePort" .Values.service.type }}
+   Get the application URL by running these commands:
+   export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "stac-auth-proxy.fullname" . }})
+   export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+   echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.service.type }}
+   Get the application URL by running these commands:
+   NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+   You can watch the status by running: 
+   kubectl get svc --namespace {{ .Release.Namespace }} {{ include "stac-auth-proxy.fullname" . }} -w
+   
+   Once ready, get the external IP/hostname with:
+   export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "stac-auth-proxy.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+   echo http://$SERVICE_IP:{{ .Values.service.port }}
+{{- else }}
+   The service is accessible within the cluster at:
+   {{ include "stac-auth-proxy.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}
+{{- end }}
+
+2. Configuration Details:
+   - Upstream STAC API: {{ .Values.config.upstreamUrl }}
+   - OIDC Discovery URL: {{ .Values.config.oidc.discoveryUrl }}
+   - Health Check Endpoint: {{ .Values.config.healthzPrefix }}
+   - Default Public Access: {{ .Values.config.defaultPublic }}
+
+3. Verify the deployment:
+   kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "stac-auth-proxy.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
+
+4. View the logs:
+   kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "stac-auth-proxy.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
+
+5. Health check:
+{{- if .Values.ingress.enabled }}
+{{- if .Values.ingress.host }}
+   {{- if .Values.ingress.tls.enabled }}
+   curl https://{{ .Values.ingress.host }}{{ .Values.config.healthzPrefix }}
+   {{- else }}
+   curl http://{{ .Values.ingress.host }}{{ .Values.config.healthzPrefix }}
+   {{- end }}
+{{- end }}
+{{- else }}
+   kubectl port-forward --namespace {{ .Release.Namespace }} service/{{ include "stac-auth-proxy.fullname" . }} 8000:{{ .Values.service.port }}
+   curl http://localhost:8000{{ .Values.config.healthzPrefix }}
+{{- end }}
+
+For more information about STAC Auth Proxy, please visit:
+https://github.com/developmentseed/stac-auth-proxy
+
+{{- if or (not .Values.config.upstreamUrl) (not .Values.config.oidc.discoveryUrl) }}
+WARNING: Some required configuration values are not set. Please ensure you have configured:
+{{- if not .Values.config.upstreamUrl }}
+  - config.upstreamUrl
+{{- end }}
+{{- if not .Values.config.oidc.discoveryUrl }}
+  - config.oidc.discoveryUrl
+{{- end }}
+{{- end }} 

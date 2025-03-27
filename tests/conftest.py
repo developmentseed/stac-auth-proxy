@@ -3,6 +3,7 @@
 import os
 import socket
 import threading
+from functools import partial
 from typing import Any, AsyncGenerator
 from unittest.mock import DEFAULT, AsyncMock, MagicMock, patch
 
@@ -65,58 +66,102 @@ def token_builder(test_key: jwk.JWK):
 
 @pytest.fixture(scope="session")
 def source_api():
-    """Create upstream API for testing purposes."""
+    """
+    Create upstream API for testing purposes.
+
+    You can customize the response for each endpoint by passing a dict of responses:
+    {
+        "path": {
+            "method": response_body
+        }
+    }
+    """
     app = FastAPI(docs_url="/api.html", openapi_url="/api")
 
     app.add_middleware(CompressionMiddleware, minimum_size=0, compression_level=1)
 
-    for path, methods in {
-        "/": [
-            "GET",
-        ],
-        "/conformance": [
-            "GET",
-        ],
-        "/queryables": [
-            "GET",
-        ],
-        "/search": [
-            "GET",
-            "POST",
-        ],
-        "/collections": [
-            "GET",
-            "POST",
-        ],
-        "/collections/{collection_id}": [
-            "GET",
-            "PUT",
-            "PATCH",
-            "DELETE",
-        ],
-        "/collections/{collection_id}/items": [
-            "GET",
-            "POST",
-        ],
-        "/collections/{collection_id}/items/{item_id}": [
-            "GET",
-            "PUT",
-            "PATCH",
-            "DELETE",
-        ],
-        "/collections/{collection_id}/bulk_items": [
-            "POST",
-        ],
-    }.items():
+    # Default responses for each endpoint
+    default_responses = {
+        "/": {"GET": {"id": "Response from GET@"}},
+        "/conformance": {"GET": {"conformsTo": ["http://example.com/conformance"]}},
+        "/queryables": {"GET": {"queryables": {}}},
+        "/search": {
+            "GET": {"type": "FeatureCollection", "features": []},
+            "POST": {"type": "FeatureCollection", "features": []},
+        },
+        "/collections": {
+            "GET": {"collections": []},
+            "POST": {"id": "Response from POST@"},
+        },
+        "/collections/{collection_id}": {
+            "GET": {"id": "Response from GET@"},
+            "PUT": {"id": "Response from PUT@"},
+            "PATCH": {"id": "Response from PATCH@"},
+            "DELETE": {"id": "Response from DELETE@"},
+        },
+        "/collections/{collection_id}/items": {
+            "GET": {"type": "FeatureCollection", "features": []},
+            "POST": {"id": "Response from POST@"},
+        },
+        "/collections/{collection_id}/items/{item_id}": {
+            "GET": {"id": "Response from GET@"},
+            "PUT": {"id": "Response from PUT@"},
+            "PATCH": {"id": "Response from PATCH@"},
+            "DELETE": {"id": "Response from DELETE@"},
+        },
+        "/collections/{collection_id}/bulk_items": {
+            "POST": {"id": "Response from POST@"},
+        },
+    }
+
+    # Store responses in app state
+    app.state.default_responses = default_responses
+
+    def get_response(path: str, method: str) -> dict:
+        """Get response for a given path and method."""
+        return app.state.default_responses.get(path, {}).get(
+            method, {"id": f"Response from {method}@{path}"}
+        )
+
+    for path, methods in default_responses.items():
         for method in methods:
-            # NOTE: declare routes per method separately to avoid warning of "Duplicate Operation ID ... for function <lambda>"
             app.add_api_route(
                 path,
-                lambda: {"id": f"Response from {method}@{path}"},
+                partial(get_response, path, method),
                 methods=[method],
             )
 
     return app
+
+
+@pytest.fixture
+def source_api_responses(source_api):
+    """
+    Fixture to override source API responses for specific tests.
+
+    Usage:
+        def test_something(source_api_responses):
+            # Override responses for specific endpoints
+            source_api_responses["/collections"]["GET"] = {"collections": [{"id": "test"}]}
+            source_api_responses["/search"]["POST"] = {"type": "FeatureCollection", "features": [{"id": "test"}]}
+
+            # Your test code here
+    """
+    # Get the default responses from the source_api fixture
+    default_responses = source_api.state.default_responses
+
+    # Create a new dict that can be modified by tests
+    responses = {}
+    for path, methods in default_responses.items():
+        responses[path] = methods.copy()
+
+    # Store the responses in the app state for the get_response function to use
+    source_api.state.default_responses = responses
+
+    yield responses
+
+    # Restore the original responses after the test
+    source_api.state.default_responses = default_responses
 
 
 @pytest.fixture(scope="session")

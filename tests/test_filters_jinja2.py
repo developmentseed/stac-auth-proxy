@@ -289,3 +289,25 @@ async def test_items_list(
             else proxy_filter
         ).to_text(),
     }, "Items query should include only the appended filter expression."
+
+
+@pytest.mark.parametrize("is_authenticated", [True, False], ids=["auth", "anon"])
+def test_item_get(
+    source_api_server, is_authenticated, token_builder, source_api_responses
+):
+    """Test that GET /collections/foo/items/bar is rejected."""
+    client = _build_client(
+        src_api_server=source_api_server,
+        template_expr="{{ '(properties.private = false)' if payload is none else true }}",
+        is_authenticated=is_authenticated,
+        token_builder=token_builder,
+    )
+    source_api_responses["/collections/{collection_id}/items/{item_id}"]["GET"] = {
+        "id": "bar",
+        "properties": {"private": True},
+    }
+    response = client.get("/collections/foo/items/bar")
+    expected_status = 404 if is_authenticated else 200
+    assert response.status_code == expected_status
+    if is_authenticated:
+        assert response.json() == {"id": "bar", "properties": {"private": True}}

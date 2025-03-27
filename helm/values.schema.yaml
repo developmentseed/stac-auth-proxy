@@ -148,5 +148,88 @@ properties:
     additionalProperties: true
     description: "Pod affinity rules"
 
+  config:
+    type: object
+    required: ["upstreamUrl", "oidc"]
+    properties:
+      upstreamUrl:
+        type: string
+        format: uri
+        description: "STAC API URL"
+      waitForUpstream:
+        type: boolean
+        description: "Wait for upstream API to become available"
+        default: true
+      healthzPrefix:
+        type: string
+        description: "Path prefix for health check endpoints"
+        default: "/healthz"
+      
+      oidc:
+        type: object
+        required: ["discoveryUrl"]
+        properties:
+          discoveryUrl:
+            type: string
+            format: uri
+            description: "OpenID Connect discovery document URL"
+          discoveryInternalUrl:
+            type: string
+            format: uri
+            description: "Internal network OpenID Connect discovery document URL"
+      
+      defaultPublic:
+        type: boolean
+        description: "Default access policy for endpoints"
+        default: false
+      
+      privateEndpoints:
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            type: string
+        description: "Endpoints requiring authentication"
+      
+      publicEndpoints:
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            type: string
+        description: "Public endpoints when defaultPublic is false"
+      
+      openapiSpecEndpoint:
+        type: ["string", "null"]
+        description: "Path of OpenAPI specification"
+      
+      itemsFilter:
+        type: object
+        properties:
+          class:
+            type: ["string", "null"]
+            description: "CQL2 expression generator class"
+          args:
+            type: array
+            description: "Positional arguments for filter class"
+            items:
+              type: string
+          kwargs:
+            type: object
+            description: "Keyword arguments for filter class"
+            additionalProperties: true
+      
+      extraEnv:
+        type: array
+        description: "Additional environment variables"
+        items:
+          type: object
+          required: ["name", "value"]
+          properties:
+            name:
+              type: string
+            value:
+              type: string
+
 required:
   - service 

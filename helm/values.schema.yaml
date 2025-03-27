@@ -1,1 +1,18 @@
- 
+image:
+  type: object
+  properties:
+    repository:
+      type: string
+      description: "Docker image repository"
+      default: "ghcr.io/developmentseed/stac-auth-proxy"
+    pullPolicy:
+      type: string
+      enum: ["IfNotPresent", "Always", "Never"]
+      description: "Kubernetes image pull policy"
+    tag:
+      type: string
+      description: "Docker image tag"
+      default: "latest"
+
+required:
+  - service 

@@ -41,7 +41,8 @@ def is_collection_endpoint(path: str) -> bool:
 def is_item_endpoint(path: str) -> bool:
     """Check if the path is an item endpoint."""
     # TODO: Expand this to cover all cases where an item filter should be applied
-    return bool(re.compile(r"^(/collections/([^/]+)/items$|/search)").match(path))
+    expr = r"^(/collections/([^/]+)/items(?:/[^/]+)?$)"
+    return bool(re.compile(expr).match(path))
 
 
 def is_search_endpoint(path: str) -> bool:

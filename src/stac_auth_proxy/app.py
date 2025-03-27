@@ -17,6 +17,7 @@ from .handlers import HealthzHandler, ReverseProxyHandler
 from .middleware import (
     AddProcessTimeHeaderMiddleware,
     ApplyCql2FilterMiddleware,
+    AuthenticationExtensionMiddleware,
     BuildCql2FilterMiddleware,
     EnforceAuthMiddleware,
     OpenApiMiddleware,
@@ -68,6 +69,14 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     #
     # Middleware (order is important, last added = first to run)
     #
+    app.add_middleware(
+        AuthenticationExtensionMiddleware,
+        default_public=settings.default_public,
+        public_endpoints=settings.public_endpoints,
+        private_endpoints=settings.private_endpoints,
+        oidc_config_url=settings.oidc_discovery_internal_url,
+    )
+
     if settings.openapi_spec_endpoint:
         app.add_middleware(
             OpenApiMiddleware,

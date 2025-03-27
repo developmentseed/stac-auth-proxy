@@ -44,4 +44,44 @@ containerSecurityContext:
 
 nodeSelector: {}
 tolerations: []
-affinity: {} 
+affinity: {}
+
+# Application configuration
+config:
+  # Core Configuration
+  upstreamUrl: ""  # Required: STAC API URL
+  waitForUpstream: true  # Optional: wait for upstream API
+  healthzPrefix: "/healthz"  # Optional: health check prefix
+  
+  # Authentication Configuration
+  oidc:
+    discoveryUrl: ""  # Required: OpenID Connect discovery URL
+    discoveryInternalUrl: ""  # Optional: internal network OIDC URL
+  
+  # Access Control
+  defaultPublic: false  # Optional: default access policy
+  privateEndpoints: # Optional: endpoints requiring auth
+    "^/collections$": ["POST"]
+    "^/collections/([^/]+)$": ["PUT", "PATCH", "DELETE"]
+    "^/collections/([^/]+)/items$": ["POST"]
+    "^/collections/([^/]+)/items/([^/]+)$": ["PUT", "PATCH", "DELETE"]
+    "^/collections/([^/]+)/bulk_items$": ["POST"]
+  publicEndpoints: # Optional: public endpoints
+    "^/api.html$": ["GET"]
+    "^/api$": ["GET"]
+    "^/docs/oauth2-redirect": ["GET"]
+    "^/healthz": ["GET"]
+  
+  # OpenAPI Configuration
+  openapiSpecEndpoint: null  # Optional: OpenAPI spec path
+  
+  # Filtering Configuration
+  itemsFilter:
+    class: null  # Optional: CQL2 expression generator class
+    args: []     # Optional: positional arguments
+    kwargs: {}   # Optional: keyword arguments
+
+  # Additional environment variables
+  extraEnv: []
+  # - name: CUSTOM_VAR
+  #   value: "custom-value" 

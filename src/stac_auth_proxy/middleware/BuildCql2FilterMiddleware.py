@@ -1,6 +1,7 @@
 """Middleware to build the Cql2Filter."""
 
 import json
+import re
 from dataclasses import dataclass
 from typing import Callable, Optional
 
@@ -8,7 +9,7 @@ from cql2 import Expr
 from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from ..utils import filters, requests
+from ..utils import requests
 
 
 @dataclass(frozen=True)
@@ -78,11 +79,10 @@ class BuildCql2FilterMiddleware:
     def _get_filter(self, path: str) -> Optional[Callable[..., Expr]]:
         """Get the CQL2 filter builder for the given path."""
         endpoint_filters = [
-            (filters.is_collection_endpoint, self.collections_filter),
-            (filters.is_item_endpoint, self.items_filter),
-            (filters.is_search_endpoint, self.items_filter),
+            (r"^/collections(/[^/]+)?$", self.collections_filter),
+            (r"^(/collections/([^/]+)/items(/[^/]+)?$|/search$)", self.items_filter),
         ]
-        for check, builder in endpoint_filters:
-            if check(path):
+        for expr, builder in endpoint_filters:
+            if re.match(expr, path):
                 return builder
         return None

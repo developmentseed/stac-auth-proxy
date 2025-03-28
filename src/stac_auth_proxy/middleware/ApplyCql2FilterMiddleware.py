@@ -13,10 +13,18 @@ from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from ..utils import filters
+from ..utils.middleware import required_conformance
 
 logger = getLogger(__name__)
 
 
+@required_conformance(
+    r"http://www.opengis.net/spec/cql2/1.0/conf/basic-cql2",
+    r"http://www.opengis.net/spec/cql2/1.0/conf/cql2-text",
+    r"http://www.opengis.net/spec/cql2/1.0/conf/cql2-json",
+    r"http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter",
+    r"https://api.stacspec.org/v1\.\d+\.\d+(?:-[\w\.]+)?/item-search#filter",
+)
 @dataclass(frozen=True)
 class ApplyCql2FilterMiddleware:
     """Middleware to apply the Cql2Filter to the request."""

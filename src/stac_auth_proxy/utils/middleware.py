@@ -99,3 +99,16 @@ class JsonResponseMiddleware(ABC):
             )
 
         return await self.app(scope, receive, transform_response)
+
+
+def required_conformance(
+    *conformances: str,
+    attr_name: str = "__required_conformances__",
+):
+    """Register required conformance classes with a middleware class."""
+
+    def decorator(middleware):
+        setattr(middleware, attr_name, list(conformances))
+        return middleware
+
+    return decorator

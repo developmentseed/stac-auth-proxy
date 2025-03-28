@@ -71,6 +71,10 @@ The application is configurable via environment variables.
     - **Type:** boolean
     - **Required:** No, defaults to `true`
     - **Example:** `false`, `1`, `True`
+  - **`CHECK_CONFORMANCE`**, ensure upstream API conforms to required conformance classes before starting proxy
+    - **Type:** boolean
+    - **Required:** No, defaults to `true`
+    - **Example:** `false`, `1`, `True`
   - **`HEALTHZ_PREFIX`**, path prefix for health check endpoints
     - **Type:** string
     - **Required:** No, defaults to `/healthz`

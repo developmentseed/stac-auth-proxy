@@ -21,11 +21,7 @@ from .middleware import (
     EnforceAuthMiddleware,
     OpenApiMiddleware,
 )
-from .utils.lifespan import (
-    check_conformance,
-    check_server_health,
-    log_middleware_classes,
-)
+from .utils.lifespan import check_conformance, check_server_health
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +45,11 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
                 await check_server_health(url=url)
 
         # Log all middleware connected to the app
-        await log_middleware_classes(app.user_middleware)
+        logger.debug(
+            "Connected middleware:\n%s",
+            "\n".join([f" - {m.cls.__name__}" for m in app.user_middleware]),
+        )
+
         if settings.check_conformance:
             await check_conformance(
                 app.user_middleware,

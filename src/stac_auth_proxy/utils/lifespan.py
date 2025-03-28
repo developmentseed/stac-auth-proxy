@@ -44,16 +44,6 @@ async def check_server_health(
     )
 
 
-async def log_middleware_classes(middleware_classes: list[Middleware]):
-    """Log the middleware classes connected to the application."""
-    logger.debug(
-        "Connected middleware:\n%s",
-        "\n".join(
-            [f"- {middleware.cls.__name__}" for middleware in middleware_classes]
-        ),
-    )
-
-
 async def check_conformance(
     middleware_classes: list[Middleware],
     api_url: str,

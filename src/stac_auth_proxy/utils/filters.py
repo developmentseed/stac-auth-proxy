@@ -7,26 +7,33 @@ from urllib.parse import parse_qs
 from cql2 import Expr
 
 
-def append_qs_filter(qs: str, filter: Expr, filter_lang: Optional[str] = None) -> bytes:
+def append_qs_filter(
+    qs: str, cql2_filter: Expr, filter_lang: Optional[str] = None
+) -> bytes:
     """Insert a filter expression into a query string. If a filter already exists, combine them."""
     qs_dict = {k: v[0] for k, v in parse_qs(qs).items()}
     new_qs_dict = append_body_filter(
-        qs_dict, filter, filter_lang or qs_dict.get("filter-lang", "cql2-text")
+        qs_dict, cql2_filter, filter_lang or qs_dict.get("filter-lang", "cql2-text")
     )
     return dict_to_query_string(new_qs_dict).encode("utf-8")
 
 
 def append_body_filter(
-    body: dict, filter: Expr, filter_lang: Optional[str] = None
+    body: dict, cql2_filter: Expr, filter_lang: Optional[str] = None
 ) -> dict:
     """Insert a filter expression into a request body. If a filter already exists, combine them."""
     cur_filter = body.get("filter")
     filter_lang = filter_lang or body.get("filter-lang", "cql2-json")
     if cur_filter:
-        filter = filter + Expr(cur_filter)
+        cql2_filter = cql2_filter + Expr(cur_filter)
+    cql2_filter = cql2_filter.reduce()
     return {
         **body,
-        "filter": filter.to_text() if filter_lang == "cql2-text" else filter.to_json(),
+        "filter": (
+            cql2_filter.to_text()
+            if filter_lang == "cql2-text"
+            else cql2_filter.to_json()
+        ),
         "filter-lang": filter_lang,
     }
 

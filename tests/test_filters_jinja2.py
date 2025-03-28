@@ -21,7 +21,7 @@ FILTER_EXPR_CASES = [
         id="simple_templated",
     ),
     pytest.param(
-        "(private = true)",
+        "(private = true) AND true",
         "(private = true)",
         "(private = true)",
         id="complex_not_templated",

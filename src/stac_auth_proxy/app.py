@@ -21,7 +21,11 @@ from .middleware import (
     EnforceAuthMiddleware,
     OpenApiMiddleware,
 )
-from .utils.lifespan import check_server_health
+from .utils.lifespan import (
+    check_conformance,
+    check_server_health,
+    log_middleware_classes,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +44,17 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
         # Wait for upstream servers to become available
         if settings.wait_for_upstream:
+            logger.info("Running upstream server health checks...")
             for url in [settings.upstream_url, settings.oidc_discovery_internal_url]:
                 await check_server_health(url=url)
+
+        # Log all middleware connected to the app
+        await log_middleware_classes(app.user_middleware)
+        if settings.check_conformance:
+            await check_conformance(
+                app.user_middleware,
+                str(settings.upstream_url),
+            )
 
         yield
 

@@ -2,9 +2,11 @@
 
 import asyncio
 import logging
+import re
 
 import httpx
 from pydantic import HttpUrl
+from starlette.middleware import Middleware
 
 logger = logging.getLogger(__name__)
 
@@ -39,4 +41,59 @@ async def check_server_health(
 
     raise RuntimeError(
         f"Upstream API {url!r} failed to respond after {max_retries} attempts"
+    )
+
+
+async def log_middleware_classes(middleware_classes: list[Middleware]):
+    """Log the middleware classes connected to the application."""
+    logger.debug(
+        "Connected middleware:\n%s",
+        "\n".join(
+            [f"- {middleware.cls.__name__}" for middleware in middleware_classes]
+        ),
+    )
+
+
+async def check_conformance(
+    middleware_classes: list[Middleware],
+    api_url: str,
+    attr_name: str = "__required_conformances__",
+):
+    """Check if the upstream API supports a given conformance class."""
+    required_conformances: dict[str, list[str]] = {}
+    for middleware in middleware_classes:
+
+        for conformance in getattr(middleware.cls, attr_name, []):
+            required_conformances.setdefault(conformance, []).append(
+                middleware.cls.__name__
+            )
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(api_url)
+        response.raise_for_status()
+        api_conforms_to = response.json().get("conformsTo", [])
+    missing = [
+        req_conformance
+        for req_conformance in required_conformances.keys()
+        if not any(
+            re.match(req_conformance, conformance) for conformance in api_conforms_to
+        )
+    ]
+
+    def print_conformance(conformance):
+        return f" - {conformance} [{','.join(required_conformances[conformance])}]"
+
+    if missing:
+        missing_str = [print_conformance(c) for c in missing]
+        raise RuntimeError(
+            "\n".join(
+                [
+                    "Upstream catalog is missing the following conformance classes:",
+                    *missing_str,
+                ]
+            )
+        )
+    logger.debug(
+        "Upstream catalog conforms to the following required conformance classes: \n%s",
+        "\n".join([print_conformance(c) for c in required_conformances]),
     )

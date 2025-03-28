@@ -30,7 +30,7 @@ async def check_server_health(
                 response.raise_for_status()
                 logger.info(f"Upstream API {url!r} is healthy")
                 return
-            except Exception as e:
+            except httpx.ConnectError as e:
                 logger.warning(f"Upstream health check for {url!r} failed: {e}")
                 retry_in = min(retry_delay * (2**attempt), retry_delay_max)
                 logger.warning(
@@ -69,7 +69,7 @@ async def check_conformance(
             )
 
     async with httpx.AsyncClient() as client:
-        response = await client.get(api_url)
+        response = await client.get(f"{api_url}/conformance")
         response.raise_for_status()
         api_conforms_to = response.json().get("conformsTo", [])
     missing = [
@@ -80,11 +80,11 @@ async def check_conformance(
         )
     ]
 
-    def print_conformance(conformance):
+    def conformance_str(conformance: str) -> str:
         return f" - {conformance} [{','.join(required_conformances[conformance])}]"
 
     if missing:
-        missing_str = [print_conformance(c) for c in missing]
+        missing_str = [conformance_str(c) for c in missing]
         raise RuntimeError(
             "\n".join(
                 [
@@ -95,5 +95,5 @@ async def check_conformance(
         )
     logger.debug(
         "Upstream catalog conforms to the following required conformance classes: \n%s",
-        "\n".join([print_conformance(c) for c in required_conformances]),
+        "\n".join([conformance_str(c) for c in required_conformances]),
     )

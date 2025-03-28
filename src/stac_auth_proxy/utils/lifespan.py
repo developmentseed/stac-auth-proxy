@@ -58,6 +58,7 @@ async def check_conformance(
     middleware_classes: list[Middleware],
     api_url: str,
     attr_name: str = "__required_conformances__",
+    endpoint: str = "/conformance",
 ):
     """Check if the upstream API supports a given conformance class."""
     required_conformances: dict[str, list[str]] = {}
@@ -68,10 +69,11 @@ async def check_conformance(
                 middleware.cls.__name__
             )
 
-    async with httpx.AsyncClient() as client:
-        response = await client.get(f"{api_url}/conformance")
+    async with httpx.AsyncClient(base_url=api_url) as client:
+        response = await client.get(endpoint)
         response.raise_for_status()
         api_conforms_to = response.json().get("conformsTo", [])
+
     missing = [
         req_conformance
         for req_conformance in required_conformances.keys()

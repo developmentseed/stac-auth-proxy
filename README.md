@@ -201,11 +201,16 @@ If enabled, filters are intended to be applied to the following endpoints:
   - **Action:** Read Item
   - **Applied Filter:** `ITEMS_FILTER`
   - **Strategy:** Validate response against CQL2 query.
-- `GET /collections/{collection_id}`
+- `GET /collections`
   - **Supported:** ❌[^23]
   - **Action:** Read Collection
   - **Applied Filter:** `COLLECTIONS_FILTER`
   - **Strategy:** Append query params with generated CQL2 query.
+- `GET /collections/{collection_id}`
+  - **Supported:** ❌[^23]
+  - **Action:** Read Collection
+  - **Applied Filter:** `COLLECTIONS_FILTER`
+  - **Strategy:** Validate response against CQL2 query.
 - `POST /collections/`
   - **Supported:** ❌[^22]
   - **Action:** Create Collection

@@ -26,18 +26,6 @@ wheels = [
 ]
 
 [[package]]
-name = "authlib"
-version = "1.4.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "cryptography" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/58/73/0aa3d68b1c3caeac01ae0bad7a3d2a23029c4a3b42c7ccb89d752ed67eb2/authlib-1.4.1.tar.gz", hash = "sha256:30ead9ea4993cdbab821dc6e01e818362f92da290c04c7f6a1940f86507a790d", size = 147376 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e8/6a/e83a6c04f8c6014c33d97c135782a55370cf60513f8d9f99f1279c7f9c13/Authlib-1.4.1-py2.py3-none-any.whl", hash = "sha256:edc29c3f6a3e72cd9e9f45fff67fc663a2c364022eb0371c003f22d5405915c1", size = 225610 },
-]
-
-[[package]]
 name = "brotli"
 version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1108,7 +1096,6 @@ name = "stac-auth-proxy"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "authlib" },
     { name = "brotli" },
     { name = "cql2" },
     { name = "fastapi" },
@@ -1133,7 +1120,6 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "authlib", specifier = ">=1.3.2" },
     { name = "brotli", specifier = ">=1.1.0" },
     { name = "cql2", specifier = ">=0.3.6" },
     { name = "fastapi", specifier = ">=0.115.5" },

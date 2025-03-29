@@ -41,11 +41,16 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         # Wait for upstream servers to become available
         if settings.wait_for_upstream:
             logger.info("Running upstream server health checks...")
-            for url in [settings.upstream_url, settings.oidc_discovery_internal_url]:
+            urls = [settings.upstream_url, settings.oidc_discovery_internal_url]
+            for url in urls:
                 await check_server_health(url=url)
+            logger.info(
+                "Upstream servers are healthy:\n%s",
+                "\n".join([f" - {url}" for url in urls]),
+            )
 
         # Log all middleware connected to the app
-        logger.debug(
+        logger.info(
             "Connected middleware:\n%s",
             "\n".join([f" - {m.cls.__name__}" for m in app.user_middleware]),
         )

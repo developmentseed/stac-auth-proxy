@@ -87,7 +87,7 @@ async def check_conformance(
                 ]
             )
         )
-    logger.debug(
+    logger.info(
         "Upstream catalog conforms to the following required conformance classes: \n%s",
         "\n".join([conformance_str(c) for c in required_conformances]),
     )

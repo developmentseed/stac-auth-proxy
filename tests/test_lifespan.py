@@ -13,7 +13,7 @@ from stac_auth_proxy.utils.middleware import required_conformance
 
 @required_conformance("http://example.com/conformance")
 @dataclass
-class TestMiddleware:
+class ExampleMiddleware:
     """Test middleware with required conformance."""
 
     app: ASGIApp
@@ -43,7 +43,7 @@ async def test_check_server_health_failure():
 
 async def test_check_conformance_success(source_api_server, source_api_responses):
     """Test successful conformance check."""
-    middleware = [Middleware(TestMiddleware)]
+    middleware = [Middleware(ExampleMiddleware)]
     await check_conformance(middleware, source_api_server)
 
 
@@ -52,7 +52,7 @@ async def test_check_conformance_failure(source_api_server, source_api_responses
     # Override the conformance response to not include required conformance
     source_api_responses["/conformance"]["GET"] = {"conformsTo": []}
 
-    middleware = [Middleware(TestMiddleware)]
+    middleware = [Middleware(ExampleMiddleware)]
     with pytest.raises(RuntimeError) as exc_info:
         await check_conformance(middleware, source_api_server)
     assert "missing the following conformance classes" in str(exc_info.value)
@@ -67,7 +67,7 @@ async def test_check_conformance_multiple_middleware(source_api_server):
             self.app = app
 
     middleware = [
-        Middleware(TestMiddleware),
+        Middleware(ExampleMiddleware),
         Middleware(TestMiddleware2),
     ]
     await check_conformance(middleware, source_api_server)

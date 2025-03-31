@@ -54,26 +54,26 @@ class JsonResponseMiddleware(ABC):
             nonlocal start_message
             nonlocal body
 
-            if message["type"] == "http.response.start":
-                # Delay sending start message until we've processed the body
-                start_message = message
-                return
-            assert start_message is not None
+            start_message = start_message or message
+            headers = MutableHeaders(scope=start_message)
+
             if not self.should_transform_response(
                 request=Request(scope),
-                response_headers=Headers(scope=start_message),
+                response_headers=headers,
             ):
-                return await send(message)
-            if message["type"] != "http.response.body":
-                return await send(message)
+                # For non-JSON responses, send the start message immediately
+                await send(message)
+                return
+
+            # Delay sending start message until we've processed the body
+            if message["type"] == "http.response.start":
+                return
 
             body += message["body"]
 
             # Skip body chunks until all chunks have been received
             if message.get("more_body"):
                 return
-
-            headers = MutableHeaders(scope=start_message)
 
             # Transform the JSON body
             if body:
@@ -83,7 +83,6 @@ class JsonResponseMiddleware(ABC):
 
             # Update content-length header
             headers["content-length"] = str(len(body))
-            assert start_message, "Expected start_message to be set"
             start_message["headers"] = [
                 (key.encode(), value.encode()) for key, value in headers.items()
             ]
@@ -99,3 +98,16 @@ class JsonResponseMiddleware(ABC):
             )
 
         return await self.app(scope, receive, transform_response)
+
+
+def required_conformance(
+    *conformances: str,
+    attr_name: str = "__required_conformances__",
+):
+    """Register required conformance classes with a middleware class."""
+
+    def decorator(middleware):
+        setattr(middleware, attr_name, list(conformances))
+        return middleware
+
+    return decorator

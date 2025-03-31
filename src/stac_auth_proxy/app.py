@@ -22,7 +22,7 @@ from .middleware import (
     EnforceAuthMiddleware,
     OpenApiMiddleware,
 )
-from .utils.lifespan import check_server_health
+from .utils.lifespan import check_conformance, check_server_health
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +41,26 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
         # Wait for upstream servers to become available
         if settings.wait_for_upstream:
-            for url in [settings.upstream_url, settings.oidc_discovery_internal_url]:
+            logger.info("Running upstream server health checks...")
+            urls = [settings.upstream_url, settings.oidc_discovery_internal_url]
+            for url in urls:
                 await check_server_health(url=url)
+            logger.info(
+                "Upstream servers are healthy:\n%s",
+                "\n".join([f" - {url}" for url in urls]),
+            )
+
+        # Log all middleware connected to the app
+        logger.info(
+            "Connected middleware:\n%s",
+            "\n".join([f" - {m.cls.__name__}" for m in app.user_middleware]),
+        )
+
+        if settings.check_conformance:
+            await check_conformance(
+                app.user_middleware,
+                str(settings.upstream_url),
+            )
 
         yield
 
@@ -97,19 +115,19 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         )
 
     app.add_middleware(
-        EnforceAuthMiddleware,
-        public_endpoints=settings.public_endpoints,
-        private_endpoints=settings.private_endpoints,
-        default_public=settings.default_public,
-        oidc_config_url=settings.oidc_discovery_internal_url,
-    )
-
-    app.add_middleware(
         CompressionMiddleware,
     )
 
     app.add_middleware(
         AddProcessTimeHeaderMiddleware,
+    )
+
+    app.add_middleware(
+        EnforceAuthMiddleware,
+        public_endpoints=settings.public_endpoints,
+        private_endpoints=settings.private_endpoints,
+        default_public=settings.default_public,
+        oidc_config_url=settings.oidc_discovery_internal_url,
     )
 
     return app

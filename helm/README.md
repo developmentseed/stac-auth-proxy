@@ -63,6 +63,19 @@ Install using the values file:
 helm install stac-auth-proxy oci://ghcr.io/developmentseed/stac-auth-proxy/charts/stac-auth-proxy -f values.yaml
 ```
 
+### Using Image Pull Secrets
+
+To use private container registries, you can configure image pull secrets:
+
+```yaml
+
+serviceAccount:
+    create: true
+    imagePullSecrets:
+        name: "my-registry-secret"
+```
+
+
 ## Configuration
 
 ### Required Values

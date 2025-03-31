@@ -3,7 +3,7 @@
 import json
 import re
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Any, Awaitable, Callable, Optional
 
 from cql2 import Expr
 from starlette.requests import Request
@@ -37,7 +37,7 @@ class BuildCql2FilterMiddleware:
 
         async def set_filter(body: Optional[dict] = None) -> None:
             assert filter_builder is not None
-            cql2_filter = await filter_builder(
+            filter_expr = await filter_builder(
                 {
                     "req": {
                         "path": request.url.path,
@@ -50,6 +50,7 @@ class BuildCql2FilterMiddleware:
                     **scope["state"],
                 }
             )
+            cql2_filter = Expr(filter_expr)
             cql2_filter.validate()
             setattr(request.state, self.state_key, cql2_filter)
 
@@ -76,7 +77,9 @@ class BuildCql2FilterMiddleware:
 
         return await self.app(scope, receive_build_filter, send)
 
-    def _get_filter(self, path: str) -> Optional[Callable[..., Expr]]:
+    def _get_filter(
+        self, path: str
+    ) -> Optional[Callable[..., Awaitable[str | dict[str, Any]]]]:
         """Get the CQL2 filter builder for the given path."""
         endpoint_filters = [
             (r"^/collections(/[^/]+)?$", self.collections_filter),

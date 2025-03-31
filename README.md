@@ -120,15 +120,15 @@ The application is configurable via environment variables.
     - **Required:** No, defaults to `null` (disabled)
     - **Example:** `/api`
 - Filtering
-  - **`ITEMS_FILTER_CLS`**, [cql2 expression](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) generator for item-level filtering
+  - **`ITEMS_FILTER_CLS`**, CQL2 expression generator for item-level filtering
     - **Type:** JSON object with class configuration
     - **Required:** No, defaults to `null` (disabled)
     - **Example:** `my_package.filters:OrganizationFilter`
-  - **`ITEMS_FILTER_ARGS`**, [cql2 expression](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) generator for item-level filtering
+  - **`ITEMS_FILTER_ARGS`**, Positional arguments for CQL2 expression generator
     - **Type:** List of positional arguments used to initialize the class
     - **Required:** No, defaults to `[]`
     - **Example:**: `["org1"]`
-  - **`ITEMS_FILTER_KWARGS`**, [cql2 expression](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) generator for item-level filtering
+  - **`ITEMS_FILTER_KWARGS`**, Keyword arguments for CQL2 expression generator
     - **Type:** Dictionary of keyword arguments used to initialize the class
     - **Required:** No, defaults to `{}`
     - **Example:** `{ "field_name": "properties.organization" }`

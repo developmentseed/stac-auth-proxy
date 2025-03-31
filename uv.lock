@@ -1,6 +1,12 @@
 version = 1
 requires-python = ">=3.9"
 
+[manifest]
+members = [
+    "opa-integration",
+    "stac-auth-proxy",
+]
+
 [[package]]
 name = "annotated-types"
 version = "0.7.0"
@@ -779,6 +785,11 @@ sdist = { url = "https://files.pythonhosted.org/packages/43/16/fc88b08840de0e0a7
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d2/1d/1b658dbd2b9fa9c4c9f32accbfc0205d532c8c6194dc0f2a4c0428e7128a/nodeenv-1.9.1-py2.py3-none-any.whl", hash = "sha256:ba11c9782d29c27c70ffbdda2d7415098754709be8a7056d79a737cd901155c9", size = 22314 },
 ]
+
+[[package]]
+name = "opa-integration"
+version = "0.1.0"
+source = { virtual = "examples/opa" }
 
 [[package]]
 name = "packaging"

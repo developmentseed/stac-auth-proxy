@@ -178,9 +178,6 @@ The system supports generating CQL2 filters based on request context to provide 
 > [!IMPORTANT]
 > The upstream STAC API must support the [STAC API Filter Extension](https://github.com/stac-api-extensions/filter/blob/main/README.md), including the [Features Filter](http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter) conformance class on to the Features resource (`/collections/{cid}/items`)[^37].
 
-> [!TIP]
-> Integration with external authorization systems (e.g. [Open Policy Agent](https://www.openpolicyagent.org/)) can be achieved by specifying an `ITEMS_FILTER` that points to a class/function that, once initialized, returns a [`cql2.Expr` object](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) when called with the request context.
-
 #### Filters
 
 If enabled, filters are intended to be applied to the following endpoints:
@@ -262,6 +259,99 @@ sequenceDiagram
     Proxy->>STAC API: GET /collection?filter=(collection=landsat)
     STAC API->>Client: Response
 ```
+
+#### Authoring Filter Generators
+
+The `ITEMS_FILTER_CLS` configuration option can be used to specify a class that will be used to generate a CQL2 filter for the request. The class must define a `__call__` method that accepts a single argument: a dictionary containing the request context; and returns a valid `cql2-text` expression (as a `str`) or `cql2-json` expression (as a `dict`).
+
+> [!TIP]
+> An example of an Open Policy Agent (OPA) integration is available in the [examples/opa](examples/opa) directory, runnable with `docker compose -f docker-compose.yaml -f examples/opa/docker-compose.yaml up`.
+
+##### Basic Filter Generator
+
+```py
+import dataclasses
+from typing import Any
+
+from cql2 import Expr
+
+
+@dataclasses.dataclass
+class ExampleFilter:
+    async def __call__(self, context: dict[str, Any]) -> str:
+        return "true"
+```
+
+> [!TIP]
+> Despite being referred to as a _class_, a filter generator could be written as a function.
+>
+>   <details>
+>
+>   <summary>Example</summary>
+>
+> ```py
+> from typing import Any
+>
+> from cql2 import Expr
+>
+>
+> def example_filter():
+>     def example_filter(context: dict[str, Any]) -> str | dict[str, Any]:
+>         return Expr("true")
+>     return example_filter
+> ```
+>
+> </details>
+
+##### Complex Filter Generator
+
+An example of a more complex filter generator where the filter is generated based on the response of an external API:
+
+```py
+import dataclasses
+from typing import Any
+
+from httpx import AsyncClient
+
+
+@dataclasses.dataclass
+class ApprovedCollectionsFilter:
+    api_url: str
+    kind: Literal["item", "collection"] = "item"
+    client: AsyncClient = dataclasses.field(init=False)
+
+    def __post_init__(self):
+        # We keep the client in the class instance to avoid creating a new client for
+        # each request, taking advantage of the client's connection pooling.
+        self.client = AsyncClient(base_url=self.api_url)
+
+    async def __call__(self, context: dict[str, Any]) -> dict[str, Any]:
+        # Lookup approved collections from an external API
+        token = context["req"]["headers"].get("Authorization")
+        approved_collections = await self.lookup(token)
+
+        # Build CQL2 filter
+        return {
+            "op": "a_containedby",
+            "args": [
+                {"property": "collection" if self.kind == "item" else "id"},
+                approved_collections
+            ],
+        }
+
+    async def lookup(self, token: Optional[str]) -> list[str]:
+        # Lookup approved collections from an external API
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
+        response = await self.client.get(
+            f"/get-approved-collections",
+            headers=headers,
+        )
+        response.raise_for_status()
+        return response.json()["collections"]
+```
+
+> [!TIP]
+> Filter generation runs for every relevant request. Consider memoizing external API calls to improve performance.
 
 [^21]: https://github.com/developmentseed/stac-auth-proxy/issues/21
 [^22]: https://github.com/developmentseed/stac-auth-proxy/issues/22

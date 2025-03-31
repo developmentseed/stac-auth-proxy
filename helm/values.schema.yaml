@@ -231,5 +231,30 @@ properties:
             value:
               type: string
 
+  serviceAccount:
+    type: object
+    properties:
+      create:
+        type: boolean
+        description: "Specifies whether a service account should be created"
+      annotations:
+        type: object
+        additionalProperties:
+          type: string
+        description: "Annotations to add to the service account"
+      name:
+        type: string
+        description: "The name of the service account to use. If not set and create is true, a name is generated"
+      imagePullSecrets:
+        type: array
+        description: "Image pull secrets to add to the service account"
+        items:
+          type: object
+          required: ["name"]
+          properties:
+            name:
+              type: string
+              description: "Name of the image pull secret"
+
 required:
   - service 

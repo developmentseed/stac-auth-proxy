@@ -46,4 +46,15 @@ Selector labels
 {{- define "stac-auth-proxy.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "stac-auth-proxy.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "stac-auth-proxy.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create }}
+{{- default (include "stac-auth-proxy.fullname" .) .Values.serviceAccount.name }}
+{{- else }}
+{{- default "default" .Values.serviceAccount.name }}
+{{- end }}
 {{- end }} 

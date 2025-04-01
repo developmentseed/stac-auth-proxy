@@ -29,7 +29,7 @@ class JsonResponseMiddleware(ABC):
         ...
 
     @abstractmethod
-    def transform_json(self, data: Any) -> Any:
+    def transform_json(self, data: Any, scope: Scope) -> Any:
         """
         Transform the JSON data.
 
@@ -78,7 +78,7 @@ class JsonResponseMiddleware(ABC):
             # Transform the JSON body
             if body:
                 data = json.loads(body)
-                transformed = self.transform_json(data)
+                transformed = self.transform_json(data, scope=scope)
                 body = json.dumps(transformed).encode()
 
             # Update content-length header

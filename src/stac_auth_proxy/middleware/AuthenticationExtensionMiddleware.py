@@ -4,14 +4,12 @@ import logging
 import re
 from dataclasses import dataclass, field
 from itertools import chain
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlparse
 
-import httpx
-from pydantic import HttpUrl
 from starlette.datastructures import Headers
 from starlette.requests import Request
-from starlette.types import ASGIApp
+from starlette.types import ASGIApp, Scope
 
 from ..config import EndpointMethods
 from ..utils.middleware import JsonResponseMiddleware
@@ -30,34 +28,13 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
     private_endpoints: EndpointMethods
     public_endpoints: EndpointMethods
 
-    oidc_config_url: Optional[HttpUrl] = None
     auth_scheme_name: str = "oauth"
     auth_scheme: dict[str, Any] = field(default_factory=dict)
     extension_url: str = (
         "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
     )
 
-    json_content_type_expr: str = r"application/json|geo\+json)"
-
-    def __post_init__(self):
-        """Load after initialization."""
-        if self.oidc_config_url and not self.auth_scheme:
-            # Retrieve OIDC configuration and extract authorization and token URLs
-            oidc_config = httpx.get(str(self.oidc_config_url)).json()
-            self.auth_scheme = {
-                "type": "oauth2",
-                "description": "requires an authentication token",
-                "flows": {
-                    "authorizationCode": {
-                        "authorizationUrl": oidc_config.get("authorization_endpoint"),
-                        "tokenUrl": oidc_config.get("token_endpoint"),
-                        "scopes": {
-                            k: k
-                            for k in sorted(oidc_config.get("scopes_supported", []))
-                        },
-                    },
-                },
-            }
+    json_content_type_expr: str = r"(application/json|geo\+json)"
 
     def should_transform_response(
         self, request: Request, response_headers: Headers
@@ -78,7 +55,7 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
             ]
         )
 
-    def transform_json(self, doc: dict[str, Any]) -> dict[str, Any]:
+    def transform_json(self, doc: dict[str, Any], scope: Scope) -> dict[str, Any]:
         """Augment the STAC Item with auth information."""
         extensions = doc.setdefault("stac_extensions", [])
         if self.extension_url not in extensions:
@@ -92,9 +69,19 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
         # - Catalogs
         # - Collections
         # - Item Properties
+
+        if "oidc_metadata" not in scope:
+            logger.error(
+                "OIDC metadata not found in scope. "
+                "Skipping authentication extension."
+            )
+            return doc
+
         scheme_loc = doc["properties"] if "properties" in doc else doc
         schemes = scheme_loc.setdefault("auth:schemes", {})
-        schemes[self.auth_scheme_name] = self.auth_scheme
+        schemes[self.auth_scheme_name] = self.parse_oidc_config(
+            scope.get("oidc_metadata", {})
+        )
 
         # auth:refs
         # ---
@@ -125,3 +112,19 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
                 link.setdefault("auth:refs", []).append(self.auth_scheme_name)
 
         return doc
+
+    def parse_oidc_config(self, oidc_config: dict[str, Any]) -> dict[str, Any]:
+        """Parse the OIDC configuration."""
+        return {
+            "type": "oauth2",
+            "description": "requires an authentication token",
+            "flows": {
+                "authorizationCode": {
+                    "authorizationUrl": oidc_config["authorization_endpoint"],
+                    "tokenUrl": oidc_config.get("token_endpoint"),
+                    "scopes": {
+                        k: k for k in sorted(oidc_config.get("scopes_supported", []))
+                    },
+                },
+            },
+        }

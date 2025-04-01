@@ -6,7 +6,7 @@ from typing import Any
 
 from starlette.datastructures import Headers
 from starlette.requests import Request
-from starlette.types import ASGIApp
+from starlette.types import ASGIApp, Scope
 
 from ..config import EndpointMethods
 from ..utils.middleware import JsonResponseMiddleware
@@ -41,7 +41,9 @@ class OpenApiMiddleware(JsonResponseMiddleware):
             ]
         )
 
-    def transform_json(self, openapi_spec: dict[str, Any]) -> dict[str, Any]:
+    def transform_json(
+        self, openapi_spec: dict[str, Any], scope: Scope
+    ) -> dict[str, Any]:
         """Augment the OpenAPI spec with auth information."""
         components = openapi_spec.setdefault("components", {})
         securitySchemes = components.setdefault("securitySchemes", {})

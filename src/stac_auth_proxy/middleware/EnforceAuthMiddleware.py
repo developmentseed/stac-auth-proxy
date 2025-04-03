@@ -1,7 +1,7 @@
 """Middleware to enforce authentication."""
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Annotated, Any, Optional, Sequence
 from urllib.parse import urlparse, urlunparse
 
@@ -19,6 +19,53 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class OidcService:
+    """OIDC configuration and JWKS client."""
+
+    oidc_config_url: HttpUrl
+    jwks_client: jwt.PyJWKClient = field(init=False)
+    metadata: dict[str, Any] = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Initialize OIDC config and JWKS client."""
+        logger.debug("Requesting OIDC config")
+        origin_url = str(self.oidc_config_url)
+
+        try:
+            response = httpx.get(origin_url)
+            response.raise_for_status()
+            self.metadata = response.json()
+            assert self.metadata, "OIDC metadata is empty"
+
+            # NOTE: We manually replace the origin of the jwks_uri in the event that
+            # the jwks_uri is not available from within the proxy.
+            oidc_url = urlparse(origin_url)
+            jwks_uri = urlunparse(
+                urlparse(self.metadata["jwks_uri"])._replace(
+                    netloc=oidc_url.netloc, scheme=oidc_url.scheme
+                )
+            )
+            if jwks_uri != self.metadata["jwks_uri"]:
+                logger.warning(
+                    "JWKS URI has been rewritten from %s to %s",
+                    self.metadata["jwks_uri"],
+                    jwks_uri,
+                )
+            self.jwks_client = jwt.PyJWKClient(jwks_uri)
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                "Received a non-200 response when fetching OIDC config: %s",
+                e.response.text,
+            )
+            raise OidcFetchError(
+                f"Request for OIDC config failed with status {e.response.status_code}"
+            ) from e
+        except httpx.RequestError as e:
+            logger.error("Error fetching OIDC config from %s: %s", origin_url, str(e))
+            raise OidcFetchError(f"Request for OIDC config failed: {str(e)}") from e
+
+
+@dataclass
 class EnforceAuthMiddleware:
     """Middleware to enforce authentication."""
 
@@ -26,56 +73,11 @@ class EnforceAuthMiddleware:
     private_endpoints: EndpointMethods
     public_endpoints: EndpointMethods
     default_public: bool
-
     oidc_config_url: HttpUrl
     allowed_jwt_audiences: Optional[Sequence[str]] = None
-
     state_key: str = "payload"
 
-    # Generated attributes
-    _jwks_client: Optional[jwt.PyJWKClient] = None
-
-    @property
-    def jwks_client(self) -> jwt.PyJWKClient:
-        """Get the OIDC configuration URL."""
-        if not self._jwks_client:
-            logger.debug("Requesting OIDC config")
-            origin_url = str(self.oidc_config_url)
-
-            try:
-                response = httpx.get(origin_url)
-                response.raise_for_status()
-                oidc_config = response.json()
-
-                # NOTE: We manually replace the origin of the jwks_uri in the event that
-                # the jwks_uri is not available from within the proxy.
-                oidc_url = urlparse(origin_url)
-                jwks_uri = urlunparse(
-                    urlparse(oidc_config["jwks_uri"])._replace(
-                        netloc=oidc_url.netloc, scheme=oidc_url.scheme
-                    )
-                )
-                if jwks_uri != oidc_config["jwks_uri"]:
-                    logger.warning(
-                        "JWKS URI has been rewritten from %s to %s",
-                        oidc_config["jwks_uri"],
-                        jwks_uri,
-                    )
-                self._jwks_client = jwt.PyJWKClient(jwks_uri)
-            except httpx.HTTPStatusError as e:
-                logger.error(
-                    "Received a non-200 response when fetching OIDC config: %s",
-                    e.response.text,
-                )
-                raise OidcFetchError(
-                    f"Request for OIDC config failed with status {e.response.status_code}"
-                ) from e
-            except httpx.RequestError as e:
-                logger.error(
-                    "Error fetching OIDC config from %s: %s", origin_url, str(e)
-                )
-                raise OidcFetchError(f"Request for OIDC config failed: {str(e)}") from e
-        return self._jwks_client
+    _oidc_config: Optional[OidcService] = None
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """Enforce authentication."""
@@ -107,6 +109,7 @@ class EnforceAuthMiddleware:
             self.state_key,
             payload,
         )
+        setattr(request.state, "oidc_metadata", self.oidc_config.metadata)
         return await self.app(scope, receive, send)
 
     def validate_token(
@@ -137,7 +140,7 @@ class EnforceAuthMiddleware:
 
         # Parse & validate token
         try:
-            key = self.jwks_client.get_signing_key_from_jwt(token).key
+            key = self.oidc_config.jwks_client.get_signing_key_from_jwt(token).key
             payload = jwt.decode(
                 token,
                 key,
@@ -162,6 +165,13 @@ class EnforceAuthMiddleware:
                         headers={"WWW-Authenticate": f'Bearer scope="{scope}"'},
                     )
         return payload
+
+    @property
+    def oidc_config(self) -> OidcService:
+        """Get the OIDC configuration."""
+        if not self._oidc_config:
+            self._oidc_config = OidcService(oidc_config_url=self.oidc_config_url)
+        return self._oidc_config
 
 
 class OidcFetchError(Exception):

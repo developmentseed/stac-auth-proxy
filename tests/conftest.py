@@ -32,7 +32,12 @@ def public_key(test_key: jwk.JWK) -> dict[str, Any]:
 @pytest.fixture(autouse=True)
 def mock_jwks(public_key: dict[str, Any]):
     """Mock JWKS endpoint."""
-    mock_oidc_config = {"jwks_uri": "https://example.com/jwks"}
+    mock_oidc_config = {
+        "jwks_uri": "https://example.com/jwks",
+        "authorization_endpoint": "https://example.com/auth",
+        "token_endpoint": "https://example.com/token",
+        "scopes_supported": ["openid", "profile", "email", "collection:create"],
+    }
 
     mock_jwks = {"keys": [public_key]}
 

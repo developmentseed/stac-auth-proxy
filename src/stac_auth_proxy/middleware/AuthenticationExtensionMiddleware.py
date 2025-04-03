@@ -63,7 +63,6 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
         if self.extension_url not in extensions:
             extensions.append(self.extension_url)
 
-        # TODO: Should we add this to items even if the assets don't match the asset expression?
         # auth:schemes
         # ---
         # A property that contains all of the scheme definitions used by Assets and
@@ -72,18 +71,28 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
         # - Collections
         # - Item Properties
 
-        if self.state_key not in request.state:
+        oidc_metadata = getattr(request.state, self.state_key, {})
+        if not oidc_metadata:
             logger.error(
-                "OIDC metadata not found in scope. "
-                "Skipping authentication extension."
+                "OIDC metadata not found in scope. Skipping authentication extension."
             )
             return data
 
         scheme_loc = data["properties"] if "properties" in data else data
         schemes = scheme_loc.setdefault("auth:schemes", {})
-        schemes[self.auth_scheme_name] = self.parse_oidc_config(
-            request.state.get(self.state_key, {})
-        )
+        schemes[self.auth_scheme_name] = {
+            "type": "oauth2",
+            "description": "requires an authentication token",
+            "flows": {
+                "authorizationCode": {
+                    "authorizationUrl": oidc_metadata["authorization_endpoint"],
+                    "tokenUrl": oidc_metadata.get("token_endpoint"),
+                    "scopes": {
+                        k: k for k in sorted(oidc_metadata.get("scopes_supported", []))
+                    },
+                },
+            },
+        }
 
         # auth:refs
         # ---
@@ -114,19 +123,3 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
                 link.setdefault("auth:refs", []).append(self.auth_scheme_name)
 
         return data
-
-    def parse_oidc_config(self, oidc_config: dict[str, Any]) -> dict[str, Any]:
-        """Parse the OIDC configuration."""
-        return {
-            "type": "oauth2",
-            "description": "requires an authentication token",
-            "flows": {
-                "authorizationCode": {
-                    "authorizationUrl": oidc_config["authorization_endpoint"],
-                    "tokenUrl": oidc_config.get("token_endpoint"),
-                    "scopes": {
-                        k: k for k in sorted(oidc_config.get("scopes_supported", []))
-                    },
-                },
-            },
-        }

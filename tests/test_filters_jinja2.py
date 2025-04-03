@@ -310,7 +310,7 @@ def test_item_get(
     if is_authenticated:
         assert response.status_code == 200
         assert response.json()["id"] == "bar"
-        assert response.json()["properties"] == {"private": True}
+        assert response.json()["properties"].get("private") is True
     else:
         assert response.status_code == 404
         assert response.json() == {"message": "Not found"}

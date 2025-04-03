@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 from starlette.datastructures import Headers
 from starlette.requests import Request
-from starlette.types import ASGIApp, Scope
+from starlette.types import ASGIApp
 
 from ..config import EndpointMethods
 from ..utils.middleware import JsonResponseMiddleware
@@ -36,6 +36,8 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
 
     json_content_type_expr: str = r"(application/json|geo\+json)"
 
+    state_key: str = "oidc_metadata"
+
     def should_transform_response(
         self, request: Request, response_headers: Headers
     ) -> bool:
@@ -55,9 +57,9 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
             ]
         )
 
-    def transform_json(self, doc: dict[str, Any], scope: Scope) -> dict[str, Any]:
+    def transform_json(self, data: dict[str, Any], request: Request) -> dict[str, Any]:
         """Augment the STAC Item with auth information."""
-        extensions = doc.setdefault("stac_extensions", [])
+        extensions = data.setdefault("stac_extensions", [])
         if self.extension_url not in extensions:
             extensions.append(self.extension_url)
 
@@ -70,17 +72,17 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
         # - Collections
         # - Item Properties
 
-        if "oidc_metadata" not in scope:
+        if self.state_key not in request.state:
             logger.error(
                 "OIDC metadata not found in scope. "
                 "Skipping authentication extension."
             )
-            return doc
+            return data
 
-        scheme_loc = doc["properties"] if "properties" in doc else doc
+        scheme_loc = data["properties"] if "properties" in data else data
         schemes = scheme_loc.setdefault("auth:schemes", {})
         schemes[self.auth_scheme_name] = self.parse_oidc_config(
-            scope.get("oidc_metadata", {})
+            request.state.get(self.state_key, {})
         )
 
         # auth:refs
@@ -88,12 +90,12 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
         # Annotate links with "auth:refs": [auth_scheme]
         links = chain(
             # Item/Collection
-            doc.get("links", []),
+            data.get("links", []),
             # Collections/Items/Search
             (
                 link
                 for prop in ["features", "collections"]
-                for object_with_links in doc.get(prop, [])
+                for object_with_links in data.get(prop, [])
                 for link in object_with_links.get("links", [])
             ),
         )
@@ -111,7 +113,7 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
             if match.is_private:
                 link.setdefault("auth:refs", []).append(self.auth_scheme_name)
 
-        return doc
+        return data
 
     def parse_oidc_config(self, oidc_config: dict[str, Any]) -> dict[str, Any]:
         """Parse the OIDC configuration."""

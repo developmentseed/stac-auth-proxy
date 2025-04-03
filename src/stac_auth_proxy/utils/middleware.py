@@ -29,7 +29,7 @@ class JsonResponseMiddleware(ABC):
         ...
 
     @abstractmethod
-    def transform_json(self, data: Any, scope: Scope) -> Any:
+    def transform_json(self, data: Any, request: Request) -> Any:
         """
         Transform the JSON data.
 
@@ -56,9 +56,10 @@ class JsonResponseMiddleware(ABC):
 
             start_message = start_message or message
             headers = MutableHeaders(scope=start_message)
+            request = Request(scope)
 
             if not self.should_transform_response(
-                request=Request(scope),
+                request=request,
                 response_headers=headers,
             ):
                 # For non-JSON responses, send the start message immediately
@@ -78,7 +79,7 @@ class JsonResponseMiddleware(ABC):
             # Transform the JSON body
             if body:
                 data = json.loads(body)
-                transformed = self.transform_json(data, scope=scope)
+                transformed = self.transform_json(data, request=request)
                 body = json.dumps(transformed).encode()
 
             # Update content-length header

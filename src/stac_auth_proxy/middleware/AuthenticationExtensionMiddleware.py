@@ -7,8 +7,6 @@ from itertools import chain
 from typing import Any, Optional
 from urllib.parse import urlparse
 
-import httpx
-from pydantic import HttpUrl
 from starlette.datastructures import Headers
 from starlette.requests import Request
 from starlette.types import ASGIApp
@@ -33,7 +31,6 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
     private_endpoints: EndpointMethods
     public_endpoints: EndpointMethods
 
-    oidc_config_url: Optional[HttpUrl] = None
     signing_scheme_name: str = "signed_url_auth"
     auth_scheme_name: str = "oauth"
     auth_scheme: dict[str, Any] = field(default_factory=dict)
@@ -41,27 +38,9 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
         "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
     )
 
-    json_content_type_expr: str = r"application/json|geo\+json)"
+    json_content_type_expr: str = r"application/(geo\+)?json"
 
-    def __post_init__(self):
-        """Load after initialization."""
-        if self.oidc_config_url and not self.auth_scheme:
-            # Retrieve OIDC configuration and extract authorization and token URLs
-            oidc_config = httpx.get(str(self.oidc_config_url)).json()
-            self.auth_scheme = {
-                "type": "oauth2",
-                "description": "requires an authentication token",
-                "flows": {
-                    "authorizationCode": {
-                        "authorizationUrl": oidc_config.get("authorization_endpoint"),
-                        "tokenUrl": oidc_config.get("token_endpoint"),
-                        "scopes": {
-                            k: k
-                            for k in sorted(oidc_config.get("scopes_supported", []))
-                        },
-                    },
-                },
-            }
+    state_key: str = "oidc_metadata"
 
     def should_transform_response(
         self, request: Request, response_headers: Headers
@@ -82,13 +61,12 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
             ]
         )
 
-    def transform_json(self, doc: dict[str, Any]) -> dict[str, Any]:
+    def transform_json(self, data: dict[str, Any], request: Request) -> dict[str, Any]:
         """Augment the STAC Item with auth information."""
-        extensions = doc.setdefault("stac_extensions", [])
+        extensions = data.setdefault("stac_extensions", [])
         if self.extension_url not in extensions:
             extensions.append(self.extension_url)
 
-        # TODO: Should we add this to items even if the assets don't match the asset expression?
         # auth:schemes
         # ---
         # A property that contains all of the scheme definitions used by Assets and
@@ -96,9 +74,29 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
         # - Catalogs
         # - Collections
         # - Item Properties
-        scheme_loc = doc["properties"] if "properties" in doc else doc
+
+        oidc_metadata = getattr(request.state, self.state_key, {})
+        if not oidc_metadata:
+            logger.error(
+                "OIDC metadata not found in scope. Skipping authentication extension."
+            )
+            return data
+
+        scheme_loc = data["properties"] if "properties" in data else data
         schemes = scheme_loc.setdefault("auth:schemes", {})
-        schemes[self.auth_scheme_name] = self.auth_scheme
+        schemes[self.auth_scheme_name] = {
+            "type": "oauth2",
+            "description": "requires an authentication bearertoken",
+            "flows": {
+                "authorizationCode": {
+                    "authorizationUrl": oidc_metadata["authorization_endpoint"],
+                    "tokenUrl": oidc_metadata.get("token_endpoint"),
+                    "scopes": {
+                        k: k for k in sorted(oidc_metadata.get("scopes_supported", []))
+                    },
+                },
+            },
+        }
         if self.signing_endpoint:
             schemes[self.signing_scheme_name] = {
                 "type": "signedUrl",
@@ -138,11 +136,11 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
         if self.signing_endpoint:
             assets = chain(
                 # Item
-                doc.get("assets", {}).values(),
+                data.get("assets", {}).values(),
                 # Items/Search
                 (
                     asset
-                    for item in doc.get("features", [])
+                    for item in data.get("features", [])
                     for asset in item.get("assets", {}).values()
                 ),
             )
@@ -152,16 +150,15 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
                     continue
                 if re.match(self.signed_asset_expression, asset["href"]):
                     asset.setdefault("auth:refs", []).append(self.signing_scheme_name)
-
         # Annotate links with "auth:refs": [auth_scheme]
         links = chain(
             # Item/Collection
-            doc.get("links", []),
+            data.get("links", []),
             # Collections/Items/Search
             (
                 link
                 for prop in ["features", "collections"]
-                for object_with_links in doc.get(prop, [])
+                for object_with_links in data.get(prop, [])
                 for link in object_with_links.get("links", [])
             ),
         )
@@ -179,4 +176,4 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
             if match.is_private:
                 link.setdefault("auth:refs", []).append(self.auth_scheme_name)
 
-        return doc
+        return data

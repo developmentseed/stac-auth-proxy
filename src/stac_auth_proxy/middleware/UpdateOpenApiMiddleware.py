@@ -41,15 +41,15 @@ class OpenApiMiddleware(JsonResponseMiddleware):
             ]
         )
 
-    def transform_json(self, openapi_spec: dict[str, Any]) -> dict[str, Any]:
+    def transform_json(self, data: dict[str, Any], request: Request) -> dict[str, Any]:
         """Augment the OpenAPI spec with auth information."""
-        components = openapi_spec.setdefault("components", {})
+        components = data.setdefault("components", {})
         securitySchemes = components.setdefault("securitySchemes", {})
         securitySchemes[self.oidc_auth_scheme_name] = {
             "type": "openIdConnect",
             "openIdConnectUrl": self.oidc_config_url,
         }
-        for path, method_config in openapi_spec["paths"].items():
+        for path, method_config in data["paths"].items():
             for method, config in method_config.items():
                 match = find_match(
                     path,
@@ -62,4 +62,4 @@ class OpenApiMiddleware(JsonResponseMiddleware):
                     config.setdefault("security", []).append(
                         {self.oidc_auth_scheme_name: match.required_scopes}
                     )
-        return openapi_spec
+        return data

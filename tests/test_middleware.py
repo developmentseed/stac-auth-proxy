@@ -24,7 +24,7 @@ class ExampleJsonResponseMiddleware(JsonResponseMiddleware):
         """Transform JSON responses based on content type."""
         return response_headers.get("content-type", "") == "application/json"
 
-    def transform_json(self, data: Any) -> Any:
+    def transform_json(self, data: Any, request: Request) -> Any:
         """Add a test field to the response."""
         if isinstance(data, dict):
             data["transformed"] = True

@@ -34,7 +34,7 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
         "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
     )
 
-    json_content_type_expr: str = r"(application/json|geo\+json)"
+    json_content_type_expr: str = r"application/(geo\+)?json"
 
     state_key: str = "oidc_metadata"
 
@@ -82,7 +82,7 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
         schemes = scheme_loc.setdefault("auth:schemes", {})
         schemes[self.auth_scheme_name] = {
             "type": "oauth2",
-            "description": "requires an authentication token",
+            "description": "requires an authentication bearertoken",
             "flows": {
                 "authorizationCode": {
                     "authorizationUrl": oidc_metadata["authorization_endpoint"],

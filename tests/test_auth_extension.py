@@ -34,10 +34,10 @@ def request_scope():
     }
 
 
-@pytest.fixture
-def json_headers():
+@pytest.fixture(params=["application/json", "application/geo+json"])
+def json_headers(request):
     """Create headers with JSON content type."""
-    return Headers({"content-type": "application/json"})
+    return Headers({"content-type": request.param})
 
 
 @pytest.fixture

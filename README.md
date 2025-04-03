@@ -77,6 +77,10 @@ The application is configurable via environment variables.
     - **Type:** boolean
     - **Required:** No, defaults to `true`
     - **Example:** `false`, `1`, `True`
+  - **`ENABLE_COMPRESSION`**, enable response compression
+    - **Type:** boolean
+    - **Required:** No, defaults to `true`
+    - **Example:** `false`, `1`, `True`
   - **`HEALTHZ_PREFIX`**, path prefix for health check endpoints
     - **Type:** string
     - **Required:** No, defaults to `/healthz`
@@ -117,6 +121,10 @@ The application is configurable via environment variables.
         "^/healthz": ["GET"]
       }
       ```
+  - **`ENABLE_AUTHENTICATION_EXTENSION`**, enable authentication extension in STAC API responses
+    - **Type:** boolean
+    - **Required:** No, defaults to `true`
+    - **Example:** `false`, `1`, `True`
   - **`OPENAPI_SPEC_ENDPOINT`**, path of OpenAPI specification, used for augmenting spec response with auth configuration
     - **Type:** string or null
     - **Required:** No, defaults to `null` (disabled)

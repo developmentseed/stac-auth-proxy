@@ -87,12 +87,13 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     #
     # Middleware (order is important, last added = first to run)
     #
-    app.add_middleware(
-        AuthenticationExtensionMiddleware,
-        default_public=settings.default_public,
-        public_endpoints=settings.public_endpoints,
-        private_endpoints=settings.private_endpoints,
-    )
+    if settings.enable_authentication_extension:
+        app.add_middleware(
+            AuthenticationExtensionMiddleware,
+            default_public=settings.default_public,
+            public_endpoints=settings.public_endpoints,
+            private_endpoints=settings.private_endpoints,
+        )
 
     if settings.openapi_spec_endpoint:
         app.add_middleware(
@@ -113,9 +114,10 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             items_filter=settings.items_filter(),
         )
 
-    app.add_middleware(
-        CompressionMiddleware,
-    )
+    if settings.enable_compression:
+        app.add_middleware(
+            CompressionMiddleware,
+        )
 
     app.add_middleware(
         AddProcessTimeHeaderMiddleware,

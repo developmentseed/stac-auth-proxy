@@ -10,11 +10,13 @@
 
 STAC Auth Proxy is a proxy API that mediates between the client and your internally accessible STAC API to provide flexible authentication, authorization, and content-filtering mechanisms.
 
-## Features
+## ✨Features✨
 
-- 🔐 Authentication: Selectively apply OIDC auth to some or all endpoints & methods
-- 🎟️ Content Filtering: Apply CQL2 filters to client requests, filtering API content based on user context
-- 📖 OpenAPI Augmentation: Update [OpenAPI](https://swagger.io/specification/) with security requirements, keeping auto-generated docs/UIs accurate (e.g. [Swagger UI](https://swagger.io/tools/swagger-ui/))
+- 🔐 Authentication: Selectively apply OIDC auth & optional scope requirments to some or all endpoints & methods
+- 🛂 Content Filtering: Apply CQL2 filters to client requests, utilizing the [Filter Extension](https://github.com/stac-api-extensions/filter?tab=readme-ov-file) to filter API content based on user context
+- 🧩 Authentication Extension: Integrate the [Authentication Extension](https://github.com/stac-extensions/authentication) into API responses
+- 📘 OpenAPI Augmentation: Update API's [OpenAPI document](https://swagger.io/specification/) with security requirements, keeping auto-generated docs/UIs accurate (e.g. [Swagger UI](https://swagger.io/tools/swagger-ui/))
+- 🗜️ Response compression: Compress API responses via [`starlette-cramjam`](https://github.com/developmentseed/starlette-cramjam/)
 
 ## Usage
 

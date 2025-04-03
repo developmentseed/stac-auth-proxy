@@ -33,7 +33,7 @@ pip install -e .
 ```
 
 > [!NOTE]
-> This project will be available on PyPi in the near future ([#30](https://github.com/developmentseed/stac-auth-proxy/issues/30)).
+> This project will be available on PyPi in the near future[^30].
 
 ### Running
 
@@ -43,8 +43,8 @@ The simplest way to run the project is by invoking the application via Docker:
 docker run \
   -it --rm \
   -p 8000:8000 \
-  -e UPSTREAM_URL=https://google.com \
-  -e OIDC_DISCOVERY_URL=https://auth.openveda.cloud/realms/veda/.well-known/openid-configuration \
+  -e UPSTREAM_URL=https://my-stac-api \
+  -e OIDC_DISCOVERY_URL=https://my-auth-server/.well-known/openid-configuration \
   ghcr.io/developmentseed/stac-auth-proxy:latest
 ```
 
@@ -68,6 +68,10 @@ The application is configurable via environment variables.
     - **Required:** Yes
     - **Example:** `https://your-stac-api.com/stac`
   - **`WAIT_FOR_UPSTREAM`**, wait for upstream API to become available before starting proxy
+    - **Type:** boolean
+    - **Required:** No, defaults to `true`
+    - **Example:** `false`, `1`, `True`
+  - **`CHECK_CONFORMANCE`**, ensure upstream API conforms to required conformance classes before starting proxy
     - **Type:** boolean
     - **Required:** No, defaults to `true`
     - **Example:** `false`, `1`, `True`
@@ -105,10 +109,10 @@ The application is configurable via environment variables.
     - **Required:** No, defaults to the following:
       ```json
       {
-        r"^/api.html$": ["GET"],
-        r"^/api$": ["GET"],
-        r"^/docs/oauth2-redirect": ["GET"],
-        r"^/healthz": ["GET"],
+        "^/api.html$": ["GET"],
+        "^/api$": ["GET"],
+        "^/docs/oauth2-redirect": ["GET"],
+        "^/healthz": ["GET"]
       }
       ```
   - **`OPENAPI_SPEC_ENDPOINT`**, path of OpenAPI specification, used for augmenting spec response with auth configuration
@@ -116,15 +120,15 @@ The application is configurable via environment variables.
     - **Required:** No, defaults to `null` (disabled)
     - **Example:** `/api`
 - Filtering
-  - **`ITEMS_FILTER_CLS`**, [cql2 expression](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) generator for item-level filtering
+  - **`ITEMS_FILTER_CLS`**, CQL2 expression generator for item-level filtering
     - **Type:** JSON object with class configuration
     - **Required:** No, defaults to `null` (disabled)
     - **Example:** `my_package.filters:OrganizationFilter`
-  - **`ITEMS_FILTER_ARGS`**, [cql2 expression](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) generator for item-level filtering
+  - **`ITEMS_FILTER_ARGS`**, Positional arguments for CQL2 expression generator
     - **Type:** List of positional arguments used to initialize the class
     - **Required:** No, defaults to `[]`
     - **Example:**: `["org1"]`
-  - **`ITEMS_FILTER_KWARGS`**, [cql2 expression](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) generator for item-level filtering
+  - **`ITEMS_FILTER_KWARGS`**, Keyword arguments for CQL2 expression generator
     - **Type:** Dictionary of keyword arguments used to initialize the class
     - **Required:** No, defaults to `{}`
     - **Example:** `{ "field_name": "properties.organization" }`
@@ -172,7 +176,7 @@ The majority of the proxy's functionality occurs within a chain of middlewares. 
 The system supports generating CQL2 filters based on request context to provide row-level content filtering. These CQL2 filters are then set on outgoing requests prior to the upstream API.
 
 > [!IMPORTANT]
-> The upstream STAC API must support the [STAC API Filter Extension](https://github.com/stac-api-extensions/filter/blob/main/README.md), including the [Features Filter](http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter) conformance class on to the Features resource (`/collections/{cid}/items`) [#37](https://github.com/developmentseed/stac-auth-proxy/issues/37).
+> The upstream STAC API must support the [STAC API Filter Extension](https://github.com/stac-api-extensions/filter/blob/main/README.md), including the [Features Filter](http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter) conformance class on to the Features resource (`/collections/{cid}/items`)[^37].
 
 > [!TIP]
 > Integration with external authorization systems (e.g. [Open Policy Agent](https://www.openpolicyagent.org/)) can be achieved by specifying an `ITEMS_FILTER` that points to a class/function that, once initialized, returns a [`cql2.Expr` object](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) when called with the request context.
@@ -191,53 +195,58 @@ If enabled, filters are intended to be applied to the following endpoints:
   - **Action:** Read Item
   - **Applied Filter:** `ITEMS_FILTER`
   - **Strategy:** Append body with generated CQL2 query.
-- `GET /collections/{collection_id}`
-  - **Supported:** ❌ ([#23](https://github.com/developmentseed/stac-auth-proxy/issues/23))
-  - **Action:** Read Collection
-  - **Applied Filter:** `COLLECTIONS_FILTER`
-  - **Strategy:** Append query params with generated CQL2 query.
 - `GET /collections/{collection_id}/items`
   - **Supported:** ✅
   - **Action:** Read Item
   - **Applied Filter:** `ITEMS_FILTER`
   - **Strategy:** Append query params with generated CQL2 query.
 - `GET /collections/{collection_id}/items/{item_id}`
-  - **Supported:** ❌ ([#25](https://github.com/developmentseed/stac-auth-proxy/issues/25))
+  - **Supported:** ✅
   - **Action:** Read Item
   - **Applied Filter:** `ITEMS_FILTER`
   - **Strategy:** Validate response against CQL2 query.
+- `GET /collections`
+  - **Supported:** ❌[^23]
+  - **Action:** Read Collection
+  - **Applied Filter:** `COLLECTIONS_FILTER`
+  - **Strategy:** Append query params with generated CQL2 query.
+- `GET /collections/{collection_id}`
+  - **Supported:** ❌[^23]
+  - **Action:** Read Collection
+  - **Applied Filter:** `COLLECTIONS_FILTER`
+  - **Strategy:** Validate response against CQL2 query.
 - `POST /collections/`
-  - **Supported:** ❌ ([#22](https://github.com/developmentseed/stac-auth-proxy/issues/22))
+  - **Supported:** ❌[^22]
   - **Action:** Create Collection
   - **Applied Filter:** `COLLECTIONS_FILTER`
   - **Strategy:** Validate body with generated CQL2 query.
 - `PUT /collections/{collection_id}}`
-  - **Supported:** ❌ ([#22](https://github.com/developmentseed/stac-auth-proxy/issues/22))
+  - **Supported:** ❌[^22]
   - **Action:** Update Collection
   - **Applied Filter:** `COLLECTIONS_FILTER`
   - **Strategy:** Fetch Collection and validate CQL2 query; merge Item with body and validate with generated CQL2 query.
 - `DELETE /collections/{collection_id}`
-  - **Supported:** ❌ ([#22](https://github.com/developmentseed/stac-auth-proxy/issues/22))
+  - **Supported:** ❌[^22]
   - **Action:** Delete Collection
   - **Applied Filter:** `COLLECTIONS_FILTER`
   - **Strategy:** Fetch Collectiion and validate with CQL2 query.
 - `POST /collections/{collection_id}/items`
-  - **Supported:** ❌ ([#21](https://github.com/developmentseed/stac-auth-proxy/issues/21))
+  - **Supported:** ❌[^21]
   - **Action:** Create Item
   - **Applied Filter:** `ITEMS_FILTER`
   - **Strategy:** Validate body with generated CQL2 query.
 - `PUT /collections/{collection_id}/items/{item_id}`
-  - **Supported:** ❌ ([#21](https://github.com/developmentseed/stac-auth-proxy/issues/21))
+  - **Supported:** ❌[^21]
   - **Action:** Update Item
   - **Applied Filter:** `ITEMS_FILTER`
   - **Strategy:** Fetch Item and validate CQL2 query; merge Item with body and validate with generated CQL2 query.
 - `DELETE /collections/{collection_id}/items/{item_id}`
-  - **Supported:** ❌ ([#21](https://github.com/developmentseed/stac-auth-proxy/issues/21))
+  - **Supported:** ❌[^21]
   - **Action:** Delete Item
   - **Applied Filter:** `ITEMS_FILTER`
   - **Strategy:** Fetch Item and validate with CQL2 query.
 - `POST /collections/{collection_id}/bulk_items`
-  - **Supported:** ❌ ([#21](https://github.com/developmentseed/stac-auth-proxy/issues/21))
+  - **Supported:** ❌[^21]
   - **Action:** Create Items
   - **Applied Filter:** `ITEMS_FILTER`
   - **Strategy:** Validate items in body with generated CQL2 query.
@@ -253,3 +262,9 @@ sequenceDiagram
     Proxy->>STAC API: GET /collection?filter=(collection=landsat)
     STAC API->>Client: Response
 ```
+
+[^21]: https://github.com/developmentseed/stac-auth-proxy/issues/21
+[^22]: https://github.com/developmentseed/stac-auth-proxy/issues/22
+[^23]: https://github.com/developmentseed/stac-auth-proxy/issues/23
+[^30]: https://github.com/developmentseed/stac-auth-proxy/issues/30
+[^37]: https://github.com/developmentseed/stac-auth-proxy/issues/37

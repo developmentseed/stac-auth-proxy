@@ -1,14 +1,15 @@
 """Middleware to build the Cql2Filter."""
 
 import json
+import re
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Any, Awaitable, Callable, Optional
 
 from cql2 import Expr
 from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from ..utils import filters, requests
+from ..utils import requests
 
 
 @dataclass(frozen=True)
@@ -36,7 +37,7 @@ class BuildCql2FilterMiddleware:
 
         async def set_filter(body: Optional[dict] = None) -> None:
             assert filter_builder is not None
-            cql2_filter = await filter_builder(
+            filter_expr = await filter_builder(
                 {
                     "req": {
                         "path": request.url.path,
@@ -49,11 +50,11 @@ class BuildCql2FilterMiddleware:
                     **scope["state"],
                 }
             )
+            cql2_filter = Expr(filter_expr)
             cql2_filter.validate()
             setattr(request.state, self.state_key, cql2_filter)
 
         # For GET requests, we can build the filter immediately
-        # NOTE: It appears that FastAPI will not call receive function for GET requests
         if request.method == "GET":
             await set_filter()
             return await self.app(scope, receive, send)
@@ -61,6 +62,10 @@ class BuildCql2FilterMiddleware:
         total_body = b""
 
         async def receive_build_filter() -> Message:
+            """
+            Receive the body of the request and build the filter.
+            NOTE: This is not called for GET requests.
+            """
             nonlocal total_body
 
             message = await receive()
@@ -72,14 +77,15 @@ class BuildCql2FilterMiddleware:
 
         return await self.app(scope, receive_build_filter, send)
 
-    def _get_filter(self, path: str) -> Optional[Callable[..., Expr]]:
+    def _get_filter(
+        self, path: str
+    ) -> Optional[Callable[..., Awaitable[str | dict[str, Any]]]]:
         """Get the CQL2 filter builder for the given path."""
         endpoint_filters = [
-            (filters.is_collection_endpoint, self.collections_filter),
-            (filters.is_item_endpoint, self.items_filter),
-            (filters.is_search_endpoint, self.items_filter),
+            (r"^/collections(/[^/]+)?$", self.collections_filter),
+            (r"^(/collections/([^/]+)/items(/[^/]+)?$|/search$)", self.items_filter),
         ]
-        for check, builder in endpoint_filters:
-            if check(path):
+        for expr, builder in endpoint_filters:
+            if re.match(expr, path):
                 return builder
         return None

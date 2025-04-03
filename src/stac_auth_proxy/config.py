@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     oidc_discovery_internal_url: HttpUrl
 
     wait_for_upstream: bool = True
+    check_conformance: bool = True
 
     # Endpoints
     healthz_prefix: str = Field(pattern=_PREFIX_PATTERN, default="/healthz")

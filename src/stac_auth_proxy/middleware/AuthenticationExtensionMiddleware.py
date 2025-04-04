@@ -44,13 +44,14 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
         """Determine if the response should be transformed."""
         # Match STAC catalog, collection, or item URLs with a single regex
         return all(
-            [
-                re.match(
+            re.match(expr, val)
+            for expr, val in [
+                (
                     # catalog, collections, collection, items, item, search
                     r"^(/|/collections(/[^/]+(/items(/[^/]+)?)?)?|/search)$",
                     request.url.path,
                 ),
-                re.match(
+                (
                     self.json_content_type_expr,
                     response_headers.get("content-type", ""),
                 ),

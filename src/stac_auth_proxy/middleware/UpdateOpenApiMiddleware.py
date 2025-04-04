@@ -32,9 +32,10 @@ class OpenApiMiddleware(JsonResponseMiddleware):
     ) -> bool:
         """Only transform responses for the OpenAPI spec path."""
         return all(
-            [
-                re.match(self.openapi_spec_path, request.url.path),
-                re.match(
+            re.match(expr, val)
+            for expr, val in [
+                (self.openapi_spec_path, request.url.path),
+                (
                     self.json_content_type_expr,
                     response_headers.get("content-type", ""),
                 ),

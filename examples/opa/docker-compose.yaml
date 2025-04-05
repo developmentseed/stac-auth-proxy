@@ -2,6 +2,7 @@ services:
   proxy:
     depends_on:
       - stac
+      - opa
     build:
       context: examples/opa
     environment:
@@ -17,3 +18,13 @@ services:
       - "8000:8000"
     volumes:
       - ./src:/app/src
+
+  opa:
+    image: openpolicyagent/opa:latest
+    command: "run --server --addr=:8181 --watch /policies"
+    ports:
+      - "8181:8181"
+    volumes:
+      - ./examples/opa/policies:/policies
+    depends_on:
+      - stac

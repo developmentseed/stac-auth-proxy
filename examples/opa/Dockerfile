@@ -1,4 +1,4 @@
-FROM ghcr.io/developmentseed/stac-auth-proxy:latest
+FROM ghcr.io/developmentseed/stac-auth-proxy:0.1.2
 
 ADD . /opa
 

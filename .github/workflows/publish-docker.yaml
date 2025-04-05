@@ -7,6 +7,8 @@ on:
       - completed
     branches:
       - main
+  release:
+    types: [published]
 
 env:
   REGISTRY: ghcr.io
@@ -14,7 +16,7 @@ env:
 
 jobs:
   build-and-push:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'release' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -45,6 +47,7 @@ jobs:
             type=sha,format=long
             type=ref,event=branch
             type=ref,event=tag
+            type=raw,value={{tag}},enable={{is_release}}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5

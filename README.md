@@ -5,9 +5,6 @@
 
 ---
 
-> [!WARNING]
-> This project is currently in active development and may change drastically in the near future while we work towards solidifying a first release.
-
 STAC Auth Proxy is a proxy API that mediates between the client and your internally accessible STAC API to provide flexible authentication, authorization, and content-filtering mechanisms.
 
 ## ✨Features✨

@@ -42,12 +42,12 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=semver,pattern={{version}}
             type=sha,format=long
             type=ref,event=branch
             type=ref,event=tag
-            type=raw,value={{tag}},enable={{is_release}}
+            type=raw,value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5

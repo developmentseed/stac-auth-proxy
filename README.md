@@ -9,7 +9,7 @@ STAC Auth Proxy is a proxy API that mediates between the client and your interna
 
 ## ✨Features✨
 
-- 🔐 Authentication: Selectively apply [OpenID Connect (OIDC)](https://openid.net/developers/how-connect-works/) auth*n token validation & optional scope requirements to some or all endpoints & methods
+- 🔐 Authentication: Selectively apply [OpenID Connect (OIDC)](https://openid.net/developers/how-connect-works/) auth\*n token validation & optional scope requirements to some or all endpoints & methods
 - 🛂 Content Filtering: Apply CQL2 filters to client requests, utilizing the [Filter Extension](https://github.com/stac-api-extensions/filter?tab=readme-ov-file) to filter API content based on user context
 - 🧩 Authentication Extension: Integrate the [Authentication Extension](https://github.com/stac-extensions/authentication) into API responses
 - 📘 OpenAPI Augmentation: Update API's [OpenAPI document](https://swagger.io/specification/) with security requirements, keeping auto-generated docs/UIs accurate (e.g. [Swagger UI](https://swagger.io/tools/swagger-ui/))
@@ -272,7 +272,7 @@ sequenceDiagram
 The `ITEMS_FILTER_CLS` configuration option can be used to specify a class that will be used to generate a CQL2 filter for the request. The class must define a `__call__` method that accepts a single argument: a dictionary containing the request context; and returns a valid `cql2-text` expression (as a `str`) or `cql2-json` expression (as a `dict`).
 
 > [!TIP]
-> An example of an Open Policy Agent (OPA) integration is available in the [examples/opa](examples/opa) directory, runnable with `docker compose -f docker-compose.yaml -f examples/opa/docker-compose.yaml up`.
+> An example of integrating with Open Policy Agent (OPA) can be found in [`examples/opa`](https://github.com/developmentseed/stac-auth-proxy/blob/main/examples/opa).
 
 ##### Basic Filter Generator
 

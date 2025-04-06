@@ -10,7 +10,7 @@ services:
       OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL:-http://localhost:8888/.well-known/openid-configuration}
       OIDC_DISCOVERY_INTERNAL_URL: ${OIDC_DISCOVERY_INTERNAL_URL:-http://oidc:8888/.well-known/openid-configuration}
       ITEMS_FILTER_CLS: opa_integration:OpaIntegration
-      ITEMS_FILTER_ARGS: "[]"
+      ITEMS_FILTER_ARGS: '["http://opa:8181", "stac/cql2"]'
     env_file:
       - path: .env
         required: false

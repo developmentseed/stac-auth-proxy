@@ -60,25 +60,25 @@ class MemoryCache:
     def get(self, ctx: Any) -> Any:
         """Get a value from the cache."""
         key = self.get_value_by_path(ctx, self.key)
-        if key in self.cache:
-            result, timestamp = self.cache[key]
-            age = time() - timestamp
-            if age <= self.ttl:
-                logger.debug(
-                    "%r in cache, returning cached result",
-                    key if len(str(key)) < 10 else f"{str(key)[:9]}...",
-                )
-                return result
-            logger.debug(
-                "%r in cache, but expired.",
-                key if len(str(key)) < 10 else f"{key[:9]}...",
-            )
-        else:
+        if key not in self.cache:
             logger.debug(
                 "%r not in cache, calling function",
                 key if len(str(key)) < 10 else f"{key[:9]}...",
             )
-        return None
+            return None
+
+        result, timestamp = self.cache[key]
+        age = time() - timestamp
+        if age <= self.ttl:
+            logger.debug(
+                "%r in cache, returning cached result",
+                key if len(str(key)) < 10 else f"{str(key)[:9]}...",
+            )
+            return result
+        logger.debug(
+            "%r in cache, but expired.",
+            key if len(str(key)) < 10 else f"{key[:9]}...",
+        )
 
     def set(self, ctx: Any, value: Any):
         """Set a value in the cache."""

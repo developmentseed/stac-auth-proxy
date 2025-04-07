@@ -1,10 +1,13 @@
 """Utility functions."""
 
 import json
+import logging
 from typing import Optional
 from urllib.parse import parse_qs
 
 from cql2 import Expr
+
+logger = logging.getLogger(__name__)
 
 
 def append_qs_filter(qs: str, filter: Expr, filter_lang: Optional[str] = None) -> bytes:

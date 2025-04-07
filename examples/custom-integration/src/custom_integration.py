@@ -13,7 +13,7 @@ def cql2_builder(admin_user: str):
     # NOTE: This is where you would set up things like connection pools.
     # NOTE: args/kwargs are passed in via environment variables.
 
-    def custom_integration_filter(ctx: dict[str, Any]) -> str:
+    async def custom_integration_filter(ctx: dict[str, Any]) -> str:
         """
         Generate CQL2 expressions based on the request context.
 
@@ -22,7 +22,7 @@ def cql2_builder(admin_user: str):
         # NOTE: This is where you would perform a lookup from a database, API, etc.
         # NOTE: ctx is the request context, which includes the payload, headers, etc.
 
-        if ctx["payload"]["sub"] == admin_user:
+        if ctx["payload"] and ctx["payload"]["sub"] == admin_user:
             return "1=1"
         return "private = true"
 

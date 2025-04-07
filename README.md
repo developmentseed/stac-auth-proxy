@@ -5,35 +5,18 @@
 
 ---
 
-> [!WARNING]
-> This project is currently in active development and may change drastically in the near future while we work towards solidifying a first release.
-
 STAC Auth Proxy is a proxy API that mediates between the client and your internally accessible STAC API to provide flexible authentication, authorization, and content-filtering mechanisms.
 
-## Features
+## ✨Features✨
 
-- 🔐 Authentication: Selectively apply OIDC auth to some or all endpoints & methods
-- 🎟️ Content Filtering: Apply CQL2 filters to client requests, filtering API content based on user context
-- 📖 OpenAPI Augmentation: Update [OpenAPI](https://swagger.io/specification/) with security requirements, keeping auto-generated docs/UIs accurate (e.g. [Swagger UI](https://swagger.io/tools/swagger-ui/))
+- **🔐 Authentication:** Apply [OpenID Connect (OIDC)](https://openid.net/developers/how-connect-works/) token validation and optional scope checks to specified endpoints and methods
+- **🛂 Content Filtering:** Use CQL2 filters via the [Filter Extension](https://github.com/stac-api-extensions/filter?tab=readme-ov-file) to tailor API responses based on user context
+- **🤝 External Policy Integration:** Integrate with externalsystems (e.g. [Open Policy Agent (OPA)](https://www.openpolicyagent.org/)) to generate CQL2 filters dynamically from policy decisions
+- **🧩 Authentication Extension:** Add the [Authentication Extension](https://github.com/stac-extensions/authentication) to API responses to expose auth-related metadata
+- **📘 OpenAPI Augmentation:** Enhance the [OpenAPI spec](https://swagger.io/specification/) with security details to keep auto-generated docs and UIs (e.g., [Swagger UI](https://swagger.io/tools/swagger-ui/)) accurate
+- **🗜️ Response Compression:** Optimize response sizes using [`starlette-cramjam`](https://github.com/developmentseed/starlette-cramjam/)
 
 ## Usage
-
-### Installation
-
-For local development, we use [`uv`](https://docs.astral.sh/uv/) to manage project dependencies and environment.
-
-```sh
-uv sync
-```
-
-Otherwise, the application can be installed as a standard Python module:
-
-```sh
-pip install -e .
-```
-
-> [!NOTE]
-> This project will be available on PyPi in the near future[^30].
 
 ### Running
 
@@ -58,6 +41,23 @@ python -m stac_auth_proxy
 uvicorn --factory stac_auth_proxy:create_app
 ```
 
+### Installation
+
+For local development, we use [`uv`](https://docs.astral.sh/uv/) to manage project dependencies and environment.
+
+```sh
+uv sync
+```
+
+Otherwise, the application can be installed as a standard Python module:
+
+```sh
+pip install -e .
+```
+
+> [!NOTE]
+> This project will be available on PyPi in the near future[^30].
+
 ### Configuration
 
 The application is configurable via environment variables.
@@ -72,6 +72,10 @@ The application is configurable via environment variables.
     - **Required:** No, defaults to `true`
     - **Example:** `false`, `1`, `True`
   - **`CHECK_CONFORMANCE`**, ensure upstream API conforms to required conformance classes before starting proxy
+    - **Type:** boolean
+    - **Required:** No, defaults to `true`
+    - **Example:** `false`, `1`, `True`
+  - **`ENABLE_COMPRESSION`**, enable response compression
     - **Type:** boolean
     - **Required:** No, defaults to `true`
     - **Example:** `false`, `1`, `True`
@@ -115,6 +119,10 @@ The application is configurable via environment variables.
         "^/healthz": ["GET"]
       }
       ```
+  - **`ENABLE_AUTHENTICATION_EXTENSION`**, enable authentication extension in STAC API responses
+    - **Type:** boolean
+    - **Required:** No, defaults to `true`
+    - **Example:** `false`, `1`, `True`
   - **`OPENAPI_SPEC_ENDPOINT`**, path of OpenAPI specification, used for augmenting spec response with auth configuration
     - **Type:** string or null
     - **Required:** No, defaults to `null` (disabled)
@@ -177,9 +185,6 @@ The system supports generating CQL2 filters based on request context to provide 
 
 > [!IMPORTANT]
 > The upstream STAC API must support the [STAC API Filter Extension](https://github.com/stac-api-extensions/filter/blob/main/README.md), including the [Features Filter](http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter) conformance class on to the Features resource (`/collections/{cid}/items`)[^37].
-
-> [!TIP]
-> Integration with external authorization systems (e.g. [Open Policy Agent](https://www.openpolicyagent.org/)) can be achieved by specifying an `ITEMS_FILTER` that points to a class/function that, once initialized, returns a [`cql2.Expr` object](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) when called with the request context.
 
 #### Filters
 
@@ -262,6 +267,108 @@ sequenceDiagram
     Proxy->>STAC API: GET /collection?filter=(collection=landsat)
     STAC API->>Client: Response
 ```
+
+#### Authoring Filter Generators
+
+The `ITEMS_FILTER_CLS` configuration option can be used to specify a class that will be used to generate a CQL2 filter for the request. The class must define a `__call__` method that accepts a single argument: a dictionary containing the request context; and returns a valid `cql2-text` expression (as a `str`) or `cql2-json` expression (as a `dict`).
+
+> [!TIP]
+> An example integration can be found in [`examples/custom-integration`](https://github.com/developmentseed/stac-auth-proxy/blob/main/examples/custom-integration).
+
+##### Basic Filter Generator
+
+```py
+import dataclasses
+from typing import Any
+
+from cql2 import Expr
+
+
+@dataclasses.dataclass
+class ExampleFilter:
+    async def __call__(self, context: dict[str, Any]) -> str:
+        return "true"
+```
+
+> [!TIP]
+> Despite being referred to as a _class_, a filter generator could be written as a function.
+>
+>   <details>
+>
+>   <summary>Example</summary>
+>
+> ```py
+> from typing import Any
+>
+> from cql2 import Expr
+>
+>
+> def example_filter():
+>     async def example_filter(context: dict[str, Any]) -> str | dict[str, Any]:
+>         return Expr("true")
+>     return example_filter
+> ```
+>
+> </details>
+
+##### Complex Filter Generator
+
+An example of a more complex filter generator where the filter is generated based on the response of an external API:
+
+```py
+import dataclasses
+from typing import Any
+
+from httpx import AsyncClient
+from stac_auth_proxy.utils.cache import MemoryCache
+
+
+@dataclasses.dataclass
+class ApprovedCollectionsFilter:
+    api_url: str
+    kind: Literal["item", "collection"] = "item"
+    client: AsyncClient = dataclasses.field(init=False)
+    cache: MemoryCache = dataclasses.field(init=False)
+
+    def __post_init__(self):
+        # We keep the client in the class instance to avoid creating a new client for
+        # each request, taking advantage of the client's connection pooling.
+        self.client = AsyncClient(base_url=self.api_url)
+        self.cache = MemoryCache(ttl=30)
+
+    async def __call__(self, context: dict[str, Any]) -> dict[str, Any]:
+        token = context["req"]["headers"].get("authorization")
+
+        try:
+            # Check cache for a previously generated filter
+            approved_collections = self.cache[token]
+        except KeyError:
+            # Lookup approved collections from an external API
+            approved_collections = await self.lookup(token)
+            self.cache[token] = approved_collections
+
+        # Build CQL2 filter
+        return {
+            "op": "a_containedby",
+            "args": [
+                {"property": "collection" if self.kind == "item" else "id"},
+                approved_collections
+            ],
+        }
+
+    async def lookup(self, token: Optional[str]) -> list[str]:
+        # Lookup approved collections from an external API
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
+        response = await self.client.get(
+            f"/get-approved-collections",
+            headers=headers,
+        )
+        response.raise_for_status()
+        return response.json()["collections"]
+```
+
+> [!TIP]
+> Filter generation runs for every relevant request. Consider memoizing external API calls to improve performance.
 
 [^21]: https://github.com/developmentseed/stac-auth-proxy/issues/21
 [^22]: https://github.com/developmentseed/stac-auth-proxy/issues/22

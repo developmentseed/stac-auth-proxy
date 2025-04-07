@@ -1,0 +1,13 @@
+services:
+  proxy:
+    environment:
+      ITEMS_FILTER_CLS: stac_auth_proxy.filters:Opa
+      ITEMS_FILTER_ARGS: '["http://opa:8181", "stac/cql2"]'
+
+  opa:
+    image: openpolicyagent/opa:latest
+    command: "run --server --addr=:8181 --watch /policies"
+    ports:
+      - "8181:8181"
+    volumes:
+      - ./examples/opa/policies:/policies

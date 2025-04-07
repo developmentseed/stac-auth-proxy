@@ -1,0 +1,12 @@
+# This compose file is intended to be run alongside the `docker-compose.yaml` file in the
+# root directory.
+
+services:
+  proxy:
+    build:
+      context: examples/custom-integration
+      args:
+        STAC_AUTH_PROXY_VERSION: 0.1.2
+    environment:
+      ITEMS_FILTER_CLS: custom_integration:cql2_builder
+      ITEMS_FILTER_KWARGS: '{"admin_user": "user123"}'

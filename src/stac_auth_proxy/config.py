@@ -40,8 +40,8 @@ class Settings(BaseSettings):
 
     wait_for_upstream: bool = True
     check_conformance: bool = True
-
-    # Endpoints
+    enable_compression: bool = True
+    enable_authentication_extension: bool = True
     healthz_prefix: str = Field(pattern=_PREFIX_PATTERN, default="/healthz")
     openapi_spec_endpoint: Optional[str] = Field(pattern=_PREFIX_PATTERN, default=None)
 

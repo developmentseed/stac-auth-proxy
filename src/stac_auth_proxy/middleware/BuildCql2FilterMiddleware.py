@@ -1,15 +1,18 @@
 """Middleware to build the Cql2Filter."""
 
-import json
+import logging
 import re
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Optional
 
-from cql2 import Expr
+from cql2 import Expr, ValidationError
 from starlette.requests import Request
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
+from starlette.responses import Response
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from ..utils import requests
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -35,47 +38,27 @@ class BuildCql2FilterMiddleware:
         if not filter_builder:
             return await self.app(scope, receive, send)
 
-        async def set_filter(body: Optional[dict] = None) -> None:
-            assert filter_builder is not None
-            filter_expr = await filter_builder(
-                {
-                    "req": {
-                        "path": request.url.path,
-                        "method": request.method,
-                        "query_params": dict(request.query_params),
-                        "path_params": requests.extract_variables(request.url.path),
-                        "headers": dict(request.headers),
-                        "body": body,
-                    },
-                    **scope["state"],
-                }
-            )
-            cql2_filter = Expr(filter_expr)
+        filter_expr = await filter_builder(
+            {
+                "req": {
+                    "path": request.url.path,
+                    "method": request.method,
+                    "query_params": dict(request.query_params),
+                    "path_params": requests.extract_variables(request.url.path),
+                    "headers": dict(request.headers),
+                },
+                **scope["state"],
+            }
+        )
+        cql2_filter = Expr(filter_expr)
+        try:
             cql2_filter.validate()
-            setattr(request.state, self.state_key, cql2_filter)
+        except ValidationError:
+            logger.exception("Invalid CQL2 filter: %s", filter_expr)
+            return await Response(status_code=502, content="Invalid CQL2 filter")
+        setattr(request.state, self.state_key, cql2_filter)
 
-        # For GET requests, we can build the filter immediately
-        if request.method == "GET":
-            await set_filter()
-            return await self.app(scope, receive, send)
-
-        total_body = b""
-
-        async def receive_build_filter() -> Message:
-            """
-            Receive the body of the request and build the filter.
-            NOTE: This is not called for GET requests.
-            """
-            nonlocal total_body
-
-            message = await receive()
-            total_body += message.get("body", b"")
-
-            if not message.get("more_body"):
-                await set_filter(json.loads(total_body) if total_body else None)
-            return message
-
-        return await self.app(scope, receive_build_filter, send)
+        return await self.app(scope, receive, send)
 
     def _get_filter(
         self, path: str

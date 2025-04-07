@@ -1,23 +1,8 @@
 services:
   proxy:
-    depends_on:
-      - stac
-      - opa
-    build:
-      context: examples/opa
     environment:
-      UPSTREAM_URL: ${UPSTREAM_URL:-http://stac:8001}
-      OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL:-http://localhost:8888/.well-known/openid-configuration}
-      OIDC_DISCOVERY_INTERNAL_URL: ${OIDC_DISCOVERY_INTERNAL_URL:-http://oidc:8888/.well-known/openid-configuration}
-      ITEMS_FILTER_CLS: opa_integration:OpaIntegration
+      ITEMS_FILTER_CLS: stac_auth_proxy.filters:Opa
       ITEMS_FILTER_ARGS: '["http://opa:8181", "stac/cql2"]'
-    env_file:
-      - path: .env
-        required: false
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./src:/app/src
 
   opa:
     image: openpolicyagent/opa:latest
@@ -26,5 +11,3 @@ services:
       - "8181:8181"
     volumes:
       - ./examples/opa/policies:/policies
-    depends_on:
-      - stac

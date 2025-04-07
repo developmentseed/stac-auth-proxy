@@ -1,10 +1,15 @@
 """Utility functions."""
 
 import json
-from typing import Optional
+import logging
+from dataclasses import dataclass, field
+from time import time
+from typing import Any, Optional
 from urllib.parse import parse_qs
 
 from cql2 import Expr
+
+logger = logging.getLogger(__name__)
 
 
 def append_qs_filter(qs: str, filter: Expr, filter_lang: Optional[str] = None) -> bytes:
@@ -42,3 +47,72 @@ def dict_to_query_string(params: dict) -> str:
             val = json.dumps(val, separators=(",", ":"))
         parts.append(f"{key}={val}")
     return "&".join(parts)
+
+
+@dataclass
+class MemoryCache:
+    """Cache results of a method call for a given key."""
+
+    key: str
+    ttl: float = 5.0
+    cache: dict[tuple[Any], tuple[Any, float]] = field(default_factory=dict)
+
+    def get(self, ctx: Any) -> Any:
+        """Get a value from the cache."""
+        key = self.get_value_by_path(ctx, self.key)
+        if key in self.cache:
+            result, timestamp = self.cache[key]
+            age = time() - timestamp
+            if age <= self.ttl:
+                logger.debug(
+                    "%r in cache, returning cached result",
+                    key if len(str(key)) < 10 else f"{str(key)[:9]}...",
+                )
+                return result
+            logger.debug(
+                "%r in cache, but expired.",
+                key if len(str(key)) < 10 else f"{key[:9]}...",
+            )
+        else:
+            logger.debug(
+                "%r not in cache, calling function",
+                key if len(str(key)) < 10 else f"{key[:9]}...",
+            )
+        return None
+
+    def set(self, ctx: Any, value: Any):
+        """Set a value in the cache."""
+        key = self.get_value_by_path(ctx, self.key)
+        self.cache[key] = (value, time())
+        self.prune()
+
+    def prune(self):
+        """Prune the cache of expired items."""
+        self.cache = {
+            k: (v, time_entered)
+            for k, (v, time_entered) in self.cache.items()
+            if time_entered > (time() - self.ttl)
+        }
+
+    @staticmethod
+    def get_value_by_path(obj: dict, path: str, default: Any = None) -> Any:
+        """
+        Get a value from a dictionary using dot notation.
+
+        Args:
+            obj: The dictionary to search in
+            path: The dot notation path (e.g. "payload.sub")
+            default: Default value to return if path doesn't exist
+
+        Returns
+        -------
+            The value at the specified path or default if path doesn't exist
+        """
+        try:
+            for key in path.split("."):
+                if obj is None:
+                    return default
+                obj = obj.get(key, None)
+            return obj
+        except (AttributeError, KeyError, TypeError):
+            return default

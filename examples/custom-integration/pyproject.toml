@@ -1,5 +1,5 @@
 [project]
-name = "opa_integration"
+name = "custom_integration"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"

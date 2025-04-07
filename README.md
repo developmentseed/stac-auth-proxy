@@ -9,11 +9,12 @@ STAC Auth Proxy is a proxy API that mediates between the client and your interna
 
 ## ✨Features✨
 
-- 🔐 Authentication: Selectively apply [OpenID Connect (OIDC)](https://openid.net/developers/how-connect-works/) auth\*n token validation & optional scope requirements to some or all endpoints & methods
-- 🛂 Content Filtering: Apply CQL2 filters to client requests, utilizing the [Filter Extension](https://github.com/stac-api-extensions/filter?tab=readme-ov-file) to filter API content based on user context
-- 🧩 Authentication Extension: Integrate the [Authentication Extension](https://github.com/stac-extensions/authentication) into API responses
-- 📘 OpenAPI Augmentation: Update API's [OpenAPI document](https://swagger.io/specification/) with security requirements, keeping auto-generated docs/UIs accurate (e.g. [Swagger UI](https://swagger.io/tools/swagger-ui/))
-- 🗜️ Response compression: Compress API responses via [`starlette-cramjam`](https://github.com/developmentseed/starlette-cramjam/)
+- **🔐 Authentication:** Apply [OpenID Connect (OIDC)](https://openid.net/developers/how-connect-works/) token validation and optional scope checks to specified endpoints and methods
+- **🛂 Content Filtering:** Use CQL2 filters via the [Filter Extension](https://github.com/stac-api-extensions/filter?tab=readme-ov-file) to tailor API responses based on user context
+- **🤝 External Policy Integration:** Integrate with externalsystems (e.g. [Open Policy Agent (OPA)](https://www.openpolicyagent.org/)) to generate CQL2 filters dynamically from policy decisions
+- **🧩 Authentication Extension:** Add the [Authentication Extension](https://github.com/stac-extensions/authentication) to API responses to expose auth-related metadata
+- **📘 OpenAPI Augmentation:** Enhance the [OpenAPI spec](https://swagger.io/specification/) with security details to keep auto-generated docs and UIs (e.g., [Swagger UI](https://swagger.io/tools/swagger-ui/)) accurate
+- **🗜️ Response Compression:** Optimize response sizes using [`starlette-cramjam`](https://github.com/developmentseed/starlette-cramjam/)
 
 ## Usage
 

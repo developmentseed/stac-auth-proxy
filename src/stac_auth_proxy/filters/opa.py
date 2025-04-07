@@ -29,10 +29,14 @@ class Opa:
         """Generate a CQL2 filter for the request."""
         if cached_result := self.cache.get(context):
             return cached_result
+        result = await self._fetch(context)
+        self.cache.set(context, result)
+        return result
+
+    async def _fetch(self, context: dict[str, Any]) -> str:
+        """Fetch the CQL2 filter from OPA."""
         response = await self.client.post(
             f"/v1/data/{self.decision}",
             json={"input": context},
         )
-        result = response.raise_for_status().json()["result"]
-        self.cache.set(context, result)
-        return result
+        return response.raise_for_status().json()["result"]

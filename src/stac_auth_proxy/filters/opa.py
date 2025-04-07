@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 
-from ..utils.filters import MemoryCache
+from ..utils.cache import MemoryCache, get_value_by_path
 
 
 @dataclass
@@ -23,15 +23,17 @@ class Opa:
     def __post_init__(self):
         """Initialize the client."""
         self.client = httpx.AsyncClient(base_url=self.host)
-        self.cache = MemoryCache(key=self.cache_key, ttl=self.cache_ttl)
+        self.cache = MemoryCache(ttl=self.cache_ttl)
 
     async def __call__(self, context: dict[str, Any]) -> str:
         """Generate a CQL2 filter for the request."""
-        if cached_result := self.cache.get(context):
-            return cached_result
-        result = await self._fetch(context)
-        self.cache.set(context, result)
-        return result
+        token = get_value_by_path(context, self.cache_key)
+        try:
+            expr_str = self.cache[token]
+        except KeyError:
+            expr_str = await self._fetch(context)
+            self.cache[token] = expr_str
+        return expr_str
 
     async def _fetch(self, context: dict[str, Any]) -> str:
         """Fetch the CQL2 filter from OPA."""

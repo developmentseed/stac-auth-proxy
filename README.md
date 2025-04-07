@@ -273,7 +273,7 @@ sequenceDiagram
 The `ITEMS_FILTER_CLS` configuration option can be used to specify a class that will be used to generate a CQL2 filter for the request. The class must define a `__call__` method that accepts a single argument: a dictionary containing the request context; and returns a valid `cql2-text` expression (as a `str`) or `cql2-json` expression (as a `dict`).
 
 > [!TIP]
-> An example of integrating with Open Policy Agent (OPA) can be found in [`examples/opa`](https://github.com/developmentseed/stac-auth-proxy/blob/main/examples/opa).
+> An example integration can be found in [`examples/custom-integration`](https://github.com/developmentseed/stac-auth-proxy/blob/main/examples/custom-integration).
 
 ##### Basic Filter Generator
 
@@ -320,6 +320,7 @@ import dataclasses
 from typing import Any
 
 from httpx import AsyncClient
+from stac_auth_proxy.utils.cache import MemoryCache
 
 
 @dataclasses.dataclass
@@ -327,16 +328,24 @@ class ApprovedCollectionsFilter:
     api_url: str
     kind: Literal["item", "collection"] = "item"
     client: AsyncClient = dataclasses.field(init=False)
+    cache: MemoryCache = dataclasses.field(init=False)
 
     def __post_init__(self):
         # We keep the client in the class instance to avoid creating a new client for
         # each request, taking advantage of the client's connection pooling.
         self.client = AsyncClient(base_url=self.api_url)
+        self.cache = MemoryCache(ttl=30)
 
     async def __call__(self, context: dict[str, Any]) -> dict[str, Any]:
-        # Lookup approved collections from an external API
-        token = context["req"]["headers"].get("Authorization")
-        approved_collections = await self.lookup(token)
+        token = context["req"]["headers"].get("authorization")
+
+        try:
+            # Check cache for a previously generated filter
+            approved_collections = self.cache[token]
+        except KeyError:
+            # Lookup approved collections from an external API
+            approved_collections = await self.lookup(token)
+            self.cache[token] = approved_collections
 
         # Build CQL2 filter
         return {

@@ -6,7 +6,7 @@ from fastapi import FastAPI, Response
 from starlette.datastructures import Headers
 from starlette.requests import Request
 from starlette.testclient import TestClient
-from starlette.types import ASGIApp
+from starlette.types import ASGIApp, Scope
 
 from stac_auth_proxy.utils.middleware import JsonResponseMiddleware
 
@@ -18,11 +18,9 @@ class ExampleJsonResponseMiddleware(JsonResponseMiddleware):
         """Initialize the middleware."""
         self.app = app
 
-    def should_transform_response(
-        self, request: Request, response_headers: Headers
-    ) -> bool:
+    def should_transform_response(self, request: Request, scope: Scope) -> bool:
         """Transform JSON responses based on content type."""
-        return response_headers.get("content-type", "") == "application/json"
+        return Headers(scope=scope).get("content-type", "") == "application/json"
 
     def transform_json(self, data: Any, request: Request) -> Any:
         """Add a test field to the response."""

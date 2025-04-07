@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 from starlette.datastructures import Headers
 from starlette.requests import Request
-from starlette.types import ASGIApp
+from starlette.types import ASGIApp, Scope
 
 from ..config import EndpointMethods
 from ..utils.middleware import JsonResponseMiddleware
@@ -38,24 +38,27 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
 
     state_key: str = "oidc_metadata"
 
-    def should_transform_response(
-        self, request: Request, response_headers: Headers
-    ) -> bool:
+    def should_transform_response(self, request: Request, scope: Scope) -> bool:
         """Determine if the response should be transformed."""
         # Match STAC catalog, collection, or item URLs with a single regex
-        return all(
-            re.match(expr, val)
-            for expr, val in [
+        return (
+            all(
                 (
-                    # catalog, collections, collection, items, item, search
-                    r"^(/|/collections(/[^/]+(/items(/[^/]+)?)?)?|/search)$",
-                    request.url.path,
+                    re.match(expr, val)
+                    for expr, val in [
+                        (
+                            # catalog, collections, collection, items, item, search
+                            r"^(/|/collections(/[^/]+(/items(/[^/]+)?)?)?|/search)$",
+                            request.url.path,
+                        ),
+                        (
+                            self.json_content_type_expr,
+                            Headers(scope=scope).get("content-type", ""),
+                        ),
+                    ]
                 ),
-                (
-                    self.json_content_type_expr,
-                    response_headers.get("content-type", ""),
-                ),
-            ]
+            )
+            and 200 >= scope["status"] < 300
         )
 
     def transform_json(self, data: dict[str, Any], request: Request) -> dict[str, Any]:

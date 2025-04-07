@@ -1,5 +1,6 @@
-FROM ghcr.io/developmentseed/stac-auth-proxy:0.1.2
+ARG STAC_AUTH_PROXY_VERSION
+FROM ghcr.io/developmentseed/stac-auth-proxy:${STAC_AUTH_PROXY_VERSION}
 
-ADD . /opa
+ADD . /opt/stac-auth-proxy-integration
 
-RUN pip install /opa
+RUN pip install /opt/stac-auth-proxy-integration

@@ -89,7 +89,7 @@ def get_value_by_path(obj: dict, path: str, default: Any = None) -> Any:
         for key in path.split("."):
             if obj is None:
                 return default
-            obj = obj.get(key, None)
+            obj = obj.get(key, default)
         return obj
     except (AttributeError, KeyError, TypeError):
         return default

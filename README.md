@@ -18,23 +18,6 @@ STAC Auth Proxy is a proxy API that mediates between the client and your interna
 
 ## Usage
 
-### Installation
-
-For local development, we use [`uv`](https://docs.astral.sh/uv/) to manage project dependencies and environment.
-
-```sh
-uv sync
-```
-
-Otherwise, the application can be installed as a standard Python module:
-
-```sh
-pip install -e .
-```
-
-> [!NOTE]
-> This project will be available on PyPi in the near future[^30].
-
 ### Running
 
 The simplest way to run the project is by invoking the application via Docker:
@@ -57,6 +40,23 @@ python -m stac_auth_proxy
 ```sh
 uvicorn --factory stac_auth_proxy:create_app
 ```
+
+### Installation
+
+For local development, we use [`uv`](https://docs.astral.sh/uv/) to manage project dependencies and environment.
+
+```sh
+uv sync
+```
+
+Otherwise, the application can be installed as a standard Python module:
+
+```sh
+pip install -e .
+```
+
+> [!NOTE]
+> This project will be available on PyPi in the near future[^30].
 
 ### Configuration
 

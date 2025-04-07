@@ -6,7 +6,7 @@ from typing import Any
 
 from starlette.datastructures import Headers
 from starlette.requests import Request
-from starlette.types import ASGIApp
+from starlette.types import ASGIApp, Scope
 
 from ..config import EndpointMethods
 from ..utils.middleware import JsonResponseMiddleware
@@ -27,19 +27,20 @@ class OpenApiMiddleware(JsonResponseMiddleware):
 
     json_content_type_expr: str = r"application/(vnd\.oai\.openapi\+json?|json)"
 
-    def should_transform_response(
-        self, request: Request, response_headers: Headers
-    ) -> bool:
+    def should_transform_response(self, request: Request, scope: Scope) -> bool:
         """Only transform responses for the OpenAPI spec path."""
-        return all(
-            re.match(expr, val)
-            for expr, val in [
-                (self.openapi_spec_path, request.url.path),
-                (
-                    self.json_content_type_expr,
-                    response_headers.get("content-type", ""),
-                ),
-            ]
+        return (
+            all(
+                re.match(expr, val)
+                for expr, val in [
+                    (self.openapi_spec_path, request.url.path),
+                    (
+                        self.json_content_type_expr,
+                        Headers(scope=scope).get("content-type", ""),
+                    ),
+                ]
+            )
+            and 200 >= scope["status"] < 300
         )
 
     def transform_json(self, data: dict[str, Any], request: Request) -> dict[str, Any]:

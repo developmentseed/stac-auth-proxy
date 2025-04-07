@@ -4,7 +4,7 @@ import json
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
-from starlette.datastructures import Headers, MutableHeaders
+from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -16,7 +16,7 @@ class JsonResponseMiddleware(ABC):
 
     @abstractmethod
     def should_transform_response(
-        self, request: Request, response_headers: Headers
+        self, request: Request, scope: Scope
     ) -> bool:  # mypy: ignore
         """
         Determine if this response should be transformed. At a minimum, this
@@ -60,7 +60,7 @@ class JsonResponseMiddleware(ABC):
 
             if not self.should_transform_response(
                 request=request,
-                response_headers=headers,
+                scope=start_message,
             ):
                 # For non-JSON responses, send the start message immediately
                 await send(message)

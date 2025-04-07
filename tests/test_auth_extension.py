@@ -1,7 +1,6 @@
 """Tests for AuthenticationExtensionMiddleware."""
 
 import pytest
-from starlette.datastructures import Headers
 from starlette.requests import Request
 
 from stac_auth_proxy.config import EndpointMethods
@@ -34,10 +33,20 @@ def request_scope():
     }
 
 
-@pytest.fixture(params=["application/json", "application/geo+json"])
-def json_headers(request):
+@pytest.fixture(params=[b"application/json", b"application/geo+json"])
+def initial_message(request):
     """Create headers with JSON content type."""
-    return Headers({"content-type": request.param})
+    return {
+        "type": "http.response.start",
+        "status": 200,
+        "headers": [
+            (b"date", b"Mon, 07 Apr 2025 06:55:37 GMT"),
+            (b"server", b"uvicorn"),
+            (b"content-length", b"27642"),
+            (b"content-type", request.param),
+            (b"x-upstream-time", b"0.063"),
+        ],
+    }
 
 
 @pytest.fixture
@@ -50,7 +59,9 @@ def oidc_metadata():
     }
 
 
-def test_should_transform_response_valid_paths(middleware, request_scope, json_headers):
+def test_should_transform_response_valid_paths(
+    middleware, request_scope, initial_message
+):
     """Test that valid STAC paths are transformed."""
     valid_paths = [
         "/",
@@ -64,11 +75,11 @@ def test_should_transform_response_valid_paths(middleware, request_scope, json_h
     for path in valid_paths:
         request_scope["path"] = path
         request = Request(request_scope)
-        assert middleware.should_transform_response(request, json_headers)
+        assert middleware.should_transform_response(request, initial_message)
 
 
 def test_should_transform_response_invalid_paths(
-    middleware, request_scope, json_headers
+    middleware, request_scope, initial_message
 ):
     """Test that invalid paths are not transformed."""
     invalid_paths = [
@@ -80,14 +91,26 @@ def test_should_transform_response_invalid_paths(
     for path in invalid_paths:
         request_scope["path"] = path
         request = Request(request_scope)
-        assert not middleware.should_transform_response(request, json_headers)
+        assert not middleware.should_transform_response(request, initial_message)
 
 
 def test_should_transform_response_invalid_content_type(middleware, request_scope):
     """Test that non-JSON content types are not transformed."""
     request = Request(request_scope)
-    headers = Headers({"content-type": "text/html"})
-    assert not middleware.should_transform_response(request, headers)
+    assert not middleware.should_transform_response(
+        request,
+        {
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [
+                (b"date", b"Mon, 07 Apr 2025 06:55:37 GMT"),
+                (b"server", b"uvicorn"),
+                (b"content-length", b"27642"),
+                (b"content-type", b"text/html"),
+                (b"x-upstream-time", b"0.063"),
+            ],
+        },
+    )
 
 
 def test_transform_json_catalog(middleware, request_scope, oidc_metadata):

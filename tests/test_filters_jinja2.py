@@ -314,3 +314,26 @@ def test_item_get(
     else:
         assert response.status_code == 404
         assert response.json() == {"message": "Not found"}
+
+
+@pytest.mark.parametrize("is_authenticated", [True, False], ids=["auth", "anon"])
+async def test_search_post_empty_body(
+    source_api_server,
+    is_authenticated,
+    token_builder,
+):
+    """Test that POST /search with empty body."""
+    client = _build_client(
+        src_api_server=source_api_server,
+        template_expr="(properties.private = false)",
+        is_authenticated=is_authenticated,
+        token_builder=token_builder,
+    )
+
+    # Send request with Content-Length header that doesn't match actual body size
+    response = client.post(
+        "/search",
+        json={},
+    )
+
+    assert response.status_code == 200

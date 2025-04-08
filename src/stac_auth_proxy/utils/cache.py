@@ -15,9 +15,6 @@ class MemoryCache:
     cache: dict[tuple[Any], tuple[Any, float]] = field(default_factory=dict)
     _last_pruned: float = field(default_factory=time)
 
-    class Expired(Exception):
-        """Exception raised when a cache entry has expired."""
-
     def __getitem__(self, key: Any) -> Any:
         """Get a value from the cache if it is not expired."""
         if key not in self.cache:
@@ -30,7 +27,7 @@ class MemoryCache:
             msg = f"{self._key_str(key)} in cache, but expired."
             del self.cache[key]
             logger.debug(msg)
-            raise self.Expired(f"{key} expired")
+            raise KeyError(f"{key} expired")
 
         logger.debug(f"{self._key_str(key)} in cache, returning cached result.")
         return result
@@ -45,14 +42,14 @@ class MemoryCache:
         try:
             self[key]
             return True
-        except (KeyError, self.Expired):
+        except KeyError:
             return False
 
     def get(self, key: Any) -> Any:
         """Get a value from the cache."""
         try:
             return self[key]
-        except (KeyError, self.Expired):
+        except KeyError:
             return None
 
     def _prune(self):

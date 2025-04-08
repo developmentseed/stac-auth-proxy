@@ -43,7 +43,7 @@ def test_memory_cache_expiration():
         mock_time.return_value = 1006.0  # 6 seconds later
 
         # Test expired key
-        with pytest.raises(MemoryCache.Expired):
+        with pytest.raises(KeyError):
             cache[key]
 
         # Test contains after expiration

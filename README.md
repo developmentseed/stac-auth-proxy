@@ -131,7 +131,7 @@ The application is configurable via environment variables.
   - **`ITEMS_FILTER_CLS`**, CQL2 expression generator for item-level filtering
     - **Type:** JSON object with class configuration
     - **Required:** No, defaults to `null` (disabled)
-    - **Example:** `my_package.filters:OrganizationFilter`
+    - **Example:** `stac_auth_proxy.filters:Opa`, `stac_auth_proxy.filters:Template`, `my_package:OrganizationFilter`
   - **`ITEMS_FILTER_ARGS`**, Positional arguments for CQL2 expression generator
     - **Type:** List of positional arguments used to initialize the class
     - **Required:** No, defaults to `[]`

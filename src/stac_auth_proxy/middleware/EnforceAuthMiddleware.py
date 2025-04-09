@@ -85,8 +85,15 @@ class EnforceAuthMiddleware:
             return await self.app(scope, receive, send)
 
         request = Request(scope)
+
+        path_without_root = (
+            request.url.path[len(request.base_url.path.rstrip("/")) :]
+            if request.url.path.startswith(request.base_url.path.rstrip("/"))
+            else request.url.path
+        )
+
         match = find_match(
-            request.url.path,
+            path_without_root,
             request.method,
             private_endpoints=self.private_endpoints,
             public_endpoints=self.public_endpoints,

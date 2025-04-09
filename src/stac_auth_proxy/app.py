@@ -31,6 +31,8 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     """FastAPI Application Factory."""
     settings = settings or Settings()
 
+    root_path = "/stac"  # TODO: Make this configurable
+
     #
     # Application
     #
@@ -59,7 +61,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         if settings.check_conformance:
             await check_conformance(
                 app.user_middleware,
-                str(settings.upstream_url),
+                f"{settings.upstream_url}{root_path}",
             )
 
         yield
@@ -67,6 +69,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     app = FastAPI(
         openapi_url=None,  # Disable OpenAPI schema endpoint, we want to serve upstream's schema
         lifespan=lifespan,
+        root_path=root_path,
     )
 
     #

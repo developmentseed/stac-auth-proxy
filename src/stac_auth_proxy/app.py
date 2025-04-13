@@ -138,13 +138,13 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         app.add_middleware(
             ProcessLinksMiddleware,
             upstream_url=str(settings.upstream_url),
-            base_path=settings.root_path,
+            root_path=settings.root_path,
         )
 
     if settings.root_path:
         app.add_middleware(
             RemoveRootPathMiddleware,
-            base_path=settings.root_path,
+            root_path=settings.root_path,
         )
 
     if settings.enable_compression:

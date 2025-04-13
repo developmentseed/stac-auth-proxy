@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     oidc_discovery_url: HttpUrl
     oidc_discovery_internal_url: HttpUrl
 
+    override_host: bool = True
     wait_for_upstream: bool = True
     check_conformance: bool = True
     enable_compression: bool = True

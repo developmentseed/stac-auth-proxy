@@ -23,6 +23,7 @@ class OpenApiMiddleware(JsonResponseMiddleware):
     private_endpoints: EndpointMethods
     public_endpoints: EndpointMethods
     default_public: bool
+    root_path: str = ""
     oidc_auth_scheme_name: str = "oidcAuth"
 
     json_content_type_expr: str = r"application/(vnd\.oai\.openapi\+json?|json)"
@@ -45,12 +46,19 @@ class OpenApiMiddleware(JsonResponseMiddleware):
 
     def transform_json(self, data: dict[str, Any], request: Request) -> dict[str, Any]:
         """Augment the OpenAPI spec with auth information."""
+        # Add servers field with base path if root_path is set
+        if self.root_path:
+            data["servers"] = [{"url": self.root_path}]
+
+        # Add security scheme
         components = data.setdefault("components", {})
         securitySchemes = components.setdefault("securitySchemes", {})
         securitySchemes[self.oidc_auth_scheme_name] = {
             "type": "openIdConnect",
             "openIdConnectUrl": self.oidc_config_url,
         }
+
+        # Add security to private endpoints
         for path, method_config in data["paths"].items():
             for method, config in method_config.items():
                 match = find_match(

@@ -106,6 +106,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             public_endpoints=settings.public_endpoints,
             private_endpoints=settings.private_endpoints,
             default_public=settings.default_public,
+            root_path=settings.root_path,
         )
 
     if settings.items_filter:

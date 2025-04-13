@@ -14,9 +14,9 @@ class RemoveRootPathMiddleware:
     Middleware to remove the base path of the request before it is sent to the upstream
     server.
 
-    IMPORTANT: This middleware must be place early in the middleware chain (ie late in the
-    order of declaration) so that it trims the base_path from the request path before any
-    middleware that may need to use the request path (e.g. EnforceAuthMiddleware).
+    IMPORTANT: This middleware must be placed early in the middleware chain (ie late in
+    the order of declaration) so that it trims the base_path from the request path before
+    any middleware that may need to use the request path (e.g. EnforceAuthMiddleware).
     """
 
     app: ASGIApp

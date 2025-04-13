@@ -45,10 +45,11 @@ class ReverseProxyHandler:
 
         headers.setdefault("X-Forwarded-For", client_host)
         headers.setdefault("X-Forwarded-Host", request.url.hostname)
+        headers.setdefault("X-Forwarded-Path", request.base_url.path)
         headers.setdefault("X-Forwarded-Proto", proto)
         headers.setdefault(
             "Forwarded",
-            f"for={client_host};host={host};proto={proto}",
+            f"for={client_host};host={host};proto={proto};path={request.base_url.path}",
         )
         headers.setdefault("Via", f"1.1 {self.proxy_name}")
 

@@ -18,10 +18,10 @@ from .middleware import (
     AddProcessTimeHeaderMiddleware,
     ApplyCql2FilterMiddleware,
     AuthenticationExtensionMiddleware,
+    BasePathMiddleware,
     BuildCql2FilterMiddleware,
     EnforceAuthMiddleware,
     OpenApiMiddleware,
-    RemoveRootPathMiddleware,
 )
 from .utils.lifespan import check_conformance, check_server_health
 
@@ -121,11 +121,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             items_filter=settings.items_filter(),
         )
 
-    if settings.enable_compression:
-        app.add_middleware(
-            CompressionMiddleware,
-        )
-
     app.add_middleware(
         AddProcessTimeHeaderMiddleware,
     )
@@ -140,8 +135,13 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     if settings.root_path:
         app.add_middleware(
-            RemoveRootPathMiddleware,
+            BasePathMiddleware,
             base_path=settings.root_path,
+        )
+
+    if settings.enable_compression:
+        app.add_middleware(
+            CompressionMiddleware,
         )
 
     return app

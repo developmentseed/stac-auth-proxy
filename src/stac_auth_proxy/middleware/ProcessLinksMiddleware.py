@@ -1,14 +1,14 @@
-"""Middleware to remove BASE_PATH from incoming requests and update links in responses."""
+"""Middleware to remove the application root path from incoming requests and update links in responses."""
 
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import urlparse, urlunparse
 
 from starlette.datastructures import Headers
 from starlette.requests import Request
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Scope
 
 from ..utils.middleware import JsonResponseMiddleware
 from ..utils.stac import get_links
@@ -17,34 +17,17 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class BasePathMiddleware(JsonResponseMiddleware):
+class ProcessLinksMiddleware(JsonResponseMiddleware):
     """
-    Middleware to handle the base path of the request and update links in responses.
-
-    IMPORTANT: This middleware must be the first middleware in the chain (ie last in the
-    order of declaration) so that it trims the base_path from the request path before
-    other middleware review the request.
+    Middleware to update links in responses, removing the upstream_url path and adding
+    the root_path if it exists.
     """
 
     app: ASGIApp
-    base_path: str
-    transform_links: bool = True
+    upstream_url: str
+    root_path: Optional[str] = None
 
     json_content_type_expr: str = r"application/(geo\+)?json"
-
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        """Remove BASE_PATH from the request path if it exists."""
-        if scope["type"] != "http":
-            return await self.app(scope, receive, send)
-
-        path = scope["path"]
-
-        # Remove base_path if it exists at the start of the path
-        if path.startswith(self.base_path):
-            scope["raw_path"] = scope["path"].encode()
-            scope["path"] = path[len(self.base_path) :] or "/"
-
-        return await super().__call__(scope, receive, send)
 
     def should_transform_response(self, request: Request, scope: Scope) -> bool:
         """Only transform responses with JSON content type."""
@@ -69,11 +52,22 @@ class BasePathMiddleware(JsonResponseMiddleware):
                 if parsed_link.netloc != request.headers.get("host"):
                     continue
 
-                parsed_link = parsed_link._replace(
-                    path=f"{self.base_path}{parsed_link.path}"
-                )
+                # Remove the upstream_url path from the link if it exists
+                if urlparse(self.upstream_url).path != "/":
+                    parsed_link = parsed_link._replace(
+                        path=parsed_link.path[len(urlparse(self.upstream_url).path) :]
+                    )
+
+                # Add the root_path to the link if it exists
+                if self.root_path:
+                    parsed_link = parsed_link._replace(
+                        path=f"{self.root_path}{parsed_link.path}"
+                    )
+
                 link["href"] = urlunparse(parsed_link)
             except Exception as e:
-                logger.warning("Failed to parse link href %s: %s", href, str(e))
+                logger.error(
+                    "Failed to parse link href %r, (ignoring): %s", href, str(e)
+                )
 
         return data

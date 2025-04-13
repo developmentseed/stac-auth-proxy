@@ -18,10 +18,11 @@ from .middleware import (
     AddProcessTimeHeaderMiddleware,
     ApplyCql2FilterMiddleware,
     AuthenticationExtensionMiddleware,
-    BasePathMiddleware,
     BuildCql2FilterMiddleware,
     EnforceAuthMiddleware,
     OpenApiMiddleware,
+    ProcessLinksMiddleware,
+    RemoveRootPathMiddleware,
 )
 from .utils.lifespan import check_conformance, check_server_health
 
@@ -133,9 +134,16 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         oidc_config_url=settings.oidc_discovery_internal_url,
     )
 
+    if settings.root_path or settings.upstream_url.path != "/":
+        app.add_middleware(
+            ProcessLinksMiddleware,
+            upstream_url=str(settings.upstream_url),
+            base_path=settings.root_path,
+        )
+
     if settings.root_path:
         app.add_middleware(
-            BasePathMiddleware,
+            RemoveRootPathMiddleware,
             base_path=settings.root_path,
         )
 

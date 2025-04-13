@@ -3,7 +3,7 @@
 from itertools import chain
 
 
-def get_links(data: dict) -> chain[dict]:  # type: ignore
+def get_links(data: dict) -> chain[dict]:
     """Get all links from a STAC response."""
     return chain(
         # Item/Collection

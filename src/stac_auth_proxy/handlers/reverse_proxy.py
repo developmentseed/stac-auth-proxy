@@ -22,6 +22,7 @@ class ReverseProxyHandler:
 
     proxy_name: str = "stac-auth-proxy"
     override_host: bool = True
+    legacy_forwarded_headers: bool = False
 
     def __post_init__(self):
         """Initialize the HTTP client."""
@@ -35,28 +36,24 @@ class ReverseProxyHandler:
         """Prepare headers for the proxied request."""
         headers = MutableHeaders(request.headers)
 
-        # Handle null client host
-        client_host = request.client.host if request.client else "unknown"
-        proto = request.url.scheme
-
-        host = request.url.hostname
-        if request.url.port not in [80, 443]:
-            host = f"{host}:{request.url.port}"
-
-        headers.setdefault("X-Forwarded-For", client_host)
-        headers.setdefault("X-Forwarded-Host", request.url.hostname)
-        headers.setdefault("X-Forwarded-Path", request.base_url.path)
-        headers.setdefault("X-Forwarded-Proto", proto)
+        proxy_client = request.client.host if request.client else "unknown"
+        proxy_proto = request.url.scheme
+        proxy_host = request.url.netloc
+        proxy_path = request.base_url.path
+        if self.legacy_forwarded_headers:
+            headers.setdefault("X-Forwarded-For", proxy_client)
+            headers.setdefault("X-Forwarded-Host", proxy_host)
+            headers.setdefault("X-Forwarded-Path", proxy_path)
+            headers.setdefault("X-Forwarded-Proto", proxy_proto)
         headers.setdefault(
             "Forwarded",
-            f"for={client_host};host={host};proto={proto};path={request.base_url.path}",
+            f"for={proxy_client};host={proxy_host};proto={proxy_proto};path={proxy_path}",
         )
         headers.setdefault("Via", f"1.1 {self.proxy_name}")
 
+        # Set host to the upstream host
         if self.override_host:
             headers["Host"] = self.client.base_url.netloc.decode("utf-8")
-            if self.client.base_url.port not in [80, 443]:
-                headers["Host"] = f'{headers["Host"]}:{request.url.port}'
 
         return headers
 

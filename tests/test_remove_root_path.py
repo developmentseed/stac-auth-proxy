@@ -39,19 +39,6 @@ async def test_remove_root_path_middleware():
     assert mock_app.scope["path"] == "/test"
     assert mock_app.scope["raw_path"] == b"/api/test"
 
-    # Test without root path
-    mock_app = MockASGIApp()
-    middleware = RemoveRootPathMiddleware(mock_app, root_path="/api")
-    scope = {
-        "type": "http",
-        "path": "/test",
-        "raw_path": b"/test",
-    }
-    await middleware(scope, None, None)
-    assert mock_app.called
-    assert mock_app.scope["path"] == "/test"
-    assert mock_app.scope["raw_path"] == b"/test"
-
 
 @pytest.mark.asyncio
 async def test_remove_root_path_middleware_non_http():

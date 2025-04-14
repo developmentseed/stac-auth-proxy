@@ -201,7 +201,7 @@ def test_root_path_in_openapi_spec(source_api: FastAPI, source_api_server: str):
         root_path=root_path,
     )
     client = TestClient(app)
-    response = client.get(source_api.openapi_url)
+    response = client.get(root_path + source_api.openapi_url)
     assert response.status_code == 200
     openapi = response.json()
     assert "servers" in openapi

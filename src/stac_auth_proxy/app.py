@@ -103,13 +103,14 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             default_public=settings.default_public,
             public_endpoints=settings.public_endpoints,
             private_endpoints=settings.private_endpoints,
+            oidc_discovery_url=str(settings.oidc_discovery_url),
         )
 
     if settings.openapi_spec_endpoint:
         app.add_middleware(
             OpenApiMiddleware,
             openapi_spec_path=settings.openapi_spec_endpoint,
-            oidc_config_url=str(settings.oidc_discovery_url),
+            oidc_discovery_url=str(settings.oidc_discovery_url),
             public_endpoints=settings.public_endpoints,
             private_endpoints=settings.private_endpoints,
             default_public=settings.default_public,
@@ -136,7 +137,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         public_endpoints=settings.public_endpoints,
         private_endpoints=settings.private_endpoints,
         default_public=settings.default_public,
-        oidc_config_url=settings.oidc_discovery_internal_url,
+        oidc_discovery_url=settings.oidc_discovery_internal_url,
     )
 
     if settings.root_path or settings.upstream_url.path != "/":

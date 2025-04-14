@@ -28,15 +28,14 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
     private_endpoints: EndpointMethods
     public_endpoints: EndpointMethods
 
-    auth_scheme_name: str = "oauth"
+    oidc_discovery_url: str
+    auth_scheme_name: str = "oidc"
     auth_scheme: dict[str, Any] = field(default_factory=dict)
     extension_url: str = (
         "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
     )
 
     json_content_type_expr: str = r"application/(geo\+)?json"
-
-    state_key: str = "oidc_metadata"
 
     def should_transform_response(self, request: Request, scope: Scope) -> bool:
         """Determine if the response should be transformed."""
@@ -75,27 +74,11 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
         # - Collections
         # - Item Properties
 
-        oidc_metadata = getattr(request.state, self.state_key, {})
-        if not oidc_metadata:
-            logger.error(
-                "OIDC metadata not found in scope. Skipping authentication extension."
-            )
-            return data
-
         scheme_loc = data["properties"] if "properties" in data else data
         schemes = scheme_loc.setdefault("auth:schemes", {})
         schemes[self.auth_scheme_name] = {
-            "type": "oauth2",
-            "description": "requires an authentication bearertoken",
-            "flows": {
-                "authorizationCode": {
-                    "authorizationUrl": oidc_metadata["authorization_endpoint"],
-                    "tokenUrl": oidc_metadata.get("token_endpoint"),
-                    "scopes": {
-                        k: k for k in sorted(oidc_metadata.get("scopes_supported", []))
-                    },
-                },
-            },
+            "type": "openIdConnect",
+            "openIdConnectUrl": self.oidc_discovery_url,
         }
 
         # auth:refs

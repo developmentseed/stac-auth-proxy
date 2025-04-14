@@ -10,13 +10,20 @@ from stac_auth_proxy.middleware.AuthenticationExtensionMiddleware import (
 
 
 @pytest.fixture
-def middleware():
+def oidc_discovery_url():
+    """Create test OIDC discovery URL."""
+    return "https://auth.example.com/discovery"
+
+
+@pytest.fixture
+def middleware(oidc_discovery_url):
     """Create a test instance of the middleware."""
     return AuthenticationExtensionMiddleware(
         app=None,  # We don't need the actual app for these tests
         default_public=True,
         private_endpoints=EndpointMethods(),
         public_endpoints=EndpointMethods(),
+        oidc_discovery_url=oidc_discovery_url,
         auth_scheme_name="test_auth",
         auth_scheme={},
     )
@@ -46,16 +53,6 @@ def initial_message(request):
             (b"content-type", request.param),
             (b"x-upstream-time", b"0.063"),
         ],
-    }
-
-
-@pytest.fixture
-def oidc_metadata():
-    """Create test OIDC metadata."""
-    return {
-        "authorization_endpoint": "https://auth.example.com/auth",
-        "token_endpoint": "https://auth.example.com/token",
-        "scopes_supported": ["openid", "profile"],
     }
 
 
@@ -113,10 +110,9 @@ def test_should_transform_response_invalid_content_type(middleware, request_scop
     )
 
 
-def test_transform_json_catalog(middleware, request_scope, oidc_metadata):
+def test_transform_json_catalog(middleware, request_scope, oidc_discovery_url):
     """Test transforming a STAC catalog."""
     request = Request(request_scope)
-    request.state.oidc_metadata = oidc_metadata
 
     catalog = {
         "stac_version": "1.0.0",
@@ -136,23 +132,13 @@ def test_transform_json_catalog(middleware, request_scope, oidc_metadata):
     assert "test_auth" in transformed["auth:schemes"]
 
     scheme = transformed["auth:schemes"]["test_auth"]
-    assert scheme["type"] == "oauth2"
-    assert (
-        scheme["flows"]["authorizationCode"]["authorizationUrl"]
-        == oidc_metadata["authorization_endpoint"]
-    )
-    assert (
-        scheme["flows"]["authorizationCode"]["tokenUrl"]
-        == oidc_metadata["token_endpoint"]
-    )
-    assert "openid" in scheme["flows"]["authorizationCode"]["scopes"]
-    assert "profile" in scheme["flows"]["authorizationCode"]["scopes"]
+    assert scheme["type"] == "openIdConnect"
+    assert scheme["openIdConnectUrl"] == oidc_discovery_url
 
 
-def test_transform_json_collection(middleware, request_scope, oidc_metadata):
+def test_transform_json_collection(middleware, request_scope):
     """Test transforming a STAC collection."""
     request = Request(request_scope)
-    request.state.oidc_metadata = oidc_metadata
 
     collection = {
         "stac_version": "1.0.0",
@@ -173,10 +159,9 @@ def test_transform_json_collection(middleware, request_scope, oidc_metadata):
     assert "test_auth" in transformed["auth:schemes"]
 
 
-def test_transform_json_item(middleware, request_scope, oidc_metadata):
+def test_transform_json_item(middleware, request_scope):
     """Test transforming a STAC item."""
     request = Request(request_scope)
-    request.state.oidc_metadata = oidc_metadata
 
     item = {
         "stac_version": "1.0.0",

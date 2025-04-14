@@ -22,14 +22,14 @@ logger = logging.getLogger(__name__)
 class OidcService:
     """OIDC configuration and JWKS client."""
 
-    oidc_config_url: HttpUrl
+    oidc_discovery_url: HttpUrl
     jwks_client: jwt.PyJWKClient = field(init=False)
     metadata: dict[str, Any] = field(init=False)
 
     def __post_init__(self) -> None:
         """Initialize OIDC config and JWKS client."""
         logger.debug("Requesting OIDC config")
-        origin_url = str(self.oidc_config_url)
+        origin_url = str(self.oidc_discovery_url)
 
         try:
             response = httpx.get(origin_url)
@@ -73,7 +73,7 @@ class EnforceAuthMiddleware:
     private_endpoints: EndpointMethods
     public_endpoints: EndpointMethods
     default_public: bool
-    oidc_config_url: HttpUrl
+    oidc_discovery_url: HttpUrl
     allowed_jwt_audiences: Optional[Sequence[str]] = None
     state_key: str = "payload"
 
@@ -170,7 +170,7 @@ class EnforceAuthMiddleware:
     def oidc_config(self) -> OidcService:
         """Get the OIDC configuration."""
         if not self._oidc_config:
-            self._oidc_config = OidcService(oidc_config_url=self.oidc_config_url)
+            self._oidc_config = OidcService(oidc_discovery_url=self.oidc_discovery_url)
         return self._oidc_config
 
 

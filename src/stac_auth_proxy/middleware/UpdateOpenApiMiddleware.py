@@ -19,7 +19,7 @@ class OpenApiMiddleware(JsonResponseMiddleware):
 
     app: ASGIApp
     openapi_spec_path: str
-    oidc_config_url: str
+    oidc_discovery_url: str
     private_endpoints: EndpointMethods
     public_endpoints: EndpointMethods
     default_public: bool
@@ -56,7 +56,7 @@ class OpenApiMiddleware(JsonResponseMiddleware):
         securitySchemes = components.setdefault("securitySchemes", {})
         securitySchemes[self.auth_scheme_name] = self.auth_scheme_override or {
             "type": "openIdConnect",
-            "openIdConnectUrl": self.oidc_config_url,
+            "openIdConnectUrl": self.oidc_discovery_url,
         }
 
         # Add security to private endpoints

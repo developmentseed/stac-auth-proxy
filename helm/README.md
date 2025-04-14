@@ -24,8 +24,8 @@ Basic installation with minimal configuration:
 
 ```bash
 helm install stac-auth-proxy oci://ghcr.io/developmentseed/stac-auth-proxy/charts/stac-auth-proxy \
-  --set config.upstreamUrl=https://your-stac-api.com/stac \
-  --set config.oidc.discoveryUrl=https://your-auth-server/.well-known/openid-configuration \
+  --set env.UPSTREAM_URL=https://your-stac-api.com/stac \
+  --set env.OIDC_DISCOVERY_URL=https://your-auth-server/.well-known/openid-configuration \
   --set ingress.host=stac-proxy.your-domain.com
 ```
 
@@ -34,13 +34,12 @@ helm install stac-auth-proxy oci://ghcr.io/developmentseed/stac-auth-proxy/chart
 Create a `values.yaml` file:
 
 ```yaml
-config:
-  upstreamUrl: "https://your-stac-api.com/stac"
-  oidc:
-    discoveryUrl: "https://your-auth-server/.well-known/openid-configuration"
-    discoveryInternalUrl: "http://auth-server-internal/.well-known/openid-configuration"
-  defaultPublic: false
-  healthzPrefix: "/healthz"
+env:
+  UPSTREAM_URL: "https://your-stac-api.com/stac"
+  OIDC_DISCOVERY_URL: "https://your-auth-server/.well-known/openid-configuration"
+  OIDC_DISCOVERY_INTERNAL_URL: "http://auth-server-internal/.well-known/openid-configuration"
+  DEFAULT_PUBLIC: "false"
+  HEALTHZ_PREFIX: "/healthz"
 
 ingress:
   enabled: true
@@ -82,17 +81,14 @@ serviceAccount:
 
 | Parameter | Description |
 |-----------|-------------|
-| `config.upstreamUrl` | URL of the STAC API to proxy |
-| `config.oidc.discoveryUrl` | OpenID Connect discovery document URL |
+| `env.UPSTREAM_URL` | URL of the STAC API to proxy |
+| `env.OIDC_DISCOVERY_URL` | OpenID Connect discovery document URL |
 
 ### Optional Values
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `config.waitForUpstream` | Wait for upstream API to become available | `true` |
-| `config.healthzPrefix` | Path prefix for health check endpoints | `/healthz` |
-| `config.defaultPublic` | Default access policy for endpoints | `false` |
-| `config.oidc.discoveryInternalUrl` | Internal network OIDC discovery URL | `""` |
+| `env` | Environment variables passed to the container. See [STAC Auth Proxy documentation](https://github.com/developmentseed/stac-auth-proxy#configuration) for details | `{}` |
 | `ingress.enabled` | Enable ingress | `true` |
 | `ingress.className` | Ingress class name | `nginx` |
 | `ingress.host` | Hostname for the ingress | `""` |

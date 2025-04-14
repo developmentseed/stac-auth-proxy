@@ -148,88 +148,55 @@ properties:
     additionalProperties: true
     description: "Pod affinity rules"
 
-  config:
+  env:
     type: object
-    required: ["upstreamUrl", "oidc"]
+    required: ["UPSTREAM_URL", "OIDC_DISCOVERY_URL"]
     properties:
-      upstreamUrl:
+      UPSTREAM_URL:
         type: string
         format: uri
         description: "STAC API URL"
-      waitForUpstream:
+      OIDC_DISCOVERY_URL:
+        type: string
+        format: uri
+        description: "OpenID Connect discovery document URL"
+      OIDC_DISCOVERY_INTERNAL_URL:
+        type: string
+        format: uri
+        description: "Internal network OpenID Connect discovery document URL"
+      WAIT_FOR_UPSTREAM:
         type: boolean
         description: "Wait for upstream API to become available"
         default: true
-      healthzPrefix:
+      HEALTHZ_PREFIX:
         type: string
         description: "Path prefix for health check endpoints"
         default: "/healthz"
-      
-      oidc:
-        type: object
-        required: ["discoveryUrl"]
-        properties:
-          discoveryUrl:
-            type: string
-            format: uri
-            description: "OpenID Connect discovery document URL"
-          discoveryInternalUrl:
-            type: string
-            format: uri
-            description: "Internal network OpenID Connect discovery document URL"
-      
-      defaultPublic:
+      DEFAULT_PUBLIC:
         type: boolean
         description: "Default access policy for endpoints"
         default: false
-      
-      privateEndpoints:
-        type: object
-        additionalProperties:
-          type: array
-          items:
-            type: string
-        description: "Endpoints requiring authentication"
-      
-      publicEndpoints:
-        type: object
-        additionalProperties:
-          type: array
-          items:
-            type: string
-        description: "Public endpoints when defaultPublic is false"
-      
-      openapiSpecEndpoint:
+      PRIVATE_ENDPOINTS:
+        type: string
+        description: "JSON string of endpoints requiring authentication"
+      PUBLIC_ENDPOINTS:
+        type: string
+        description: "JSON string of public endpoints when DEFAULT_PUBLIC is false"
+      OPENAPI_SPEC_ENDPOINT:
         type: ["string", "null"]
         description: "Path of OpenAPI specification"
-      
-      itemsFilter:
-        type: object
-        properties:
-          class:
-            type: ["string", "null"]
-            description: "CQL2 expression generator class"
-          args:
-            type: array
-            description: "Positional arguments for filter class"
-            items:
-              type: string
-          kwargs:
-            type: object
-            description: "Keyword arguments for filter class"
-            additionalProperties: true
-      
-      extraEnv:
-        type: array
-        description: "Additional environment variables"
-        items:
-          type: object
-          required: ["name", "value"]
-          properties:
-            name:
-              type: string
-            value:
-              type: string
+      ITEMS_FILTER_CLS:
+        type: ["string", "null"]
+        description: "CQL2 expression generator class"
+      ITEMS_FILTER_ARGS:
+        type: string
+        description: "JSON string of positional arguments for filter class"
+        default: "[]"
+      ITEMS_FILTER_KWARGS:
+        type: string
+        description: "JSON string of keyword arguments for filter class"
+        default: "{}"
+
 
   serviceAccount:
     type: object

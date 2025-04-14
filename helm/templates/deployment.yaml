@@ -30,54 +30,11 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
-            - name: UPSTREAM_URL
-              value: {{ required "A valid upstream URL is required" .Values.config.upstreamUrl | quote }}
-            - name: OIDC_DISCOVERY_URL
-              value: {{ required "An OIDC discovery URL is required" .Values.config.oidc.discoveryUrl | quote }}
-            
-            # Optional OIDC internal URL
-            {{- if .Values.config.oidc.discoveryInternalUrl }}
-            - name: OIDC_DISCOVERY_INTERNAL_URL
-              value: {{ .Values.config.oidc.discoveryInternalUrl | quote }}
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | toJson | quote }}
             {{- end }}
-            
-            # Core configuration
-            - name: WAIT_FOR_UPSTREAM
-              value: {{ .Values.config.waitForUpstream | quote }}
-            - name: HEALTHZ_PREFIX
-              value: {{ .Values.config.healthzPrefix | quote }}
-            
-            # Access control configuration
-            - name: DEFAULT_PUBLIC
-              value: {{ .Values.config.defaultPublic | quote }}
-            {{- if .Values.config.privateEndpoints }}
-            - name: PRIVATE_ENDPOINTS
-              value: {{ .Values.config.privateEndpoints | toJson | quote }}
-            {{- end }}
-            {{- if .Values.config.publicEndpoints }}
-            - name: PUBLIC_ENDPOINTS
-              value: {{ .Values.config.publicEndpoints | toJson | quote }}
-            {{- end }}
-            
-            # OpenAPI configuration
-            {{- if .Values.config.openapiSpecEndpoint }}
-            - name: OPENAPI_SPEC_ENDPOINT
-              value: {{ .Values.config.openapiSpecEndpoint | quote }}
-            {{- end }}
-            
-            # Filtering configuration
-            {{- if .Values.config.itemsFilter.class }}
-            - name: ITEMS_FILTER_CLS
-              value: {{ .Values.config.itemsFilter.class | quote }}
-            - name: ITEMS_FILTER_ARGS
-              value: {{ .Values.config.itemsFilter.args | toJson | quote }}
-            - name: ITEMS_FILTER_KWARGS
-              value: {{ .Values.config.itemsFilter.kwargs | toJson | quote }}
-            {{- end }}
-            
-            {{- with .Values.config.extraEnv }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
+
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

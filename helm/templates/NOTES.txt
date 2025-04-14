@@ -32,10 +32,10 @@ Your STAC Auth Proxy has been deployed with the following configuration:
 {{- end }}
 
 2. Configuration Details:
-   - Upstream STAC API: {{ .Values.config.upstreamUrl }}
-   - OIDC Discovery URL: {{ .Values.config.oidc.discoveryUrl }}
-   - Health Check Endpoint: {{ .Values.config.healthzPrefix }}
-   - Default Public Access: {{ .Values.config.defaultPublic }}
+   - Upstream STAC API: {{ .Values.env.UPSTREAM_URL }}
+   - OIDC Discovery URL: {{ .Values.env.OIDC_DISCOVERY_URL }}
+   - Health Check Endpoint: {{ .Values.env.HEALTHZ_PREFIX | default "/healthz" }}
+   - Default Public Access: {{ .Values.env.DEFAULT_PUBLIC | default "false" }}
 
 3. Verify the deployment:
    kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "stac-auth-proxy.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
@@ -47,25 +47,25 @@ Your STAC Auth Proxy has been deployed with the following configuration:
 {{- if .Values.ingress.enabled }}
 {{- if .Values.ingress.host }}
    {{- if .Values.ingress.tls.enabled }}
-   curl https://{{ .Values.ingress.host }}{{ .Values.config.healthzPrefix }}
+   curl https://{{ .Values.ingress.host }}{{ .Values.env.HEALTHZ_PREFIX | default "/healthz" }}
    {{- else }}
-   curl http://{{ .Values.ingress.host }}{{ .Values.config.healthzPrefix }}
+   curl http://{{ .Values.ingress.host }}{{ .Values.env.HEALTHZ_PREFIX | default "/healthz" }}
    {{- end }}
 {{- end }}
 {{- else }}
    kubectl port-forward --namespace {{ .Release.Namespace }} service/{{ include "stac-auth-proxy.fullname" . }} 8000:{{ .Values.service.port }}
-   curl http://localhost:8000{{ .Values.config.healthzPrefix }}
+   curl http://localhost:8000{{ .Values.env.HEALTHZ_PREFIX | default "/healthz" }}
 {{- end }}
 
 For more information about STAC Auth Proxy, please visit:
 https://github.com/developmentseed/stac-auth-proxy
 
-{{- if or (not .Values.config.upstreamUrl) (not .Values.config.oidc.discoveryUrl) }}
+{{- if or (not .Values.env.UPSTREAM_URL) (not .Values.env.OIDC_DISCOVERY_URL) }}
 WARNING: Some required configuration values are not set. Please ensure you have configured:
-{{- if not .Values.config.upstreamUrl }}
-  - config.upstreamUrl
+{{- if not .Values.env.UPSTREAM_URL }}
+  - env.UPSTREAM_URL
 {{- end }}
-{{- if not .Values.config.oidc.discoveryUrl }}
-  - config.oidc.discoveryUrl
+{{- if not .Values.env.OIDC_DISCOVERY_URL }}
+  - env.OIDC_DISCOVERY_URL
 {{- end }}
 {{- end }} 

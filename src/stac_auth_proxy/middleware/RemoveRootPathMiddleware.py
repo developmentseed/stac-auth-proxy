@@ -28,18 +28,18 @@ class RemoveRootPathMiddleware:
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
 
-        path = scope["path"]
-
         # If root_path is set and path doesn't start with it, return 404
-        if self.root_path and not path.startswith(self.root_path):
+        if self.root_path and not scope["path"].startswith(self.root_path):
             response = Response("Not Found", status_code=404)
-            logger.error(f"Root path {self.root_path} not found in path {path}")
+            logger.error(
+                f"Root path {self.root_path!r} not found in path {scope['path']!r}"
+            )
             await response(scope, receive, send)
             return
 
         # Remove root_path if it exists at the start of the path
-        if path.startswith(self.root_path):
+        if scope["path"].startswith(self.root_path):
             scope["raw_path"] = scope["path"].encode()
-            scope["path"] = path[len(self.root_path) :] or "/"
+            scope["path"] = scope["path"][len(self.root_path) :] or "/"
 
         return await self.app(scope, receive, send)

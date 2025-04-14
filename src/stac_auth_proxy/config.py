@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     oidc_discovery_internal_url: HttpUrl
 
     root_path: str = ""
+    override_host: bool = True
     healthz_prefix: str = Field(pattern=_PREFIX_PATTERN, default="/healthz")
     wait_for_upstream: bool = True
     check_conformance: bool = True

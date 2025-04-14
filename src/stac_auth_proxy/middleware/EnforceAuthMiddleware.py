@@ -130,7 +130,7 @@ class EnforceAuthMiddleware:
         # Extract token from header
         token_parts = auth_header.split(" ")
         if len(token_parts) != 2 or token_parts[0].lower() != "bearer":
-            logger.error(f"Invalid token: {auth_header}")
+            logger.error("Invalid token: %r", auth_header)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate credentials",
@@ -149,7 +149,7 @@ class EnforceAuthMiddleware:
                 audience=self.allowed_jwt_audiences,
             )
         except (jwt.exceptions.InvalidTokenError, jwt.exceptions.DecodeError) as e:
-            logger.exception(f"InvalidTokenError: {e=}")
+            logger.error("InvalidTokenError: %r", e)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate credentials",

@@ -33,6 +33,7 @@ class RemoveRootPathMiddleware:
         # If root_path is set and path doesn't start with it, return 404
         if self.root_path and not path.startswith(self.root_path):
             response = Response("Not Found", status_code=404)
+            logger.error(f"Root path {self.root_path} not found in path {path}")
             await response(scope, receive, send)
             return
 

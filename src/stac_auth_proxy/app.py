@@ -106,6 +106,8 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             public_endpoints=settings.public_endpoints,
             private_endpoints=settings.private_endpoints,
             default_public=settings.default_public,
+            auth_scheme_name=settings.openapi_auth_scheme_name,
+            auth_scheme_override=settings.openapi_auth_scheme_override,
         )
 
     if settings.items_filter:

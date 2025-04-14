@@ -39,14 +39,17 @@ class Settings(BaseSettings):
     oidc_discovery_internal_url: HttpUrl
 
     override_host: bool = True
+    healthz_prefix: str = Field(pattern=_PREFIX_PATTERN, default="/healthz")
     wait_for_upstream: bool = True
     check_conformance: bool = True
     enable_compression: bool = True
-    enable_authentication_extension: bool = True
-    healthz_prefix: str = Field(pattern=_PREFIX_PATTERN, default="/healthz")
+
     openapi_spec_endpoint: Optional[str] = Field(pattern=_PREFIX_PATTERN, default=None)
+    openapi_auth_scheme_name: str = "oidcAuth"
+    openapi_auth_scheme_override: Optional[dict] = None
 
     # Auth
+    enable_authentication_extension: bool = True
     default_public: bool = False
     public_endpoints: EndpointMethodsNoScope = {
         r"^/api.html$": ["GET"],

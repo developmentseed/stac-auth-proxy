@@ -151,3 +151,42 @@ def test_oidc_in_openapi_spec_public_endpoints(
                 assert any(
                     method.casefold() == m.casefold() for m in expected_auth[path]
                 )
+
+
+def test_auth_scheme_name_override(source_api: FastAPI, source_api_server: str):
+    """When auth_scheme_name is overridden, the OpenAPI spec uses the custom name."""
+    custom_name = "customAuth"
+    app = app_factory(
+        upstream_url=source_api_server,
+        openapi_spec_endpoint=source_api.openapi_url,
+        openapi_auth_scheme_name=custom_name,
+    )
+    client = TestClient(app)
+    response = client.get(source_api.openapi_url)
+    assert response.status_code == 200
+    openapi = response.json()
+    security_schemes = openapi.get("components", {}).get("securitySchemes", {})
+    assert custom_name in security_schemes
+    assert "oidcAuth" not in security_schemes
+
+
+def test_auth_scheme_override(source_api: FastAPI, source_api_server: str):
+    """When auth_scheme_override is provided, the OpenAPI spec uses the custom scheme."""
+    custom_scheme = {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Custom JWT authentication",
+    }
+    app = app_factory(
+        upstream_url=source_api_server,
+        openapi_spec_endpoint=source_api.openapi_url,
+        openapi_auth_scheme_override=custom_scheme,
+    )
+    client = TestClient(app)
+    response = client.get(source_api.openapi_url)
+    assert response.status_code == 200
+    openapi = response.json()
+    security_schemes = openapi.get("components", {}).get("securitySchemes", {})
+    assert "oidcAuth" in security_schemes
+    assert security_schemes["oidcAuth"] == custom_scheme

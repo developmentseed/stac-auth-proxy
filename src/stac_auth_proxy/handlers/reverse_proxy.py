@@ -35,21 +35,21 @@ class ReverseProxyHandler:
     def _prepare_headers(self, request: Request) -> MutableHeaders:
         """Prepare headers for the proxied request."""
         headers = MutableHeaders(request.headers)
+        headers.setdefault("Via", f"1.1 {self.proxy_name}")
 
         proxy_client = request.client.host if request.client else "unknown"
         proxy_proto = request.url.scheme
         proxy_host = request.url.netloc
         proxy_path = request.base_url.path
+        headers.setdefault(
+            "Forwarded",
+            f"for={proxy_client};host={proxy_host};proto={proxy_proto};path={proxy_path}",
+        )
         if self.legacy_forwarded_headers:
             headers.setdefault("X-Forwarded-For", proxy_client)
             headers.setdefault("X-Forwarded-Host", proxy_host)
             headers.setdefault("X-Forwarded-Path", proxy_path)
             headers.setdefault("X-Forwarded-Proto", proxy_proto)
-        headers.setdefault(
-            "Forwarded",
-            f"for={proxy_client};host={proxy_host};proto={proxy_proto};path={proxy_path}",
-        )
-        headers.setdefault("Via", f"1.1 {self.proxy_name}")
 
         # Set host to the upstream host
         if self.override_host:

@@ -21,6 +21,8 @@ from .middleware import (
     BuildCql2FilterMiddleware,
     EnforceAuthMiddleware,
     OpenApiMiddleware,
+    ProcessLinksMiddleware,
+    RemoveRootPathMiddleware,
 )
 from .utils.lifespan import check_conformance, check_server_health
 
@@ -67,11 +69,15 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     app = FastAPI(
         openapi_url=None,  # Disable OpenAPI schema endpoint, we want to serve upstream's schema
         lifespan=lifespan,
+        root_path=settings.root_path,
     )
+    if app.root_path:
+        logger.debug("Mounted app at %s", app.root_path)
 
     #
     # Handlers (place catch-all proxy handler last)
     #
+
     if settings.healthz_prefix:
         app.include_router(
             HealthzHandler(upstream_url=str(settings.upstream_url)).router,
@@ -90,6 +96,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     #
     # Middleware (order is important, last added = first to run)
     #
+
     if settings.enable_authentication_extension:
         app.add_middleware(
             AuthenticationExtensionMiddleware,
@@ -106,6 +113,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             public_endpoints=settings.public_endpoints,
             private_endpoints=settings.private_endpoints,
             default_public=settings.default_public,
+            root_path=settings.root_path,
             auth_scheme_name=settings.openapi_auth_scheme_name,
             auth_scheme_override=settings.openapi_auth_scheme_override,
         )
@@ -119,11 +127,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             items_filter=settings.items_filter(),
         )
 
-    if settings.enable_compression:
-        app.add_middleware(
-            CompressionMiddleware,
-        )
-
     app.add_middleware(
         AddProcessTimeHeaderMiddleware,
     )
@@ -135,5 +138,23 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         default_public=settings.default_public,
         oidc_config_url=settings.oidc_discovery_internal_url,
     )
+
+    if settings.root_path or settings.upstream_url.path != "/":
+        app.add_middleware(
+            ProcessLinksMiddleware,
+            upstream_url=str(settings.upstream_url),
+            root_path=settings.root_path,
+        )
+
+    if settings.root_path:
+        app.add_middleware(
+            RemoveRootPathMiddleware,
+            root_path=settings.root_path,
+        )
+
+    if settings.enable_compression:
+        app.add_middleware(
+            CompressionMiddleware,
+        )
 
     return app

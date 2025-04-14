@@ -3,7 +3,6 @@
 import logging
 import re
 from dataclasses import dataclass, field
-from itertools import chain
 from typing import Any
 from urllib.parse import urlparse
 
@@ -14,6 +13,7 @@ from starlette.types import ASGIApp, Scope
 from ..config import EndpointMethods
 from ..utils.middleware import JsonResponseMiddleware
 from ..utils.requests import find_match
+from ..utils.stac import get_links
 
 logger = logging.getLogger(__name__)
 
@@ -101,18 +101,7 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
         # auth:refs
         # ---
         # Annotate links with "auth:refs": [auth_scheme]
-        links = chain(
-            # Item/Collection
-            data.get("links", []),
-            # Collections/Items/Search
-            (
-                link
-                for prop in ["features", "collections"]
-                for object_with_links in data.get(prop, [])
-                for link in object_with_links.get("links", [])
-            ),
-        )
-        for link in links:
+        for link in get_links(data):
             if "href" not in link:
                 logger.warning("Link %s has no href", link)
                 continue

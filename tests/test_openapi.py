@@ -190,3 +190,33 @@ def test_auth_scheme_override(source_api: FastAPI, source_api_server: str):
     security_schemes = openapi.get("components", {}).get("securitySchemes", {})
     assert "oidcAuth" in security_schemes
     assert security_schemes["oidcAuth"] == custom_scheme
+
+
+def test_root_path_in_openapi_spec(source_api: FastAPI, source_api_server: str):
+    """When root_path is set, the OpenAPI spec includes the root path in the servers field."""
+    root_path = "/api/v1"
+    app = app_factory(
+        upstream_url=source_api_server,
+        openapi_spec_endpoint=source_api.openapi_url,
+        root_path=root_path,
+    )
+    client = TestClient(app)
+    response = client.get(root_path + source_api.openapi_url)
+    assert response.status_code == 200
+    openapi = response.json()
+    assert "servers" in openapi
+    assert openapi["servers"] == [{"url": root_path}]
+
+
+def test_no_root_path_in_openapi_spec(source_api: FastAPI, source_api_server: str):
+    """When root_path is not set, the OpenAPI spec does not include a servers field."""
+    app = app_factory(
+        upstream_url=source_api_server,
+        openapi_spec_endpoint=source_api.openapi_url,
+        root_path="",  # Empty string means no root path
+    )
+    client = TestClient(app)
+    response = client.get(source_api.openapi_url)
+    assert response.status_code == 200
+    openapi = response.json()
+    assert "servers" not in openapi

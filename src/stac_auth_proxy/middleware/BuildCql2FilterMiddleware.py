@@ -54,7 +54,7 @@ class BuildCql2FilterMiddleware:
         try:
             cql2_filter.validate()
         except ValidationError:
-            logger.exception("Invalid CQL2 filter: %s", filter_expr)
+            logger.error("Invalid CQL2 filter: %s", filter_expr)
             return await Response(status_code=502, content="Invalid CQL2 filter")
         setattr(request.state, self.state_key, cql2_filter)
 

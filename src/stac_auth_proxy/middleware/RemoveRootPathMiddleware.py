@@ -3,6 +3,7 @@
 import logging
 from dataclasses import dataclass
 
+from starlette.responses import Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 logger = logging.getLogger(__name__)
@@ -21,9 +22,6 @@ class RemoveRootPathMiddleware:
 
     app: ASGIApp
     root_path: str
-    transform_links: bool = True
-
-    json_content_type_expr: str = r"application/(geo\+)?json"
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """Remove ROOT_PATH from the request path if it exists."""
@@ -31,6 +29,12 @@ class RemoveRootPathMiddleware:
             return await self.app(scope, receive, send)
 
         path = scope["path"]
+
+        # If root_path is set and path doesn't start with it, return 404
+        if self.root_path and not path.startswith(self.root_path):
+            response = Response("Not Found", status_code=404)
+            await response(scope, receive, send)
+            return
 
         # Remove root_path if it exists at the start of the path
         if path.startswith(self.root_path):

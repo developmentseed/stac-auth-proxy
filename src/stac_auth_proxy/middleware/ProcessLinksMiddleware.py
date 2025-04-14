@@ -39,7 +39,7 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
         )
 
     def transform_json(self, data: dict[str, Any], request: Request) -> dict[str, Any]:
-        """Update links in the response to include base_path."""
+        """Update links in the response to include root_path."""
         for link in get_links(data):
             href = link.get("href")
             if not href:

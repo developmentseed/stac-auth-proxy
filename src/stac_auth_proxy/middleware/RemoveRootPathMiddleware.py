@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RemoveRootPathMiddleware:
     """
-    Middleware to remove the base path of the request before it is sent to the upstream
+    Middleware to remove the root path of the request before it is sent to the upstream
     server.
 
     IMPORTANT: This middleware must be placed early in the middleware chain (ie late in

@@ -2,7 +2,7 @@
 
 import re
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 
 from starlette.datastructures import Headers
 from starlette.requests import Request
@@ -24,7 +24,8 @@ class OpenApiMiddleware(JsonResponseMiddleware):
     public_endpoints: EndpointMethods
     default_public: bool
     root_path: str = ""
-    oidc_auth_scheme_name: str = "oidcAuth"
+    auth_scheme_name: str = "oidcAuth"
+    auth_scheme_override: Optional[dict] = None
 
     json_content_type_expr: str = r"application/(vnd\.oai\.openapi\+json?|json)"
 
@@ -53,7 +54,7 @@ class OpenApiMiddleware(JsonResponseMiddleware):
         # Add security scheme
         components = data.setdefault("components", {})
         securitySchemes = components.setdefault("securitySchemes", {})
-        securitySchemes[self.oidc_auth_scheme_name] = {
+        securitySchemes[self.auth_scheme_name] = self.auth_scheme_override or {
             "type": "openIdConnect",
             "openIdConnectUrl": self.oidc_config_url,
         }
@@ -70,6 +71,6 @@ class OpenApiMiddleware(JsonResponseMiddleware):
                 )
                 if match.is_private:
                     config.setdefault("security", []).append(
-                        {self.oidc_auth_scheme_name: match.required_scopes}
+                        {self.auth_scheme_name: match.required_scopes}
                     )
         return data

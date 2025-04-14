@@ -123,10 +123,19 @@ The application is configurable via environment variables.
     - **Type:** boolean
     - **Required:** No, defaults to `true`
     - **Example:** `false`, `1`, `True`
+- OpenAPI
   - **`OPENAPI_SPEC_ENDPOINT`**, path of OpenAPI specification, used for augmenting spec response with auth configuration
     - **Type:** string or null
     - **Required:** No, defaults to `null` (disabled)
     - **Example:** `/api`
+  - **`OPENAPI_AUTH_SCHEME_NAME`**, name of the auth scheme to use in the OpenAPI spec
+    - **Type:** string
+    - **Required:** No, defaults to `oidcAuth`
+    - **Example:** `jwtAuth`
+  - **`OPENAPI_AUTH_SCHEME_OVERRIDE`**, override for the auth scheme in the OpenAPI spec
+    - **Type:** JSON object
+    - **Required:** No, defaults to `null` (disabled)
+    - **Example:** `{"type": "http", "scheme": "bearer", "bearerFormat": "JWT", "description": "Paste your raw JWT here. This API uses Bearer token authorization.\n"}`
 - Filtering
   - **`ITEMS_FILTER_CLS`**, CQL2 expression generator for item-level filtering
     - **Type:** JSON object with class configuration
@@ -139,7 +148,7 @@ The application is configurable via environment variables.
   - **`ITEMS_FILTER_KWARGS`**, Keyword arguments for CQL2 expression generator
     - **Type:** Dictionary of keyword arguments used to initialize the class
     - **Required:** No, defaults to `{}`
-    - **Example:** `{ "field_name": "properties.organization" }`
+    - **Example:** `{"field_name": "properties.organization"}`
 
 ### Customization
 

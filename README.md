@@ -83,6 +83,10 @@ The application is configurable via environment variables.
     - **Type:** string
     - **Required:** No, defaults to `/healthz`
     - **Example:** `''` (disabled)
+  - **`OVERRIDE_HOST`**, override the host header for the upstream API
+    - **Type:** boolean
+    - **Required:** No, defaults to `true`
+    - **Example:** `false`, `1`, `True`
 - Authentication
   - **`OIDC_DISCOVERY_URL`**, OpenID Connect discovery document URL
     - **Type:** HTTP(S) URL

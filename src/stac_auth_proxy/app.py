@@ -80,7 +80,10 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     app.add_api_route(
         "/{path:path}",
-        ReverseProxyHandler(upstream=str(settings.upstream_url)).proxy_request,
+        ReverseProxyHandler(
+            upstream=str(settings.upstream_url),
+            override_host=settings.override_host,
+        ).proxy_request,
         methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     )
 

@@ -2,7 +2,9 @@ services:
   proxy:
     environment:
       ITEMS_FILTER_CLS: stac_auth_proxy.filters:Opa
-      ITEMS_FILTER_ARGS: '["http://opa:8181", "stac/cql2"]'
+      ITEMS_FILTER_ARGS: '["http://opa:8181", "stac/items_cql2"]'
+      COLLECTIONS_FILTER_CLS: stac_auth_proxy.filters:Opa
+      COLLECTIONS_FILTER_ARGS: '["http://opa:8181", "stac/collections_cql2"]'
 
   opa:
     image: openpolicyagent/opa:latest

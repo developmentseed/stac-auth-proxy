@@ -1,7 +1,13 @@
 package stac
 
-default cql2 := "\"naip:year\" = 2021"
+default items_cql2 := "\"naip:year\" = 2021"
 
-cql2 := "1=1" if {
+items_cql2 := "1=1" if {
+	input.payload.sub != null
+}
+
+default collections_cql2 := "id = 'naip'"
+
+collections_cql2 := "1=1" if {
 	input.payload.sub != null
 }

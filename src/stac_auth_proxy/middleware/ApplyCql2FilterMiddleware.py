@@ -51,7 +51,12 @@ class ApplyCql2FilterMiddleware:
             )
             return await req_body_handler(scope, receive, send)
 
-        if re.match(r"^/collections/([^/]+)/items/([^/]+)$", request.url.path):
+        # Handle single record requests (ie non-filterable endpoints)
+        single_record_endpoints = [
+            r"^/collections/([^/]+)/items/([^/]+)$",
+            r"^/collections/([^/]+)$",
+        ]
+        if any(re.match(expr, request.url.path) for expr in single_record_endpoints):
             res_body_validator = Cql2ResponseBodyValidator(
                 app=self.app,
                 cql2_filter=cql2_filter,
@@ -166,15 +171,19 @@ class Cql2ResponseBodyValidator:
             logger.debug(
                 "Applying %s filter to %s", self.cql2_filter.to_text(), body_json
             )
-            if self.cql2_filter.matches(body_json):
-                await send(initial_message)
-                return await send(
-                    {
-                        "type": "http.response.body",
-                        "body": json.dumps(body_json).encode("utf-8"),
-                        "more_body": False,
-                    }
-                )
+            try:
+                if self.cql2_filter.matches(body_json):
+                    await send(initial_message)
+                    return await send(
+                        {
+                            "type": "http.response.body",
+                            "body": json.dumps(body_json).encode("utf-8"),
+                            "more_body": False,
+                        }
+                    )
+            except Exception as e:
+                logger.warning("Failed to apply filter: %s", e)
+
             return await _send_error_response(404, "Not found")
 
         return await self.app(scope, receive, buffered_send)

@@ -25,7 +25,9 @@ class BuildCql2FilterMiddleware:
 
     # Filters
     collections_filter: Optional[Callable] = None
+    collections_filter_path: str = r"^/collections(/[^/]+)?$"
     items_filter: Optional[Callable] = None
+    items_filter_path: str = r"^(/collections/([^/]+)/items(/[^/]+)?$|/search$)"
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """Build the CQL2 filter, place on the request state."""
@@ -65,8 +67,8 @@ class BuildCql2FilterMiddleware:
     ) -> Optional[Callable[..., Awaitable[str | dict[str, Any]]]]:
         """Get the CQL2 filter builder for the given path."""
         endpoint_filters = [
-            (r"^/collections(/[^/]+)?$", self.collections_filter),
-            (r"^(/collections/([^/]+)/items(/[^/]+)?$|/search$)", self.items_filter),
+            (self.collections_filter_path, self.collections_filter),
+            (self.items_filter_path, self.items_filter),
         ]
         for expr, builder in endpoint_filters:
             if re.match(expr, path):

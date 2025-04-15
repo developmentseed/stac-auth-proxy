@@ -71,6 +71,7 @@ class Settings(BaseSettings):
 
     # Filters
     items_filter: Optional[ClassInput] = None
+    collections_filter: Optional[ClassInput] = None
 
     model_config = SettingsConfigDict(
         env_nested_delimiter="_",

@@ -119,13 +119,16 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             auth_scheme_override=settings.openapi_auth_scheme_override,
         )
 
-    if settings.items_filter:
+    if settings.items_filter or settings.collections_filter:
         app.add_middleware(
             ApplyCql2FilterMiddleware,
         )
         app.add_middleware(
             BuildCql2FilterMiddleware,
-            items_filter=settings.items_filter(),
+            items_filter=settings.items_filter() if settings.items_filter else None,
+            collections_filter=(
+                settings.collections_filter() if settings.collections_filter else None
+            ),
         )
 
     app.add_middleware(

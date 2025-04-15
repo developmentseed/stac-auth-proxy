@@ -10,7 +10,7 @@ STAC Auth Proxy is a proxy API that mediates between the client and your interna
 ## ✨Features✨
 
 - **🔐 Authentication:** Apply [OpenID Connect (OIDC)](https://openid.net/developers/how-connect-works/) token validation and optional scope checks to specified endpoints and methods
-- **🛂 Content Filtering:** Use CQL2 filters via the [Filter Extension](https://github.com/stac-api-extensions/filter?tab=readme-ov-file) to tailor API responses based on user context
+- **🛂 Content Filtering:** Use CQL2 filters via the [Filter Extension](https://github.com/stac-api-extensions/filter?tab=readme-ov-file) to tailor API responses based on request context (e.g. user role)
 - **🤝 External Policy Integration:** Integrate with external systems (e.g. [Open Policy Agent (OPA)](https://www.openpolicyagent.org/)) to generate CQL2 filters dynamically from policy decisions
 - **🧩 Authentication Extension:** Add the [Authentication Extension](https://github.com/stac-extensions/authentication) to API responses to expose auth-related metadata
 - **📘 OpenAPI Augmentation:** Enhance the [OpenAPI spec](https://swagger.io/specification/) with security details to keep auto-generated docs and UIs (e.g., [Swagger UI](https://swagger.io/tools/swagger-ui/)) accurate
@@ -227,7 +227,7 @@ The system supports generating CQL2 filters based on request context to provide 
 
 #### Filters
 
-If enabled, filters are intended to be applied to the following endpoints:
+If enabled, filters are applied to the following endpoints:
 
 - `GET /search`
   - **Supported:** ✅
@@ -250,12 +250,12 @@ If enabled, filters are intended to be applied to the following endpoints:
   - **Applied Filter:** `ITEMS_FILTER`
   - **Strategy:** Validate response against CQL2 query.
 - `GET /collections`
-  - **Supported:** ❌[^23]
+  - **Supported:** ✅
   - **Action:** Read Collection
   - **Applied Filter:** `COLLECTIONS_FILTER`
   - **Strategy:** Append query params with generated CQL2 query.
 - `GET /collections/{collection_id}`
-  - **Supported:** ❌[^23]
+  - **Supported:** ✅
   - **Action:** Read Collection
   - **Applied Filter:** `COLLECTIONS_FILTER`
   - **Strategy:** Validate response against CQL2 query.
@@ -411,6 +411,5 @@ class ApprovedCollectionsFilter:
 
 [^21]: https://github.com/developmentseed/stac-auth-proxy/issues/21
 [^22]: https://github.com/developmentseed/stac-auth-proxy/issues/22
-[^23]: https://github.com/developmentseed/stac-auth-proxy/issues/23
 [^30]: https://github.com/developmentseed/stac-auth-proxy/issues/30
 [^37]: https://github.com/developmentseed/stac-auth-proxy/issues/37

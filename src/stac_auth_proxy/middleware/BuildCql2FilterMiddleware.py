@@ -11,10 +11,16 @@ from starlette.responses import Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from ..utils import requests
+from ..utils.middleware import required_conformance
 
 logger = logging.getLogger(__name__)
 
 
+@required_conformance(
+    "http://www.opengis.net/spec/cql2/1.0/conf/basic-cql2",
+    "http://www.opengis.net/spec/cql2/1.0/conf/cql2-text",
+    "http://www.opengis.net/spec/cql2/1.0/conf/cql2-json",
+)
 @dataclass(frozen=True)
 class BuildCql2FilterMiddleware:
     """Middleware to build the Cql2Filter."""
@@ -28,6 +34,34 @@ class BuildCql2FilterMiddleware:
     collections_filter_path: str = r"^/collections(/[^/]+)?$"
     items_filter: Optional[Callable] = None
     items_filter_path: str = r"^(/collections/([^/]+)/items(/[^/]+)?$|/search$)"
+
+    def __post_init__(self):
+        """Set required conformances based on the filter functions."""
+        required_conformances = set()
+        if self.collections_filter:
+            logger.debug("Appending required conformance for collections filter")
+            required_conformances.update(
+                [
+                    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter",
+                    "http://www.opengis.net/spec/cql2/1.0/conf/basic-cql2",
+                    r"https://api.stacspec.org/v1\.0\.0(?:-[\w\.]+)?/item-search#filter",
+                    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter",
+                ]
+            )
+        if self.items_filter:
+            logger.debug("Appending required conformance for items filter")
+            required_conformances.update(
+                [
+                    "https://api.stacspec.org/v1.0.0/core",
+                    r"https://api.stacspec.org/v1\.0\.0(?:-[\w\.]+)?/collection-search#filter",
+                    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
+                ]
+            )
+
+        # Must set required conformances on class
+        self.__class__.__required_conformances__ = required_conformances.union(
+            getattr(self.__class__, "__required_conformances__", [])
+        )
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """Build the CQL2 filter, place on the request state."""

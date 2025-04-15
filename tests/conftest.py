@@ -207,6 +207,7 @@ def mock_env():
 @pytest.fixture
 async def mock_upstream() -> AsyncGenerator[MagicMock, None]:
     """Mock the HTTPX send method. Useful when we want to inspect the request is sent to upstream API."""
+    # NOTE: This fixture will interfere with the source_api_responses fixture
 
     async def store_body(request, **kwargs):
         """Exhaust and store the request body."""

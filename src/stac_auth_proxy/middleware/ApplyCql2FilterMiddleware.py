@@ -21,8 +21,6 @@ logger = getLogger(__name__)
     r"http://www.opengis.net/spec/cql2/1.0/conf/basic-cql2",
     r"http://www.opengis.net/spec/cql2/1.0/conf/cql2-text",
     r"http://www.opengis.net/spec/cql2/1.0/conf/cql2-json",
-    r"http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter",
-    r"https://api.stacspec.org/v1\.\d+\.\d+(?:-[\w\.]+)?/item-search#filter",
 )
 @dataclass(frozen=True)
 class ApplyCql2FilterMiddleware:
@@ -30,6 +28,11 @@ class ApplyCql2FilterMiddleware:
 
     app: ASGIApp
     state_key: str = "cql2_filter"
+
+    single_record_endpoints = [
+        r"^/collections/([^/]+)/items/([^/]+)$",
+        r"^/collections/([^/]+)$",
+    ]
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """Add the Cql2Filter to the request."""
@@ -51,7 +54,10 @@ class ApplyCql2FilterMiddleware:
             )
             return await req_body_handler(scope, receive, send)
 
-        if re.match(r"^/collections/([^/]+)/items/([^/]+)$", request.url.path):
+        # Handle single record requests (ie non-filterable endpoints)
+        if any(
+            re.match(expr, request.url.path) for expr in self.single_record_endpoints
+        ):
             res_body_validator = Cql2ResponseBodyValidator(
                 app=self.app,
                 cql2_filter=cql2_filter,
@@ -125,18 +131,22 @@ class Cql2ResponseBodyValidator:
         body = b""
         initial_message: Optional[Message] = None
 
-        async def _send_error_response(status: int, message: str) -> None:
+        async def _send_error_response(status: int, code: str, message: str) -> None:
             """Send an error response with the given status and message."""
             assert initial_message, "Initial message not set"
-            error_body = json.dumps({"message": message}).encode("utf-8")
+            response_dict = {
+                "code": code,
+                "description": message,
+            }
+            response_bytes = json.dumps(response_dict).encode("utf-8")
             headers = MutableHeaders(scope=initial_message)
-            headers["content-length"] = str(len(error_body))
+            headers["content-length"] = str(len(response_bytes))
             initial_message["status"] = status
             await send(initial_message)
             await send(
                 {
                     "type": "http.response.body",
-                    "body": error_body,
+                    "body": response_bytes,
                     "more_body": False,
                 }
             )
@@ -145,12 +155,16 @@ class Cql2ResponseBodyValidator:
             """Process a response message and apply filtering if needed."""
             nonlocal body
             nonlocal initial_message
+            initial_message = initial_message or message
+            # NOTE: to avoid data-leak, we process 404s so their responses are the same as rejected 200s
+            should_process = initial_message["status"] in [200, 404]
+
+            if not should_process:
+                return await send(message)
 
             if message["type"] == "http.response.start":
-                initial_message = message
+                # Hold off on sending response headers until we've validated the response body
                 return
-
-            assert initial_message, "Initial message not set"
 
             body += message["body"]
             if message.get("more_body"):
@@ -159,14 +173,19 @@ class Cql2ResponseBodyValidator:
             try:
                 body_json = json.loads(body)
             except json.JSONDecodeError:
-                logger.warning("Failed to parse response body as JSON")
-                await _send_error_response(502, "Not found")
+                msg = "Failed to parse response body as JSON"
+                logger.warning(msg)
+                await _send_error_response(status=502, code="ParseError", message=msg)
                 return
 
-            logger.debug(
-                "Applying %s filter to %s", self.cql2_filter.to_text(), body_json
-            )
-            if self.cql2_filter.matches(body_json):
+            try:
+                cql2_matches = self.cql2_filter.matches(body_json)
+            except Exception as e:
+                cql2_matches = False
+                logger.warning("Failed to apply filter: %s", e)
+
+            if cql2_matches:
+                logger.debug("Response matches filter, returning record")
                 await send(initial_message)
                 return await send(
                     {
@@ -175,6 +194,9 @@ class Cql2ResponseBodyValidator:
                         "more_body": False,
                     }
                 )
-            return await _send_error_response(404, "Not found")
+            logger.debug("Response did not match filter, returning 404")
+            return await _send_error_response(
+                status=404, code="NotFoundError", message="Record not found."
+            )
 
         return await self.app(scope, receive, buffered_send)

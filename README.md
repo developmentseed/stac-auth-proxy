@@ -10,7 +10,7 @@ STAC Auth Proxy is a proxy API that mediates between the client and your interna
 ## ✨Features✨
 
 - **🔐 Authentication:** Apply [OpenID Connect (OIDC)](https://openid.net/developers/how-connect-works/) token validation and optional scope checks to specified endpoints and methods
-- **🛂 Content Filtering:** Use CQL2 filters via the [Filter Extension](https://github.com/stac-api-extensions/filter?tab=readme-ov-file) to tailor API responses based on user context
+- **🛂 Content Filtering:** Use CQL2 filters via the [Filter Extension](https://github.com/stac-api-extensions/filter?tab=readme-ov-file) to tailor API responses based on request context (e.g. user role)
 - **🤝 External Policy Integration:** Integrate with external systems (e.g. [Open Policy Agent (OPA)](https://www.openpolicyagent.org/)) to generate CQL2 filters dynamically from policy decisions
 - **🧩 Authentication Extension:** Add the [Authentication Extension](https://github.com/stac-extensions/authentication) to API responses to expose auth-related metadata
 - **📘 OpenAPI Augmentation:** Enhance the [OpenAPI spec](https://swagger.io/specification/) with security details to keep auto-generated docs and UIs (e.g., [Swagger UI](https://swagger.io/tools/swagger-ui/)) accurate
@@ -158,6 +158,18 @@ The application is configurable via environment variables.
     - **Type:** Dictionary of keyword arguments used to initialize the class
     - **Required:** No, defaults to `{}`
     - **Example:** `{"field_name": "properties.organization"}`
+  - **`COLLECTIONS_FILTER_CLS`**, CQL2 expression generator for collection-level filtering
+    - **Type:** JSON object with class configuration
+    - **Required:** No, defaults to `null` (disabled)
+    - **Example:** `stac_auth_proxy.filters:Opa`, `stac_auth_proxy.filters:Template`, `my_package:OrganizationFilter`
+  - **`COLLECTIONS_FILTER_ARGS`**, Positional arguments for CQL2 expression generator
+    - **Type:** List of positional arguments used to initialize the class
+    - **Required:** No, defaults to `[]`
+    - **Example:**: `["org1"]`
+  - **`COLLECTIONS_FILTER_KWARGS`**, Keyword arguments for CQL2 expression generator
+    - **Type:** Dictionary of keyword arguments used to initialize the class
+    - **Required:** No, defaults to `{}`
+    - **Example:** `{"field_name": "properties.organization"}`
 
 ### Tips
 
@@ -227,7 +239,7 @@ The system supports generating CQL2 filters based on request context to provide 
 
 #### Filters
 
-If enabled, filters are intended to be applied to the following endpoints:
+If enabled, filters are applied to the following endpoints:
 
 - `GET /search`
   - **Supported:** ✅
@@ -250,12 +262,12 @@ If enabled, filters are intended to be applied to the following endpoints:
   - **Applied Filter:** `ITEMS_FILTER`
   - **Strategy:** Validate response against CQL2 query.
 - `GET /collections`
-  - **Supported:** ❌[^23]
+  - **Supported:** ✅
   - **Action:** Read Collection
   - **Applied Filter:** `COLLECTIONS_FILTER`
   - **Strategy:** Append query params with generated CQL2 query.
 - `GET /collections/{collection_id}`
-  - **Supported:** ❌[^23]
+  - **Supported:** ✅
   - **Action:** Read Collection
   - **Applied Filter:** `COLLECTIONS_FILTER`
   - **Strategy:** Validate response against CQL2 query.
@@ -411,6 +423,5 @@ class ApprovedCollectionsFilter:
 
 [^21]: https://github.com/developmentseed/stac-auth-proxy/issues/21
 [^22]: https://github.com/developmentseed/stac-auth-proxy/issues/22
-[^23]: https://github.com/developmentseed/stac-auth-proxy/issues/23
 [^30]: https://github.com/developmentseed/stac-auth-proxy/issues/30
 [^37]: https://github.com/developmentseed/stac-auth-proxy/issues/37

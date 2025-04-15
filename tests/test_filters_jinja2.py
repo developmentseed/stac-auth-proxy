@@ -121,7 +121,7 @@ app_factory = AppFactory(
 )
 
 
-def _build_client(
+def _build_items_filter_client(
     *,
     src_api_server: str,
     template_expr: str,
@@ -162,7 +162,7 @@ async def test_search_post(
     token_builder,
 ):
     """Test that POST /search merges the upstream query with the templated filter."""
-    response = _build_client(
+    response = _build_items_filter_client(
         src_api_server=source_api_server,
         template_expr=filter_template_expr,
         is_authenticated=is_authenticated,
@@ -210,7 +210,7 @@ async def test_search_get(
     token_builder,
 ):
     """Test that GET /search merges the upstream query params with the templated filter."""
-    client = _build_client(
+    client = _build_items_filter_client(
         src_api_server=source_api_server,
         template_expr=filter_template_expr,
         is_authenticated=is_authenticated,
@@ -263,7 +263,7 @@ async def test_items_list(
     token_builder,
 ):
     """Test that GET /collections/foo/items merges query params with the templated filter."""
-    client = _build_client(
+    client = _build_items_filter_client(
         src_api_server=source_api_server,
         template_expr=filter_template_expr,
         is_authenticated=is_authenticated,
@@ -296,7 +296,7 @@ def test_item_get(
     source_api_server, is_authenticated, token_builder, source_api_responses
 ):
     """Test that GET /collections/foo/items/bar is rejected."""
-    client = _build_client(
+    client = _build_items_filter_client(
         src_api_server=source_api_server,
         template_expr="{{ '(properties.private = false)' if payload is none else true }}",
         is_authenticated=is_authenticated,
@@ -313,7 +313,10 @@ def test_item_get(
         assert response.json()["properties"].get("private") is True
     else:
         assert response.status_code == 404
-        assert response.json() == {"message": "Not found"}
+        assert response.json() == {
+            "code": "NotFoundError",
+            "description": "Record not found.",
+        }
 
 
 @pytest.mark.parametrize("is_authenticated", [True, False], ids=["auth", "anon"])
@@ -323,7 +326,7 @@ async def test_search_post_empty_body(
     token_builder,
 ):
     """Test that POST /search with empty body."""
-    client = _build_client(
+    client = _build_items_filter_client(
         src_api_server=source_api_server,
         template_expr="(properties.private = false)",
         is_authenticated=is_authenticated,
@@ -337,3 +340,147 @@ async def test_search_post_empty_body(
     )
 
     assert response.status_code == 200
+
+
+COLLECTIONS_FILTER_CASES = [
+    pytest.param(
+        "(properties.private = false)",
+        "(properties.private = false)",
+        "(properties.private = false)",
+        id="simple_collections_filter",
+    ),
+    pytest.param(
+        "{{ '(properties.private = false)' if payload is none else true }}",
+        "true",
+        "(properties.private = false)",
+        id="templated_collections_filter",
+    ),
+]
+
+COLLECTIONS_QUERIES = [
+    pytest.param(
+        {},
+        id="collections_no_filter",
+    ),
+    pytest.param(
+        {
+            "filter-lang": "cql2-text",
+            "filter": "(properties.private = true)",
+        },
+        id="collections_with_filter",
+    ),
+]
+
+
+def _build_collections_filter_client(
+    *,
+    src_api_server: str,
+    template_expr: str,
+    is_authenticated: bool,
+    token_builder,
+):
+    """Build a TestClient configured for either authenticated or anonymous usage."""
+    app = app_factory(
+        upstream_url=src_api_server,
+        collections_filter={
+            "cls": "stac_auth_proxy.filters:Template",
+            "args": [template_expr.strip()],
+        },
+        default_public=True,
+    )
+    headers = (
+        {"Authorization": f"Bearer {token_builder({'sub': 'test-user'})}"}
+        if is_authenticated
+        else {}
+    )
+    return TestClient(app, headers=headers)
+
+
+@pytest.mark.parametrize(
+    "filter_template_expr, expected_auth_filter, expected_anon_filter",
+    COLLECTIONS_FILTER_CASES,
+)
+@pytest.mark.parametrize("is_authenticated", [True, False], ids=["auth", "anon"])
+@pytest.mark.parametrize("input_query", COLLECTIONS_QUERIES)
+async def test_collections_list(
+    mock_upstream,
+    source_api_server,
+    filter_template_expr,
+    expected_auth_filter,
+    expected_anon_filter,
+    is_authenticated,
+    input_query,
+    token_builder,
+):
+    """Test that GET /collections merges query params with the templated filter."""
+    client = _build_collections_filter_client(
+        src_api_server=source_api_server,
+        template_expr=filter_template_expr,
+        is_authenticated=is_authenticated,
+        token_builder=token_builder,
+    )
+    response = client.get("/collections", params=input_query)
+    response.raise_for_status()
+
+    # For GET collections, we expect an empty body and appended querystring
+    proxied_request = await get_upstream_request(mock_upstream)
+    assert proxied_request.body == ""
+
+    # Determine the expected combined filter
+    proxy_filter = cql2.Expr(
+        expected_auth_filter if is_authenticated else expected_anon_filter
+    )
+    input_filter = input_query.get("filter")
+    if input_filter:
+        proxy_filter += cql2.Expr(input_filter)
+
+    filter_lang = input_query.get("filter-lang", "cql2-text")
+    expected_output = {
+        **input_query,
+        "filter": (
+            proxy_filter.to_text()
+            if filter_lang == "cql2-text"
+            else proxy_filter.to_json()
+        ),
+        "filter-lang": filter_lang,
+    }
+    assert (
+        proxied_request.query_params == expected_output
+    ), "Collections query should combine filter expressions."
+
+
+@pytest.mark.parametrize(
+    "filter_template_expr, expected_auth_filter, expected_anon_filter",
+    COLLECTIONS_FILTER_CASES,
+)
+@pytest.mark.parametrize("is_authenticated", [True, False], ids=["auth", "anon"])
+async def test_collection_get(
+    source_api_server,
+    filter_template_expr,
+    expected_auth_filter,
+    expected_anon_filter,
+    is_authenticated,
+    token_builder,
+    source_api_responses,
+):
+    """Test that GET /collections/{collection_id} applies the templated filter."""
+    client = _build_collections_filter_client(
+        src_api_server=source_api_server,
+        template_expr=filter_template_expr,
+        is_authenticated=is_authenticated,
+        token_builder=token_builder,
+    )
+    response_body = {
+        "id": "foo",
+        "properties": {"private": True},
+    }
+    source_api_responses["/collections/{collection_id}"]["GET"] = response_body
+    response = client.get("/collections/foo")
+
+    expected_applied_filter = cql2.Expr(
+        expected_auth_filter if is_authenticated else expected_anon_filter
+    )
+    expected_response_status = (
+        200 if expected_applied_filter.matches(response_body) else 404
+    )
+    assert response.status_code == expected_response_status

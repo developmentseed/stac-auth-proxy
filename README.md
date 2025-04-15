@@ -220,6 +220,7 @@ The majority of the proxy's functionality occurs within a chain of middlewares. 
    - Augments request with CQL2 filter:
      - Modifies query strings for `GET` requests
      - Modifies JSON bodies for `POST`/`PUT`/`PATCH` requests
+   - Validates response against CQL2 filter for non-filterable endpoints
 
 4. **`OpenApiMiddleware`**
 

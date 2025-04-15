@@ -158,6 +158,18 @@ The application is configurable via environment variables.
     - **Type:** Dictionary of keyword arguments used to initialize the class
     - **Required:** No, defaults to `{}`
     - **Example:** `{"field_name": "properties.organization"}`
+  - **`COLLECTIONS_FILTER_CLS`**, CQL2 expression generator for collection-level filtering
+    - **Type:** JSON object with class configuration
+    - **Required:** No, defaults to `null` (disabled)
+    - **Example:** `stac_auth_proxy.filters:Opa`, `stac_auth_proxy.filters:Template`, `my_package:OrganizationFilter`
+  - **`COLLECTIONS_FILTER_ARGS`**, Positional arguments for CQL2 expression generator
+    - **Type:** List of positional arguments used to initialize the class
+    - **Required:** No, defaults to `[]`
+    - **Example:**: `["org1"]`
+  - **`COLLECTIONS_FILTER_KWARGS`**, Keyword arguments for CQL2 expression generator
+    - **Type:** Dictionary of keyword arguments used to initialize the class
+    - **Required:** No, defaults to `{}`
+    - **Example:** `{"field_name": "properties.organization"}`
 
 ### Tips
 

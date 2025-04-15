@@ -313,7 +313,10 @@ def test_item_get(
         assert response.json()["properties"].get("private") is True
     else:
         assert response.status_code == 404
-        assert response.json() == {"message": "Not found"}
+        assert response.json() == {
+            "code": "NotFoundError",
+            "description": "Record not found.",
+        }
 
 
 @pytest.mark.parametrize("is_authenticated", [True, False], ids=["auth", "anon"])

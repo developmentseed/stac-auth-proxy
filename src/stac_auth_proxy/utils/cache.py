@@ -24,7 +24,7 @@ class MemoryCache:
 
         result, timestamp = self.cache[key]
         if (time() - timestamp) > self.ttl:
-            msg = f"{self._key_str(key)} in cache, but expired."
+            msg = f"{self._key_str(key)!r} in cache, but expired."
             del self.cache[key]
             logger.debug(msg)
             raise KeyError(f"{key} expired")

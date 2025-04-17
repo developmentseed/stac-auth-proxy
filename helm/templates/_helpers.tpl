@@ -57,4 +57,15 @@ Create the name of the service account to use
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
-{{- end }} 
+{{- end }}
+
+{{/*
+Render env var value based on type
+*/}}
+{{- define "stac-auth-proxy.envValue" -}}
+{{- if kindIs "string" . -}}
+  {{- . | quote -}}
+{{- else -}}
+  {{- . | toJson | quote -}}
+{{- end -}}
+{{- end -}}

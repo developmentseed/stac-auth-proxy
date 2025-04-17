@@ -1,4 +1,11 @@
-"""Swagger UI handler."""
+"""
+In order to allow customization fo the Swagger UI's OAuth2 configuration, we support
+overriding the default handler. This is useful for adding custom parameters such as
+`usePkceWithAuthorizationCodeGrant` or `clientId`.
+
+See:
+- https://swagger.io/docs/open-source-tools/swagger-ui/usage/oauth2/
+"""
 
 from dataclasses import dataclass, field
 from typing import Optional

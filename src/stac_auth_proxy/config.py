@@ -45,9 +45,16 @@ class Settings(BaseSettings):
     check_conformance: bool = True
     enable_compression: bool = True
 
-    openapi_spec_endpoint: Optional[str] = Field(pattern=_PREFIX_PATTERN, default=None)
+    # OpenAPI / Swagger UI
+    openapi_spec_endpoint: Optional[str] = Field(
+        pattern=_PREFIX_PATTERN, default="/api"
+    )
     openapi_auth_scheme_name: str = "oidcAuth"
     openapi_auth_scheme_override: Optional[dict] = None
+    swagger_ui_url: str = "/api.html"
+    swagger_ui_title: str = "STAC API"
+    swagger_ui_init_oauth: dict = Field(default_factory=dict)
+    swagger_ui_parameters: dict = Field(default_factory=dict)
 
     # Auth
     enable_authentication_extension: bool = True

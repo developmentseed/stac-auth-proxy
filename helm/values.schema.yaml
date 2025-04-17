@@ -22,6 +22,87 @@ properties:
         description: "Docker image tag"
         default: "latest"
 
+  env:
+    type: object
+    properties:
+      # Core
+      UPSTREAM_URL:
+        type: string
+        pattern: "^https?://.+"
+        description: "URL of the STAC API to proxy"
+      WAIT_FOR_UPSTREAM:
+        type: ["boolean", "string"]
+        description: "Wait for upstream API to become available before starting proxy"
+        default: "true"
+      CHECK_CONFORMANCE:
+        type: ["boolean", "string"]
+        description: "Ensure upstream API conforms to required conformance classes before starting proxy"
+        default: "true"
+      ENABLE_COMPRESSION:
+        type: ["boolean", "string"]
+        description: "Enable response compression"
+        default: "true"
+      HEALTHZ_PREFIX:
+        type: string
+        description: "Path prefix for health check endpoints"
+        default: "/healthz"
+      OVERRIDE_HOST:
+        type: ["boolean", "string"]
+        description: "Override the host header for the upstream API"
+        default: "true"
+      ROOT_PATH:
+        type: string
+        description: "Path prefix for the proxy API"
+        default: ""
+      # Authentication
+      OIDC_DISCOVERY_URL:
+        type: string
+        pattern: "^https?://.+"
+        description: "OpenID Connect discovery document URL"
+      OIDC_DISCOVERY_INTERNAL_URL:
+        type: string
+        pattern: "^https?://.+"
+        description: "Internal network OpenID Connect discovery document URL"
+      DEFAULT_PUBLIC:
+        type: ["boolean", "string"]
+        description: "Default access policy for endpoints"
+        default: "false"
+      PRIVATE_ENDPOINTS:
+        type: ["object", "string"]
+        description: "Endpoints explicitly marked as requiring authentication and possibly scopes"
+      PUBLIC_ENDPOINTS:
+        type: ["object", "string"]
+        description: "Endpoints explicitly marked as not requiring authentication"
+      ENABLE_AUTHENTICATION_EXTENSION:
+        type: ["boolean", "string"]
+        description: "Enable authentication extension in STAC API responses"
+        default: "true"
+      # OpenAPI
+      OPENAPI_SPEC_ENDPOINT:
+        type: ["string", "null"]
+        description: "Path of OpenAPI specification"
+        default: "/api"
+      OPENAPI_AUTH_SCHEME_NAME:
+        type: string
+        description: "Name of the auth scheme to use in the OpenAPI spec"
+        default: "oidcAuth"
+      OPENAPI_AUTH_SCHEME_OVERRIDE:
+        type: ["object", "string", "null"]
+        description: "Override for the auth scheme in the OpenAPI spec"
+      # Filtering
+      ITEMS_FILTER_CLS:
+        type: ["string", "null"]
+        description: "CQL2 expression generator for item-level filtering"
+      ITEMS_FILTER_ARGS:
+        type: ["array", "string"]
+        description: "Positional arguments for CQL2 expression generator"
+      ITEMS_FILTER_KWARGS:
+        type: ["object", "string"]
+        description: "Keyword arguments for CQL2 expression generator"
+    required:
+      - UPSTREAM_URL
+      - OIDC_DISCOVERY_URL
+
   service:
     type: object
     required: ["type", "port"]
@@ -147,56 +228,6 @@ properties:
     type: object
     additionalProperties: true
     description: "Pod affinity rules"
-
-  env:
-    type: object
-    required: ["UPSTREAM_URL", "OIDC_DISCOVERY_URL"]
-    properties:
-      UPSTREAM_URL:
-        type: string
-        format: uri
-        description: "STAC API URL"
-      OIDC_DISCOVERY_URL:
-        type: string
-        format: uri
-        description: "OpenID Connect discovery document URL"
-      OIDC_DISCOVERY_INTERNAL_URL:
-        type: string
-        format: uri
-        description: "Internal network OpenID Connect discovery document URL"
-      WAIT_FOR_UPSTREAM:
-        type: boolean
-        description: "Wait for upstream API to become available"
-        default: true
-      HEALTHZ_PREFIX:
-        type: string
-        description: "Path prefix for health check endpoints"
-        default: "/healthz"
-      DEFAULT_PUBLIC:
-        type: boolean
-        description: "Default access policy for endpoints"
-        default: false
-      PRIVATE_ENDPOINTS:
-        type: string
-        description: "JSON string of endpoints requiring authentication"
-      PUBLIC_ENDPOINTS:
-        type: string
-        description: "JSON string of public endpoints when DEFAULT_PUBLIC is false"
-      OPENAPI_SPEC_ENDPOINT:
-        type: ["string", "null"]
-        description: "Path of OpenAPI specification"
-      ITEMS_FILTER_CLS:
-        type: ["string", "null"]
-        description: "CQL2 expression generator class"
-      ITEMS_FILTER_ARGS:
-        type: string
-        description: "JSON string of positional arguments for filter class"
-        default: "[]"
-      ITEMS_FILTER_KWARGS:
-        type: string
-        description: "JSON string of keyword arguments for filter class"
-        default: "{}"
-
 
   serviceAccount:
     type: object

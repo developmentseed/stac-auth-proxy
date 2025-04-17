@@ -81,12 +81,11 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     if settings.swagger_ui_endpoint:
         assert (
             settings.openapi_spec_endpoint
-        ), "openapi_spec_endpoint must be set when using swagger_ui_url"
+        ), "openapi_spec_endpoint must be set when using swagger_ui_endpoint"
         app.add_route(
             settings.swagger_ui_endpoint,
             SwaggerUI(
                 openapi_url=settings.openapi_spec_endpoint,
-                title=settings.swagger_ui_title,
                 init_oauth=settings.swagger_ui_init_oauth,
             ).route,
             include_in_schema=False,

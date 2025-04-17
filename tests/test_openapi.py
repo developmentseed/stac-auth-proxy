@@ -15,7 +15,7 @@ def test_no_openapi_spec_endpoint(source_api_server: str):
     app = app_factory(
         upstream_url=source_api_server,
         openapi_spec_endpoint=None,
-        swagger_ui_url=None,
+        swagger_ui_endpoint=None,
     )
     client = TestClient(app)
     response = client.get("/api")

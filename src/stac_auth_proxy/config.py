@@ -46,12 +46,10 @@ class Settings(BaseSettings):
     enable_compression: bool = True
 
     # OpenAPI / Swagger UI
-    openapi_spec_endpoint: Optional[str] = Field(
-        pattern=_PREFIX_PATTERN, default="/api"
-    )
+    openapi_spec_endpoint: Optional[str] = Field(pattern=_PREFIX_PATTERN, default=None)
     openapi_auth_scheme_name: str = "oidcAuth"
     openapi_auth_scheme_override: Optional[dict] = None
-    swagger_ui_endpoint: Optional[str] = "/api.html"
+    swagger_ui_endpoint: Optional[str] = None
     swagger_ui_init_oauth: dict = Field(default_factory=dict)
 
     # Auth

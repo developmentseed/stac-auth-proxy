@@ -145,6 +145,14 @@ The application is configurable via environment variables.
     - **Type:** JSON object
     - **Required:** No, defaults to `null` (disabled)
     - **Example:** `{"type": "http", "scheme": "bearer", "bearerFormat": "JWT", "description": "Paste your raw JWT here. This API uses Bearer token authorization.\n"}`
+  - **`SWAGGER_UI_ENDPOINT`**, path of Swagger UI, used for augmenting spec response with auth configuration
+    - **Type:** string or null
+    - **Required:** No, defaults to `/api.html`
+    - **Example:** `/api`
+  - **`SWAGGER_UI_INIT_OAUTH`**, initialization options for the [Swagger UI OAuth2 configuration](https://swagger.io/docs/open-source-tools/swagger-ui/usage/oauth2/)
+    - **Type:** JSON object
+    - **Required:** No, defaults to `null` (disabled)
+    - **Example:** `{"clientId": "stac-auth-proxy", "usePkceWithAuthorizationCodeGrant": true}`
 - Filtering
   - **`ITEMS_FILTER_CLS`**, CQL2 expression generator for item-level filtering
     - **Type:** JSON object with class configuration

@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from starlette_cramjam.middleware import CompressionMiddleware
 
 from .config import Settings
-from .handlers import HealthzHandler, ReverseProxyHandler
+from .handlers import HealthzHandler, ReverseProxyHandler, SwaggerUI
 from .middleware import (
     AddProcessTimeHeaderMiddleware,
     ApplyCql2FilterMiddleware,
@@ -78,6 +78,18 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     # Handlers (place catch-all proxy handler last)
     #
 
+    if settings.swagger_ui_endpoint:
+        assert (
+            settings.openapi_spec_endpoint
+        ), "openapi_spec_endpoint must be set when using swagger_ui_endpoint"
+        app.add_route(
+            settings.swagger_ui_endpoint,
+            SwaggerUI(
+                openapi_url=settings.openapi_spec_endpoint,
+                init_oauth=settings.swagger_ui_init_oauth,
+            ).route,
+            include_in_schema=False,
+        )
     if settings.healthz_prefix:
         app.include_router(
             HealthzHandler(upstream_url=str(settings.upstream_url)).router,

@@ -22,6 +22,7 @@ class SwaggerUI:
     openapi_url: str
     title: Optional[str] = "STAC API"
     init_oauth: dict = field(default_factory=dict)
+    parameters: dict = field(default_factory=dict)
     oauth2_redirect_url: str = "/docs/oauth2-redirect"
 
     async def route(self, req: Request) -> HTMLResponse:
@@ -36,5 +37,5 @@ class SwaggerUI:
             title=f"{self.title} - Swagger UI",
             oauth2_redirect_url=oauth2_redirect_url,
             init_oauth=self.init_oauth,
-            swagger_ui_parameters=None,
+            swagger_ui_parameters=self.parameters,
         )

@@ -1,6 +1,7 @@
 """Swagger UI handler."""
 
 from dataclasses import dataclass, field
+from typing import Optional
 
 from fastapi.openapi.docs import get_swagger_ui_html
 from starlette.requests import Request
@@ -12,7 +13,7 @@ class SwaggerUI:
     """Swagger UI handler."""
 
     openapi_url: str
-    title: str = "STAC API"
+    title: Optional[str] = "STAC API"
     # https://swagger.io/docs/open-source-tools/swagger-ui/usage/oauth2/
     init_oauth: dict = field(default_factory=dict)
     # https://swagger.io/docs/open-source-tools/swagger-ui/usage/configuration/

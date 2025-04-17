@@ -92,7 +92,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
                 openapi_url=settings.openapi_spec_endpoint,
                 title=settings.swagger_ui_title,
                 init_oauth=settings.swagger_ui_init_oauth,
-                parameters=settings.swagger_ui_parameters,
             ).route,
             include_in_schema=False,
         )

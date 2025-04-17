@@ -54,7 +54,6 @@ class Settings(BaseSettings):
     swagger_ui_url: Optional[str] = "/api.html"
     swagger_ui_title: Optional[str] = "STAC API"
     swagger_ui_init_oauth: dict = Field(default_factory=dict)
-    swagger_ui_parameters: dict = Field(default_factory=dict)
 
     # Auth
     enable_authentication_extension: bool = True

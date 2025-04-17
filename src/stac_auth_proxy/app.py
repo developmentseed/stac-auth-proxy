@@ -68,10 +68,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     app = FastAPI(
         openapi_url=None,  # Disable OpenAPI schema endpoint, we want to serve upstream's schema
-        swagger_ui_parameters={
-            "usePkceWithAuthorizationCodeGrant": True,
-            "clientId": "stac-auth-proxy",
-        },
         lifespan=lifespan,
         root_path=settings.root_path,
     )

@@ -1,0 +1,258 @@
+"$schema": "https://json-schema.org/draft-07/schema#"
+type: object
+properties:
+  replicaCount:
+    type: integer
+    minimum: 1
+    description: "Number of replicas for the deployment"
+
+  image:
+    type: object
+    properties:
+      repository:
+        type: string
+        description: "Docker image repository"
+        default: "ghcr.io/developmentseed/stac-auth-proxy"
+      pullPolicy:
+        type: string
+        enum: ["IfNotPresent", "Always", "Never"]
+        description: "Kubernetes image pull policy"
+      tag:
+        type: string
+        description: "Docker image tag"
+        default: "latest"
+
+  env:
+    type: object
+    properties:
+      # Core
+      UPSTREAM_URL:
+        type: string
+        pattern: "^https?://.+"
+        description: "URL of the STAC API to proxy"
+      WAIT_FOR_UPSTREAM:
+        type: ["boolean", "string"]
+        description: "Wait for upstream API to become available before starting proxy"
+        default: "true"
+      CHECK_CONFORMANCE:
+        type: ["boolean", "string"]
+        description: "Ensure upstream API conforms to required conformance classes before starting proxy"
+        default: "true"
+      ENABLE_COMPRESSION:
+        type: ["boolean", "string"]
+        description: "Enable response compression"
+        default: "true"
+      HEALTHZ_PREFIX:
+        type: string
+        description: "Path prefix for health check endpoints"
+        default: "/healthz"
+      OVERRIDE_HOST:
+        type: ["boolean", "string"]
+        description: "Override the host header for the upstream API"
+        default: "true"
+      ROOT_PATH:
+        type: string
+        description: "Path prefix for the proxy API"
+        default: ""
+      # Authentication
+      OIDC_DISCOVERY_URL:
+        type: string
+        pattern: "^https?://.+"
+        description: "OpenID Connect discovery document URL"
+      OIDC_DISCOVERY_INTERNAL_URL:
+        type: string
+        pattern: "^https?://.+"
+        description: "Internal network OpenID Connect discovery document URL"
+      DEFAULT_PUBLIC:
+        type: ["boolean", "string"]
+        description: "Default access policy for endpoints"
+        default: "false"
+      PRIVATE_ENDPOINTS:
+        type: ["object", "string"]
+        description: "Endpoints explicitly marked as requiring authentication and possibly scopes"
+      PUBLIC_ENDPOINTS:
+        type: ["object", "string"]
+        description: "Endpoints explicitly marked as not requiring authentication"
+      ENABLE_AUTHENTICATION_EXTENSION:
+        type: ["boolean", "string"]
+        description: "Enable authentication extension in STAC API responses"
+        default: "true"
+      # OpenAPI
+      OPENAPI_SPEC_ENDPOINT:
+        type: ["string", "null"]
+        description: "Path of OpenAPI specification"
+        default: "/api"
+      OPENAPI_AUTH_SCHEME_NAME:
+        type: string
+        description: "Name of the auth scheme to use in the OpenAPI spec"
+        default: "oidcAuth"
+      OPENAPI_AUTH_SCHEME_OVERRIDE:
+        type: ["object", "string", "null"]
+        description: "Override for the auth scheme in the OpenAPI spec"
+      # Filtering
+      ITEMS_FILTER_CLS:
+        type: ["string", "null"]
+        description: "CQL2 expression generator for item-level filtering"
+      ITEMS_FILTER_ARGS:
+        type: ["array", "string"]
+        description: "Positional arguments for CQL2 expression generator"
+      ITEMS_FILTER_KWARGS:
+        type: ["object", "string"]
+        description: "Keyword arguments for CQL2 expression generator"
+    required:
+      - UPSTREAM_URL
+      - OIDC_DISCOVERY_URL
+
+  service:
+    type: object
+    required: ["type", "port"]
+    properties:
+      type:
+        type: string
+        enum: ["ClusterIP", "NodePort", "LoadBalancer"]
+        description: "Kubernetes service type"
+      port:
+        type: integer
+        minimum: 1
+        maximum: 65535
+        description: "Service port number"
+
+  ingress:
+    type: object
+    properties:
+      enabled:
+        type: boolean
+        description: "Enable ingress resource"
+      className:
+        type: string
+        description: "Ingress class name (e.g., nginx)"
+      annotations:
+        type: object
+        additionalProperties:
+          type: string
+        description: "Annotations for the ingress resource"
+      host:
+        type: string
+        description: "Hostname for the ingress"
+      tls:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+            description: "Enable TLS configuration"
+          secretName:
+            type: string
+            description: "Name of the TLS secret (optional, will be auto-generated if empty)"
+        required: ["enabled"]
+
+  resources:
+    type: object
+    properties:
+      limits:
+        type: object
+        properties:
+          cpu:
+            type: string
+            pattern: "^[0-9]+m?$|^[0-9]+\\.[0-9]+$"
+            description: "CPU limit (e.g., 500m, 1.5)"
+          memory:
+            type: string
+            pattern: "^[0-9]+(Ki|Mi|Gi|Ti|Pi|Ei|[kMGTPE]i?)?$"
+            description: "Memory limit (e.g., 512Mi, 1Gi)"
+      requests:
+        type: object
+        properties:
+          cpu:
+            type: string
+            pattern: "^[0-9]+m?$|^[0-9]+\\.[0-9]+$"
+            description: "CPU request (e.g., 200m, 0.5)"
+          memory:
+            type: string
+            pattern: "^[0-9]+(Ki|Mi|Gi|Ti|Pi|Ei|[kMGTPE]i?)?$"
+            description: "Memory request (e.g., 256Mi, 1Gi)"
+
+  securityContext:
+    type: object
+    properties:
+      runAsNonRoot:
+        type: boolean
+        description: "Requires the container to run without root privileges"
+      runAsUser:
+        type: integer
+        description: "The UID to run the entrypoint of the container process"
+      runAsGroup:
+        type: integer
+        description: "The GID to run the entrypoint of the container process"
+    description: "Pod-level security context"
+
+  containerSecurityContext:
+    type: object
+    properties:
+      allowPrivilegeEscalation:
+        type: boolean
+        description: "Controls whether a process can gain more privileges than its parent process"
+      capabilities:
+        type: object
+        properties:
+          drop:
+            type: array
+            items:
+              type: string
+            description: "List of capabilities to drop"
+    description: "Container-level security context"
+
+  nodeSelector:
+    type: object
+    additionalProperties:
+      type: string
+    description: "Node labels for pod assignment"
+
+  tolerations:
+    type: array
+    items:
+      type: object
+      properties:
+        key:
+          type: string
+        operator:
+          type: string
+          enum: ["Exists", "Equal"]
+        value:
+          type: string
+        effect:
+          type: string
+          enum: ["NoSchedule", "PreferNoSchedule", "NoExecute"]
+    description: "Pod tolerations"
+
+  affinity:
+    type: object
+    additionalProperties: true
+    description: "Pod affinity rules"
+
+  serviceAccount:
+    type: object
+    properties:
+      create:
+        type: boolean
+        description: "Specifies whether a service account should be created"
+      annotations:
+        type: object
+        additionalProperties:
+          type: string
+        description: "Annotations to add to the service account"
+      name:
+        type: string
+        description: "The name of the service account to use. If not set and create is true, a name is generated"
+      imagePullSecrets:
+        type: array
+        description: "Image pull secrets to add to the service account"
+        items:
+          type: object
+          required: ["name"]
+          properties:
+            name:
+              type: string
+              description: "Name of the image pull secret"
+
+required:
+  - service 

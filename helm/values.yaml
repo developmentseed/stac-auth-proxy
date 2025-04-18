@@ -1,0 +1,88 @@
+# Default values for stac-auth-proxy
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/developmentseed/stac-auth-proxy
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  host: "stac-proxy.example.com"  # This should be overridden in production
+  tls:
+    enabled: true
+    secretName: ""  # If empty, will be auto-generated as "{host}-tls"
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+# Pod-level security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+
+# Container-level security context
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Environment variables for the application
+env:
+  # Required configuration
+  UPSTREAM_URL: ""  # STAC API URL
+  OIDC_DISCOVERY_URL: ""  # OpenID Connect discovery URL
+
+  # Optional configuration
+  WAIT_FOR_UPSTREAM: true
+  HEALTHZ_PREFIX: "/healthz"
+  OIDC_DISCOVERY_INTERNAL_URL: ""
+  DEFAULT_PUBLIC: false
+  PRIVATE_ENDPOINTS: |
+    {
+      "^/collections$": ["POST"],
+      "^/collections/([^/]+)$": ["PUT", "PATCH", "DELETE"],
+      "^/collections/([^/]+)/items$": ["POST"],
+      "^/collections/([^/]+)/items/([^/]+)$": ["PUT", "PATCH", "DELETE"],
+      "^/collections/([^/]+)/bulk_items$": ["POST"]
+    }
+  PUBLIC_ENDPOINTS: |
+    {
+      "^/api.html$": ["GET"],
+      "^/api$": ["GET"],
+      "^/docs/oauth2-redirect": ["GET"],
+      "^/healthz": ["GET"]
+    }
+
+
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+  # Image pull secrets to add to the service account
+  imagePullSecrets: []
+  # - name: my-registry-secret 

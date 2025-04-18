@@ -72,10 +72,7 @@ env:
       "^/docs/oauth2-redirect": ["GET"],
       "^/healthz": ["GET"]
     }
-  OPENAPI_SPEC_ENDPOINT: null
-  ITEMS_FILTER_CLS: null
-  ITEMS_FILTER_ARGS: "[]"
-  ITEMS_FILTER_KWARGS: "{}"
+
 
 
 serviceAccount:

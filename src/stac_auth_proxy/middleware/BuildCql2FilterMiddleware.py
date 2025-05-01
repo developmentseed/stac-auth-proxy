@@ -40,21 +40,24 @@ class BuildCql2FilterMiddleware:
         required_conformances = set()
         if self.collections_filter:
             logger.debug("Appending required conformance for collections filter")
+            # https://github.com/stac-api-extensions/collection-search/blob/4825b4b1cee96bdc0cbfbb342d5060d0031976f0/README.md#L5
             required_conformances.update(
                 [
-                    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter",
-                    "http://www.opengis.net/spec/cql2/1.0/conf/basic-cql2",
-                    r"https://api.stacspec.org/v1\.0\.0(?:-[\w\.]+)?/item-search#filter",
-                    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter",
+                    "https://api.stacspec.org/v1.0.0/core",
+                    r"https://api.stacspec.org/v1\.0\.0(?:-[\w\.]+)?/collection-search",
+                    r"https://api.stacspec.org/v1\.0\.0(?:-[\w\.]+)?/collection-search#filter",
+                    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
+
                 ]
             )
         if self.items_filter:
             logger.debug("Appending required conformance for items filter")
+            # https://github.com/stac-api-extensions/filter/blob/c763dbbf0a52210ab8d9866ff048da448d270f93/README.md#conformance-classes
             required_conformances.update(
                 [
-                    "https://api.stacspec.org/v1.0.0/core",
-                    r"https://api.stacspec.org/v1\.0\.0(?:-[\w\.]+)?/collection-search#filter",
-                    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
+                    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter",
+                    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter",
+                    r"https://api.stacspec.org/v1\.0\.0(?:-[\w\.]+)?/item-search#filter",
                 ]
             )
 

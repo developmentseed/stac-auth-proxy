@@ -47,7 +47,6 @@ class BuildCql2FilterMiddleware:
                     r"https://api.stacspec.org/v1\.0\.0(?:-[\w\.]+)?/collection-search",
                     r"https://api.stacspec.org/v1\.0\.0(?:-[\w\.]+)?/collection-search#filter",
                     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
-
                 ]
             )
         if self.items_filter:

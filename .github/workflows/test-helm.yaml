@@ -1,0 +1,37 @@
+name: Test Helm Chart
+
+on:
+  push:
+    paths:
+      - 'helm/**'
+  pull_request:
+    paths:
+      - 'helm/**'
+
+jobs:
+  test-helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Kubernetes tools
+        uses: azure/setup-kubectl@v3
+      
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'v3.13.2'
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.8.0
+
+      - name: Run Helm tests
+        run: |
+          # Install chart with test values
+          helm upgrade --install stac-auth-proxy ./helm \
+            --values ./helm/test-values.yaml \
+            --wait \
+            --timeout 2m
+
+          # Run helm tests
+          helm test stac-auth-proxy --timeout 2m

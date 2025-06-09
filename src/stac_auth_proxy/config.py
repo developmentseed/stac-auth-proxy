@@ -74,7 +74,9 @@ class Settings(BaseSettings):
 
     # Filters
     items_filter: Optional[ClassInput] = None
+    items_filter_path: str = r"^(/collections/([^/]+)/items(/[^/]+)?$|/search$)"
     collections_filter: Optional[ClassInput] = None
+    collections_filter_path: str = r"^/collections(/[^/]+)?$"
 
     model_config = SettingsConfigDict(
         env_nested_delimiter="_",

@@ -141,6 +141,8 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             collections_filter=(
                 settings.collections_filter() if settings.collections_filter else None
             ),
+            collections_filter_path=settings.collections_filter_path,
+            items_filter_path=settings.items_filter_path,
         )
 
     app.add_middleware(

@@ -7,7 +7,7 @@
 
 STAC Auth Proxy is a proxy API that mediates between the client and your internally accessible STAC API to provide flexible authentication, authorization, and content-filtering mechanisms.
 
-> [!IMPORTANT] 
+> [!IMPORTANT]
 > **We would :heart: to hear from you!**
 > Please [join the discussion](https://github.com/developmentseed/eoAPI/discussions/209) and let us know how you're using eoAPI! This helps us improve the project for you and others.
 > If you prefer to remain anonymous, you can email us at eoapi@developmentseed.org, and we'll be happy to post a summary on your behalf.
@@ -171,6 +171,10 @@ The application is configurable via environment variables.
     - **Type:** Dictionary of keyword arguments used to initialize the class
     - **Required:** No, defaults to `{}`
     - **Example:** `{"field_name": "properties.organization"}`
+  - **`ITEMS_FILTER_PATH`**, Regex pattern used to identify request paths that require the application of the items filter
+    - **Type:** Regex string
+    - **Required:** No, defaults to `^(/collections/([^/]+)/items(/[^/]+)?$|/search$)`
+    - **Example:** `^(/collections/([^/]+)/items(/[^/]+)?$|/search$|/custom$)`
   - **`COLLECTIONS_FILTER_CLS`**, CQL2 expression generator for collection-level filtering
     - **Type:** JSON object with class configuration
     - **Required:** No, defaults to `null` (disabled)
@@ -183,6 +187,10 @@ The application is configurable via environment variables.
     - **Type:** Dictionary of keyword arguments used to initialize the class
     - **Required:** No, defaults to `{}`
     - **Example:** `{"field_name": "properties.organization"}`
+  - **`COLLECTIONS_FILTER_PATH`**, Regex pattern used to identify request paths that require the application of the collections filter
+    - **Type:** Regex string
+    - **Required:** No, defaults to `^/collections(/[^/]+)?$`
+    - **Example:** `^.*?/collections(/[^/]+)?$`
 
 ### Tips
 

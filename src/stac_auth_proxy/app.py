@@ -18,6 +18,7 @@ from .middleware import (
     AddProcessTimeHeaderMiddleware,
     ApplyCql2FilterMiddleware,
     AuthenticationExtensionMiddleware,
+    AuthOptionsMiddleware,
     BuildCql2FilterMiddleware,
     EnforceAuthMiddleware,
     OpenApiMiddleware,
@@ -147,6 +148,13 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     app.add_middleware(
         AddProcessTimeHeaderMiddleware,
+    )
+
+    app.add_middleware(
+        AuthOptionsMiddleware,
+        public_endpoints=settings.public_endpoints,
+        private_endpoints=settings.private_endpoints,
+        default_public=settings.default_public,
     )
 
     app.add_middleware(

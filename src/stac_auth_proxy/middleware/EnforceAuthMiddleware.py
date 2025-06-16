@@ -98,7 +98,6 @@ class EnforceAuthMiddleware:
                 auto_error=match.is_private,
                 required_scopes=match.required_scopes,
             )
-
         except HTTPException as e:
             response = JSONResponse({"detail": e.detail}, status_code=e.status_code)
             return await response(scope, receive, send)

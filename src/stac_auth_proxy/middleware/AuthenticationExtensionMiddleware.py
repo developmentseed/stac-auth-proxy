@@ -57,7 +57,7 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
                     ]
                 ),
             )
-            and 200 >= scope["status"] < 300
+            and 200 <= scope["status"] < 300
         )
 
     def transform_json(self, data: dict[str, Any], request: Request) -> dict[str, Any]:

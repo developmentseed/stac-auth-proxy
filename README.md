@@ -67,130 +67,133 @@ pip install -e .
 
 The application is configurable via environment variables.
 
-- Core
-  - **`UPSTREAM_URL`**, STAC API URL
-    - **Type:** HTTP(S) URL
-    - **Required:** Yes
-    - **Example:** `https://your-stac-api.com/stac`
-  - **`WAIT_FOR_UPSTREAM`**, wait for upstream API to become available before starting proxy
-    - **Type:** boolean
-    - **Required:** No, defaults to `true`
-    - **Example:** `false`, `1`, `True`
-  - **`CHECK_CONFORMANCE`**, ensure upstream API conforms to required conformance classes before starting proxy
-    - **Type:** boolean
-    - **Required:** No, defaults to `true`
-    - **Example:** `false`, `1`, `True`
-  - **`ENABLE_COMPRESSION`**, enable response compression
-    - **Type:** boolean
-    - **Required:** No, defaults to `true`
-    - **Example:** `false`, `1`, `True`
-  - **`HEALTHZ_PREFIX`**, path prefix for health check endpoints
-    - **Type:** string
-    - **Required:** No, defaults to `/healthz`
-    - **Example:** `''` (disabled)
-  - **`OVERRIDE_HOST`**, override the host header for the upstream API
-    - **Type:** boolean
-    - **Required:** No, defaults to `true`
-    - **Example:** `false`, `1`, `True`
-  - **`ROOT_PATH`**, path prefix for the proxy API
-    - **Type:** string
-    - **Required:** No, defaults to `''` (root path)
-    - **Example:** `/api/v1`
-    - **Note:** This is independent of the upstream API's path. The proxy will handle removing this prefix from incoming requests and adding it to outgoing links.
-- Authentication
-  - **`OIDC_DISCOVERY_URL`**, OpenID Connect discovery document URL
-    - **Type:** HTTP(S) URL
-    - **Required:** Yes
-    - **Example:** `https://auth.example.com/.well-known/openid-configuration`
-  - **`OIDC_DISCOVERY_INTERNAL_URL`**, internal network OpenID Connect discovery document URL
-    - **Type:** HTTP(S) URL
-    - **Required:** No, defaults to the value of `OIDC_DISCOVERY_URL`
-    - **Example:** `http://auth/.well-known/openid-configuration`
-  - **`DEFAULT_PUBLIC`**, default access policy for endpoints
-    - **Type:** boolean
-    - **Required:** No, defaults to `false`
-    - **Example:** `false`, `1`, `True`
-  - **`PRIVATE_ENDPOINTS`**, endpoints explicitly marked as requiring authentication and possibly scopes
-    - **Type:** JSON object mapping regex patterns to HTTP methods OR tuples of an HTTP method and string representing required scopes
-    - **Required:** No, defaults to the following:
-      ```json
-      {
-        "^/collections$": ["POST"],
-        "^/collections/([^/]+)$": ["PUT", "PATCH", "DELETE"],
-        "^/collections/([^/]+)/items$": ["POST"],
-        "^/collections/([^/]+)/items/([^/]+)$": ["PUT", "PATCH", "DELETE"],
-        "^/collections/([^/]+)/bulk_items$": ["POST"]
-      }
-      ```
-  - **`PUBLIC_ENDPOINTS`**, endpoints explicitly marked as not requiring authentication, used when `DEFAULT_PUBLIC == False`
-    - **Type:** JSON object mapping regex patterns to HTTP methods
-    - **Required:** No, defaults to the following:
-      ```json
-      {
-        "^/api.html$": ["GET"],
-        "^/api$": ["GET"],
-        "^/docs/oauth2-redirect": ["GET"],
-        "^/healthz": ["GET"]
-      }
-      ```
-  - **`ENABLE_AUTHENTICATION_EXTENSION`**, enable authentication extension in STAC API responses
-    - **Type:** boolean
-    - **Required:** No, defaults to `true`
-    - **Example:** `false`, `1`, `True`
-- OpenAPI / Swagger UI
-  - **`OPENAPI_SPEC_ENDPOINT`**, path of OpenAPI specification, used for augmenting spec response with auth configuration
-    - **Type:** string or null
-    - **Required:** No, defaults to `null` (disabled)
-    - **Example:** `/api`
-  - **`OPENAPI_AUTH_SCHEME_NAME`**, name of the auth scheme to use in the OpenAPI spec
-    - **Type:** string
-    - **Required:** No, defaults to `oidcAuth`
-    - **Example:** `jwtAuth`
-  - **`OPENAPI_AUTH_SCHEME_OVERRIDE`**, override for the auth scheme in the OpenAPI spec
-    - **Type:** JSON object
-    - **Required:** No, defaults to `null` (disabled)
-    - **Example:** `{"type": "http", "scheme": "bearer", "bearerFormat": "JWT", "description": "Paste your raw JWT here. This API uses Bearer token authorization.\n"}`
-  - **`SWAGGER_UI_ENDPOINT`**, path of Swagger UI, used to indicate that a custom Swagger UI should be hosted, typically useful when providing accompanying `SWAGGER_UI_INIT_OAUTH` arguments
-    - **Type:** string or null
-    - **Required:** No, defaults to `null` (disabled)
-    - **Example:** `/api.html`
-  - **`SWAGGER_UI_INIT_OAUTH`**, initialization options for the [Swagger UI OAuth2 configuration](https://swagger.io/docs/open-source-tools/swagger-ui/usage/oauth2/) on custom Swagger UI
-    - **Type:** JSON object
-    - **Required:** No, defaults to `null` (disabled)
-    - **Example:** `{"clientId": "stac-auth-proxy", "usePkceWithAuthorizationCodeGrant": true}`
-- Filtering
-  - **`ITEMS_FILTER_CLS`**, CQL2 expression generator for item-level filtering
-    - **Type:** JSON object with class configuration
-    - **Required:** No, defaults to `null` (disabled)
-    - **Example:** `stac_auth_proxy.filters:Opa`, `stac_auth_proxy.filters:Template`, `my_package:OrganizationFilter`
-  - **`ITEMS_FILTER_ARGS`**, Positional arguments for CQL2 expression generator
-    - **Type:** List of positional arguments used to initialize the class
-    - **Required:** No, defaults to `[]`
-    - **Example:**: `["org1"]`
-  - **`ITEMS_FILTER_KWARGS`**, Keyword arguments for CQL2 expression generator
-    - **Type:** Dictionary of keyword arguments used to initialize the class
-    - **Required:** No, defaults to `{}`
-    - **Example:** `{"field_name": "properties.organization"}`
-  - **`ITEMS_FILTER_PATH`**, Regex pattern used to identify request paths that require the application of the items filter
-    - **Type:** Regex string
-    - **Required:** No, defaults to `^(/collections/([^/]+)/items(/[^/]+)?$|/search$)`
-    - **Example:** `^(/collections/([^/]+)/items(/[^/]+)?$|/search$|/custom$)`
-  - **`COLLECTIONS_FILTER_CLS`**, CQL2 expression generator for collection-level filtering
-    - **Type:** JSON object with class configuration
-    - **Required:** No, defaults to `null` (disabled)
-    - **Example:** `stac_auth_proxy.filters:Opa`, `stac_auth_proxy.filters:Template`, `my_package:OrganizationFilter`
-  - **`COLLECTIONS_FILTER_ARGS`**, Positional arguments for CQL2 expression generator
-    - **Type:** List of positional arguments used to initialize the class
-    - **Required:** No, defaults to `[]`
-    - **Example:**: `["org1"]`
-  - **`COLLECTIONS_FILTER_KWARGS`**, Keyword arguments for CQL2 expression generator
-    - **Type:** Dictionary of keyword arguments used to initialize the class
-    - **Required:** No, defaults to `{}`
-    - **Example:** `{"field_name": "properties.organization"}`
-  - **`COLLECTIONS_FILTER_PATH`**, Regex pattern used to identify request paths that require the application of the collections filter
-    - **Type:** Regex string
-    - **Required:** No, defaults to `^/collections(/[^/]+)?$`
-    - **Example:** `^.*?/collections(/[^/]+)?$`
+#### Core
+- **`UPSTREAM_URL`**, STAC API URL
+  - **Type:** HTTP(S) URL
+  - **Required:** Yes
+  - **Example:** `https://your-stac-api.com/stac`
+- **`WAIT_FOR_UPSTREAM`**, wait for upstream API to become available before starting proxy
+  - **Type:** boolean
+  - **Required:** No, defaults to `true`
+  - **Example:** `false`, `1`, `True`
+- **`CHECK_CONFORMANCE`**, ensure upstream API conforms to required conformance classes before starting proxy
+  - **Type:** boolean
+  - **Required:** No, defaults to `true`
+  - **Example:** `false`, `1`, `True`
+- **`ENABLE_COMPRESSION`**, enable response compression
+  - **Type:** boolean
+  - **Required:** No, defaults to `true`
+  - **Example:** `false`, `1`, `True`
+- **`HEALTHZ_PREFIX`**, path prefix for health check endpoints
+  - **Type:** string
+  - **Required:** No, defaults to `/healthz`
+  - **Example:** `''` (disabled)
+- **`OVERRIDE_HOST`**, override the host header for the upstream API
+  - **Type:** boolean
+  - **Required:** No, defaults to `true`
+  - **Example:** `false`, `1`, `True`
+- **`ROOT_PATH`**, path prefix for the proxy API
+  - **Type:** string
+  - **Required:** No, defaults to `''` (root path)
+  - **Example:** `/api/v1`
+  - **Note:** This is independent of the upstream API's path. The proxy will handle removing this prefix from incoming requests and adding it to outgoing links.
+
+#### Authentication
+- **`OIDC_DISCOVERY_URL`**, OpenID Connect discovery document URL
+  - **Type:** HTTP(S) URL
+  - **Required:** Yes
+  - **Example:** `https://auth.example.com/.well-known/openid-configuration`
+- **`OIDC_DISCOVERY_INTERNAL_URL`**, internal network OpenID Connect discovery document URL
+  - **Type:** HTTP(S) URL
+  - **Required:** No, defaults to the value of `OIDC_DISCOVERY_URL`
+  - **Example:** `http://auth/.well-known/openid-configuration`
+- **`DEFAULT_PUBLIC`**, default access policy for endpoints
+  - **Type:** boolean
+  - **Required:** No, defaults to `false`
+  - **Example:** `false`, `1`, `True`
+- **`PRIVATE_ENDPOINTS`**, endpoints explicitly marked as requiring authentication and possibly scopes
+  - **Type:** JSON object mapping regex patterns to HTTP methods OR tuples of an HTTP method and string representing required scopes
+  - **Required:** No, defaults to the following:
+    ```json
+    {
+      "^/collections$": ["POST"],
+      "^/collections/([^/]+)$": ["PUT", "PATCH", "DELETE"],
+      "^/collections/([^/]+)/items$": ["POST"],
+      "^/collections/([^/]+)/items/([^/]+)$": ["PUT", "PATCH", "DELETE"],
+      "^/collections/([^/]+)/bulk_items$": ["POST"]
+    }
+    ```
+- **`PUBLIC_ENDPOINTS`**, endpoints explicitly marked as not requiring authentication, used when `DEFAULT_PUBLIC == False`
+  - **Type:** JSON object mapping regex patterns to HTTP methods
+  - **Required:** No, defaults to the following:
+    ```json
+    {
+      "^/api.html$": ["GET"],
+      "^/api$": ["GET"],
+      "^/docs/oauth2-redirect": ["GET"],
+      "^/healthz": ["GET"]
+    }
+    ```
+- **`ENABLE_AUTHENTICATION_EXTENSION`**, enable authentication extension in STAC API responses
+  - **Type:** boolean
+  - **Required:** No, defaults to `true`
+  - **Example:** `false`, `1`, `True`
+
+#### OpenAPI / Swagger UI
+- **`OPENAPI_SPEC_ENDPOINT`**, path of OpenAPI specification, used for augmenting spec response with auth configuration
+  - **Type:** string or null
+  - **Required:** No, defaults to `null` (disabled)
+  - **Example:** `/api`
+- **`OPENAPI_AUTH_SCHEME_NAME`**, name of the auth scheme to use in the OpenAPI spec
+  - **Type:** string
+  - **Required:** No, defaults to `oidcAuth`
+  - **Example:** `jwtAuth`
+- **`OPENAPI_AUTH_SCHEME_OVERRIDE`**, override for the auth scheme in the OpenAPI spec
+  - **Type:** JSON object
+  - **Required:** No, defaults to `null` (disabled)
+  - **Example:** `{"type": "http", "scheme": "bearer", "bearerFormat": "JWT", "description": "Paste your raw JWT here. This API uses Bearer token authorization.\n"}`
+- **`SWAGGER_UI_ENDPOINT`**, path of Swagger UI, used to indicate that a custom Swagger UI should be hosted, typically useful when providing accompanying `SWAGGER_UI_INIT_OAUTH` arguments
+  - **Type:** string or null
+  - **Required:** No, defaults to `null` (disabled)
+  - **Example:** `/api.html`
+- **`SWAGGER_UI_INIT_OAUTH`**, initialization options for the [Swagger UI OAuth2 configuration](https://swagger.io/docs/open-source-tools/swagger-ui/usage/oauth2/) on custom Swagger UI
+  - **Type:** JSON object
+  - **Required:** No, defaults to `null` (disabled)
+  - **Example:** `{"clientId": "stac-auth-proxy", "usePkceWithAuthorizationCodeGrant": true}`
+
+#### Filtering
+- **`ITEMS_FILTER_CLS`**, CQL2 expression generator for item-level filtering
+  - **Type:** JSON object with class configuration
+  - **Required:** No, defaults to `null` (disabled)
+  - **Example:** `stac_auth_proxy.filters:Opa`, `stac_auth_proxy.filters:Template`, `my_package:OrganizationFilter`
+- **`ITEMS_FILTER_ARGS`**, Positional arguments for CQL2 expression generator
+  - **Type:** List of positional arguments used to initialize the class
+  - **Required:** No, defaults to `[]`
+  - **Example:**: `["org1"]`
+- **`ITEMS_FILTER_KWARGS`**, Keyword arguments for CQL2 expression generator
+  - **Type:** Dictionary of keyword arguments used to initialize the class
+  - **Required:** No, defaults to `{}`
+  - **Example:** `{"field_name": "properties.organization"}`
+- **`ITEMS_FILTER_PATH`**, Regex pattern used to identify request paths that require the application of the items filter
+  - **Type:** Regex string
+  - **Required:** No, defaults to `^(/collections/([^/]+)/items(/[^/]+)?$|/search$)`
+  - **Example:** `^(/collections/([^/]+)/items(/[^/]+)?$|/search$|/custom$)`
+- **`COLLECTIONS_FILTER_CLS`**, CQL2 expression generator for collection-level filtering
+  - **Type:** JSON object with class configuration
+  - **Required:** No, defaults to `null` (disabled)
+  - **Example:** `stac_auth_proxy.filters:Opa`, `stac_auth_proxy.filters:Template`, `my_package:OrganizationFilter`
+- **`COLLECTIONS_FILTER_ARGS`**, Positional arguments for CQL2 expression generator
+  - **Type:** List of positional arguments used to initialize the class
+  - **Required:** No, defaults to `[]`
+  - **Example:**: `["org1"]`
+- **`COLLECTIONS_FILTER_KWARGS`**, Keyword arguments for CQL2 expression generator
+  - **Type:** Dictionary of keyword arguments used to initialize the class
+  - **Required:** No, defaults to `{}`
+  - **Example:** `{"field_name": "properties.organization"}`
+- **`COLLECTIONS_FILTER_PATH`**, Regex pattern used to identify request paths that require the application of the collections filter
+  - **Type:** Regex string
+  - **Required:** No, defaults to `^/collections(/[^/]+)?$`
+  - **Example:** `^.*?/collections(/[^/]+)?$`
 
 ### Tips
 

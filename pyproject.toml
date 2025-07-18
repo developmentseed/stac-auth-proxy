@@ -24,7 +24,7 @@ license = {file = "LICENSE"}
 name = "stac-auth-proxy"
 readme = "README.md"
 requires-python = ">=3.9"
-version = "0.6.0"
+version = "0.6.1"
 
 [tool.coverage.run]
 branch = true

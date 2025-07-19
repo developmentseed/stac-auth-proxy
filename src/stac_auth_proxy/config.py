@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     enable_authentication_extension: bool = True
     default_public: bool = False
     public_endpoints: EndpointMethodsNoScope = {
+        r"^/$": ["GET"],
         r"^/api.html$": ["GET"],
         r"^/api$": ["GET"],
         r"^/docs/oauth2-redirect": ["GET"],

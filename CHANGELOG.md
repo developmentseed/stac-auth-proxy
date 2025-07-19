@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/developmentseed/stac-auth-proxy/compare/v0.6.1...v0.7.0) (2025-07-19)
+
+
+### Features
+
+* **config:** add root path GET requests to default public endpoints ([#62](https://github.com/developmentseed/stac-auth-proxy/issues/62)) ([59c6a97](https://github.com/developmentseed/stac-auth-proxy/commit/59c6a9740cf5cbcf43aaf5b556c37714db40ada7))
+
 ## [0.6.1](https://github.com/developmentseed/stac-auth-proxy/compare/0.6.0...v0.6.1) (2025-07-18)
 
 

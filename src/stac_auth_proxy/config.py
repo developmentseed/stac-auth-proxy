@@ -8,8 +8,10 @@ from pydantic.networks import HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 METHODS = Literal["GET", "POST", "PUT", "DELETE", "PATCH"]
-EndpointMethodsNoScope: TypeAlias = dict[str, Sequence[METHODS]]
-EndpointMethods: TypeAlias = dict[str, Sequence[Union[METHODS, tuple[METHODS, str]]]]
+EndpointMethods: TypeAlias = dict[str, Sequence[METHODS]]
+EndpointMethodsWithScope: TypeAlias = dict[
+    str, Sequence[Union[METHODS, tuple[METHODS, str]]]
+]
 
 _PREFIX_PATTERN = r"^/.*$"
 
@@ -55,14 +57,14 @@ class Settings(BaseSettings):
     # Auth
     enable_authentication_extension: bool = True
     default_public: bool = False
-    public_endpoints: EndpointMethodsNoScope = {
+    public_endpoints: EndpointMethods = {
         r"^/$": ["GET"],
         r"^/api.html$": ["GET"],
         r"^/api$": ["GET"],
         r"^/docs/oauth2-redirect": ["GET"],
         r"^/healthz": ["GET"],
     }
-    private_endpoints: EndpointMethods = {
+    private_endpoints: EndpointMethodsWithScope = {
         # https://github.com/stac-api-extensions/collection-transaction/blob/v1.0.0-beta.1/README.md#methods
         r"^/collections$": ["POST"],
         r"^/collections/([^/]+)$": ["PUT", "PATCH", "DELETE"],

@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
     "http://www.opengis.net/spec/cql2/1.0/conf/cql2-json",
 )
 @dataclass(frozen=True)
-class BuildCql2FilterMiddleware:
+class Cql2BuildFilterMiddleware:
     """Middleware to build the Cql2Filter."""
 
     app: ASGIApp

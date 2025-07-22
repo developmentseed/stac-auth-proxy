@@ -16,9 +16,11 @@ from .config import Settings
 from .handlers import HealthzHandler, ReverseProxyHandler, SwaggerUI
 from .middleware import (
     AddProcessTimeHeaderMiddleware,
-    ApplyCql2FilterMiddleware,
     AuthenticationExtensionMiddleware,
-    BuildCql2FilterMiddleware,
+    Cql2ApplyFilterBodyMiddleware,
+    Cql2ApplyFilterQueryStringMiddleware,
+    Cql2BuildFilterMiddleware,
+    Cql2ValidateResponseBodyMiddleware,
     EnforceAuthMiddleware,
     OpenApiMiddleware,
     ProcessLinksMiddleware,
@@ -132,11 +134,11 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         )
 
     if settings.items_filter or settings.collections_filter:
+        app.add_middleware(Cql2ValidateResponseBodyMiddleware)
+        app.add_middleware(Cql2ApplyFilterBodyMiddleware)
+        app.add_middleware(Cql2ApplyFilterQueryStringMiddleware)
         app.add_middleware(
-            ApplyCql2FilterMiddleware,
-        )
-        app.add_middleware(
-            BuildCql2FilterMiddleware,
+            Cql2BuildFilterMiddleware,
             items_filter=settings.items_filter() if settings.items_filter else None,
             collections_filter=(
                 settings.collections_filter() if settings.collections_filter else None

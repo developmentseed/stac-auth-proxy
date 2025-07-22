@@ -233,25 +233,32 @@ The majority of the proxy's functionality occurs within a chain of middlewares. 
    - OIDC integration
    - Places auth token payload in request state
 
-2. **`BuildCql2FilterMiddleware`**
+2. **`Cql2BuildFilterMiddleware`**
 
    - Builds CQL2 filters based on request context/state
    - Places [CQL2 expression](http://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) in request state
 
-3. **`ApplyCql2FilterMiddleware`**
+3. **`Cql2ApplyFilterQueryStringMiddleware`**
 
    - Retrieves [CQL2 expression](http://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) from request state
-   - Augments request with CQL2 filter:
-     - Modifies query strings for `GET` requests
-     - Modifies JSON bodies for `POST`/`PUT`/`PATCH` requests
+   - Augments `GET` requests with CQL2 filter by appending to querystring
+
+4. **`Cql2ApplyFilterBodyMiddleware`**
+
+   - Retrieves [CQL2 expression](http://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) from request state
+   - Augments `` POST`/`PUT`/`PATCH `` requests with CQL2 filter by modifying body
+
+5. **`Cql2ValidateResponseBodyMiddleware`**
+
+   - Retrieves [CQL2 expression](http://developmentseed.org/cql2-rs/latest/python/#cql2.Expr) from request state
    - Validates response against CQL2 filter for non-filterable endpoints
 
-4. **`OpenApiMiddleware`**
+6. **`OpenApiMiddleware`**
 
    - Modifies OpenAPI specification based on endpoint configuration, adding security requirements
    - Only active if `openapi_spec_endpoint` is configured
 
-5. **`AddProcessTimeHeaderMiddleware`**
+7. **`AddProcessTimeHeaderMiddleware`**
    - Adds processing time headers
    - Useful for monitoring/debugging
 

@@ -89,7 +89,7 @@ class Cql2RequestBodyAugmentor:
 
         # Modify body
         try:
-            body = json.loads(body)
+            body = json.loads(body) if body else {}
         except json.JSONDecodeError as e:
             logger.warning("Failed to parse request body as JSON")
             # TODO: Return a 400 error

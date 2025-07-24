@@ -48,17 +48,16 @@ uvicorn --factory stac_auth_proxy:create_app
 
 ### Docker compose
 
-Run all of the services required to run the application locally including the a database, STAC API, and Mock OICD provider using Docker compose. 
-The application can be run with [stac-fastapi-pgstac](https://github.com/stac-utils/stac-fastapi-pgstac) or with [stac-fastapi-elasticsearch-opensearch](https://github.com/stac-utils/stac-fastapi-elasticsearch-opensearch)
+Run all of the services required to run the application locally including the the database, STAC API, and Mock OICD provider using Docker compose. 
 
-Spin up the application stack for Opensearch with
-```sh
-UPSTREAM_URL=http://stac-os:8001 docker compose --profile os up
-```
-
-and for pgstac with 
+Spin up the application stack with the pgSTAC backend using [stac-fastapi-pgstac](https://github.com/stac-utils/stac-fastapi-pgstac):
 ```sh
 UPSTREAM_URL=http://stac-pg:8001 docker compose --profile pg up
+```
+
+and with the OpenSearch backend using [stac-fastapi-elasticsearch-opensearch](https://github.com/stac-utils/stac-fastapi-elasticsearch-opensearch): 
+```sh
+UPSTREAM_URL=http://stac-os:8001 docker compose --profile os up
 ```
 
 

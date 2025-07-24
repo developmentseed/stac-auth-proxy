@@ -1,5 +1,7 @@
 services:
-  stac:
+# PostGRES STAC API
+  stac-pg:
+    profiles: ["pg"]
     image: ghcr.io/stac-utils/stac-fastapi-pgstac:5.0.2
     environment:
       APP_HOST: 0.0.0.0
@@ -22,10 +24,40 @@ services:
     ports:
       - "8001:8001"
     depends_on:
-      - database
-    command: bash -c "./scripts/wait-for-it.sh database:5432 && python -m stac_fastapi.pgstac.app"
+      - database-pg
+    command: bash -c "./scripts/wait-for-it.sh database-pg:5432 && python -m stac_fastapi.pgstac.app"
 
-  database:
+# Opensearch STAC API
+  stac-os:
+    profiles: ["os"]
+    container_name: stac-fastapi-os
+    image: ghcr.io/stac-utils/stac-fastapi-os:latest
+    hostname: stac-os
+    environment:
+      - STAC_FASTAPI_TITLE=stac-fastapi-opensearch
+      - STAC_FASTAPI_DESCRIPTION=A STAC FastAPI with an Opensearch backend
+      - STAC_FASTAPI_VERSION=6.0.0
+      - STAC_FASTAPI_LANDING_PAGE_ID=stac-fastapi-opensearch
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8001
+      - RELOAD=true
+      - ENVIRONMENT=local
+      - WEB_CONCURRENCY=10
+      - ES_HOST=database-os
+      - ES_PORT=9202
+      - ES_USE_SSL=false
+      - ES_VERIFY_CERTS=false
+      - BACKEND=opensearch
+      - STAC_FASTAPI_RATE_LIMIT=200/minute
+    ports:
+      - "8001:8001"
+    depends_on:
+      - database-os
+    command:
+      bash -c "./scripts/wait-for-it-es.sh database-os:9202 && python -m stac_fastapi.opensearch.app"
+
+  database-pg:
+    profiles: ["pg"]
     image: ghcr.io/stac-utils/pgstac:v0.9.5
     environment:
       POSTGRES_USER: username
@@ -40,13 +72,29 @@ services:
     volumes:
       - ./.pgdata:/var/lib/postgresql/data
 
+  database-os:
+    profiles: ["os"]
+    container_name: database-os
+    image: opensearchproject/opensearch:${OPENSEARCH_VERSION:-2.11.1}
+    hostname: database-os
+    environment:
+      - discovery.type=single-node
+      - plugins.security.disabled=true
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - ./opensearch/config/opensearch.yml:/usr/share/opensearch/config/opensearch.yml
+      - ./opensearch/snapshots:/usr/share/opensearch/snapshots
+    ports:
+      - "9202:9202"
+
   proxy:
+    profiles: ["pg", "os"]
     depends_on:
-      - stac
+      - oidc
     build:
       context: .
     environment:
-      UPSTREAM_URL: ${UPSTREAM_URL:-http://stac:8001}
+      UPSTREAM_URL: ${UPSTREAM_URL:-http://stac-pg:8001}
       OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL:-http://localhost:8888/.well-known/openid-configuration}
       OIDC_DISCOVERY_INTERNAL_URL: ${OIDC_DISCOVERY_INTERNAL_URL:-http://oidc:8888/.well-known/openid-configuration}
     env_file:
@@ -58,6 +106,7 @@ services:
       - ./src:/app/src
 
   oidc:
+    profiles: ["pg", "os"]
     image: ghcr.io/alukach/mock-oidc-server:latest
     environment:
       ISSUER: http://localhost:8888
@@ -67,5 +116,5 @@ services:
       - "8888:8888"
 
 networks:
-  default:
+  eoapi-network:
     name: eoapi-network

@@ -1,5 +1,4 @@
 services:
-# PostGRES STAC API
   stac-pg:
     profiles: ["pg"]
     image: ghcr.io/stac-utils/stac-fastapi-pgstac:5.0.2
@@ -27,11 +26,10 @@ services:
       - database-pg
     command: bash -c "./scripts/wait-for-it.sh database-pg:5432 && python -m stac_fastapi.pgstac.app"
 
-# Opensearch STAC API
   stac-os:
     profiles: ["os"]
     container_name: stac-fastapi-os
-    image: ghcr.io/stac-utils/stac-fastapi-os:latest
+    image: ghcr.io/stac-utils/stac-fastapi-os:v6.1.0
     hostname: stac-os
     environment:
       STAC_FASTAPI_TITLEL: stac-fastapi-opensearch

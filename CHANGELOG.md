@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.1](https://github.com/developmentseed/stac-auth-proxy/compare/v0.7.0...v0.7.1) (2025-07-24)
+
+
+### Bug Fixes
+
+* process links w/o the prefix ([#70](https://github.com/developmentseed/stac-auth-proxy/issues/70)) ([8a09873](https://github.com/developmentseed/stac-auth-proxy/commit/8a098737ad578f37c10e65e3ef99b0de2c03a358))
+
+
+### Documentation
+
+* update middleware descriptions ([d3d3769](https://github.com/developmentseed/stac-auth-proxy/commit/d3d3769593052900cf56c64b26962605cf3e48e5))
+
 ## [0.7.0](https://github.com/developmentseed/stac-auth-proxy/compare/v0.6.1...v0.7.0) (2025-07-19)
 
 

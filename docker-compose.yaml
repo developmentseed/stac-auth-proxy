@@ -34,27 +34,27 @@ services:
     image: ghcr.io/stac-utils/stac-fastapi-os:latest
     hostname: stac-os
     environment:
-      - STAC_FASTAPI_TITLE=stac-fastapi-opensearch
-      - STAC_FASTAPI_DESCRIPTION=A STAC FastAPI with an Opensearch backend
-      - STAC_FASTAPI_VERSION=6.0.0
-      - STAC_FASTAPI_LANDING_PAGE_ID=stac-fastapi-opensearch
-      - APP_HOST=0.0.0.0
-      - APP_PORT=8001
-      - RELOAD=true
-      - ENVIRONMENT=local
-      - WEB_CONCURRENCY=10
-      - ES_HOST=database-os
-      - ES_PORT=9202
-      - ES_USE_SSL=false
-      - ES_VERIFY_CERTS=false
-      - BACKEND=opensearch
-      - STAC_FASTAPI_RATE_LIMIT=200/minute
+      STAC_FASTAPI_TITLEL: stac-fastapi-opensearch
+      STAC_FASTAPI_DESCRIPTION: A STAC FastAPI with an Opensearch backend
+      STAC_FASTAPI_VERSION: 6.0.0
+      STAC_FASTAPI_LANDING_PAGE_ID: stac-fastapi-opensearch
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8001
+      RELOAD: true
+      ENVIRONMENT: local
+      WEB_CONCURRENCY: 10
+      ES_HOST: database-os
+      ES_PORT: 9200
+      ES_USE_SSL: false
+      ES_VERIFY_CERTS: false
+      BACKEND: opensearch
+      STAC_FASTAPI_RATE_LIMIT: 200/minute
     ports:
       - "8001:8001"
     depends_on:
       - database-os
     command:
-      bash -c "./scripts/wait-for-it-es.sh database-os:9202 && python -m stac_fastapi.opensearch.app"
+      bash -c "./scripts/wait-for-it-es.sh database-os:9200 && python -m stac_fastapi.opensearch.app"
 
   database-pg:
     profiles: ["pg"]
@@ -79,14 +79,15 @@ services:
     image: opensearchproject/opensearch:${OPENSEARCH_VERSION:-2.11.1}
     hostname: database-os
     environment:
-      - discovery.type=single-node
-      - plugins.security.disabled=true
-      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
-    volumes:
-      - ./opensearch/config/opensearch.yml:/usr/share/opensearch/config/opensearch.yml
-      - ./opensearch/snapshots:/usr/share/opensearch/snapshots
+      cluster.name: stac-cluster
+      node.name: os01
+      http.port: 9200
+      http.cors.allow-headers: X-Requested-With,Content-Type,Content-Length,Accept,Authorization
+      discovery.type: single-node
+      plugins.security.disabled: true
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
     ports:
-      - "9202:9202"
+      - "9200:9200"
 
   proxy:
     profiles: ["pg", "os"]

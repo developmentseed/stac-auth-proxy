@@ -89,7 +89,7 @@ class JsonResponseMiddleware(ABC):
                     logger.error("Body: %s", body)
                     logger.error("Response scope: %s", scope)
                     response = JSONResponse(
-                        {"error": "Received invalid JSON from upstream serverso"},
+                        {"error": "Received invalid JSON from upstream server"},
                         status_code=502,
                     )
                     await response(scope, receive, send)

@@ -1,12 +1,16 @@
 """Utilities for middleware response handling."""
 
 import json
+import logging
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
+from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+logger = logging.getLogger(__name__)
 
 
 class JsonResponseMiddleware(ABC):
@@ -78,7 +82,18 @@ class JsonResponseMiddleware(ABC):
 
             # Transform the JSON body
             if body:
-                data = json.loads(body)
+                try:
+                    data = json.loads(body)
+                except json.JSONDecodeError as e:
+                    logger.error("Error parsing JSON: %s", e)
+                    logger.error("Body: %s", body)
+                    logger.error("Response scope: %s", scope)
+                    response = JSONResponse(
+                        {"error": "Received invalid JSON from upstream serverso"},
+                        status_code=502,
+                    )
+                    await response(scope, receive, send)
+                    return
                 transformed = self.transform_json(data, request=request)
                 body = json.dumps(transformed).encode()
 

@@ -186,3 +186,19 @@ def test_transform_json_nested_links(middleware, request_scope):
         transformed["collections"][0]["links"][1]["href"]
         == "http://proxy.example.com/proxy/collections/test-collection/items"
     )
+
+
+def test_transform_without_prefix(request_scope):
+    """Sometimes the upstream url will have a path, but the links won't."""
+    middleware = ProcessLinksMiddleware(
+        app=None, upstream_url="http://upstream.example.com/prod/", root_path=""
+    )
+    request = Request(request_scope)
+
+    data = {
+        "links": [
+            {"rel": "data", "href": "http://proxy.example.com/collections"},
+        ]
+    }
+    transformed = middleware.transform_json(data, request)
+    assert transformed["links"][0]["href"] == "http://proxy.example.com/collections"

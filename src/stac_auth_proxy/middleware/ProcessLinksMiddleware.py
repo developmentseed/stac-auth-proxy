@@ -53,9 +53,12 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
                     continue
 
                 # Remove the upstream_url path from the link if it exists
-                if urlparse(self.upstream_url).path != "/":
+                parsed_upstream_url = urlparse(self.upstream_url)
+                if parsed_upstream_url.path != "/" and parsed_link.path.startswith(
+                    parsed_upstream_url.path
+                ):
                     parsed_link = parsed_link._replace(
-                        path=parsed_link.path[len(urlparse(self.upstream_url).path) :]
+                        path=parsed_link.path[len(parsed_upstream_url.path) :]
                     )
 
                 # Add the root_path to the link if it exists

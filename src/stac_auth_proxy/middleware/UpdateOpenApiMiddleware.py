@@ -62,6 +62,9 @@ class OpenApiMiddleware(JsonResponseMiddleware):
         # Add security to private endpoints
         for path, method_config in data["paths"].items():
             for method, config in method_config.items():
+                # if method == "options":
+                #     # OPTIONS requests are not authenticated, https://fetch.spec.whatwg.org/#cors-protocol-and-credentials
+                #     continue
                 match = find_match(
                     path,
                     method,

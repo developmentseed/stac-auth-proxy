@@ -144,20 +144,25 @@ def test_oidc_in_openapi_spec_public_endpoints(
     for path, method_config in openapi["paths"].items():
         for method, config in method_config.items():
             security = config.get("security")
+
             if method == "options":
-                assert not security, "OPTIONS requests should not be authenticated"
-            elif security:
+                assert (
+                    not security
+                ), "OPTIONS requests should not require authentication"
+                continue
+
+            if security:
                 assert (
                     path not in expected_required_auth
                 ), f"Path {path} should not require authentication"
-            else:
-                assert (
-                    path in expected_required_auth
-                ), f"Path {path} should require authentication"
-                assert any(
-                    method.casefold() == m.casefold()
-                    for m in expected_required_auth[path]
-                )
+                continue
+
+            assert (
+                path in expected_required_auth
+            ), f"Path {path} should require authentication"
+            assert any(
+                method.casefold() == m.casefold() for m in expected_required_auth[path]
+            )
 
 
 def test_auth_scheme_name_override(source_api: FastAPI, source_api_server: str):

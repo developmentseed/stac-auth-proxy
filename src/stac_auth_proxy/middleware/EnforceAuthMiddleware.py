@@ -85,6 +85,8 @@ class EnforceAuthMiddleware:
             return await self.app(scope, receive, send)
 
         request = Request(scope)
+
+        # Skip authentication for OPTIONS requests, https://fetch.spec.whatwg.org/#cors-protocol-and-credentials
         if request.method == "OPTIONS":
             return await self.app(scope, receive, send)
 

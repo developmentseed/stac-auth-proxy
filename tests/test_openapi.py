@@ -129,7 +129,7 @@ def test_oidc_in_openapi_spec_public_endpoints(
     source_api: FastAPI, source_api_server: str
 ):
     """When OpenAPI spec endpoint is set & endpoints are marked public, those endpoints are not marked private in the spec."""
-    public = {r"^/queryables$": ["GET"], r"^/api": ["GET"]}
+    public = {r"^/queryables$": ["GET"], r"^/api$": ["GET"]}
     app = app_factory(
         upstream_url=source_api_server,
         openapi_spec_endpoint=source_api.openapi_url,
@@ -148,7 +148,7 @@ def test_oidc_in_openapi_spec_public_endpoints(
             if method == "options":
                 assert (
                     not security
-                ), "OPTIONS requests should not require authentication"
+                ), f"OPTIONS {path} requests should not require authentication"
                 continue
 
             if security:

@@ -87,35 +87,50 @@ def source_api():
 
     # Default responses for each endpoint
     default_responses = {
-        "/": {"GET": {"id": "Response from GET@"}},
-        "/conformance": {"GET": {"conformsTo": ["http://example.com/conformance"]}},
-        "/queryables": {"GET": {"queryables": {}}},
+        "/": {
+            "GET": {"id": "Response from GET@"},
+            "OPTIONS": {"id": "Response from OPTIONS@"},
+        },
+        "/conformance": {
+            "GET": {"conformsTo": ["http://example.com/conformance"]},
+            "OPTIONS": {"id": "Response from OPTIONS@"},
+        },
+        "/queryables": {
+            "GET": {"queryables": {}},
+            "OPTIONS": {"id": "Response from OPTIONS@"},
+        },
         "/search": {
             "GET": {"type": "FeatureCollection", "features": []},
             "POST": {"type": "FeatureCollection", "features": []},
+            "OPTIONS": {"id": "Response from OPTIONS@"},
         },
         "/collections": {
             "GET": {"collections": []},
             "POST": {"id": "Response from POST@"},
+            "OPTIONS": {"id": "Response from OPTIONS@"},
         },
         "/collections/{collection_id}": {
             "GET": {"id": "Response from GET@"},
             "PUT": {"id": "Response from PUT@"},
             "PATCH": {"id": "Response from PATCH@"},
             "DELETE": {"id": "Response from DELETE@"},
+            "OPTIONS": {"id": "Response from OPTIONS@"},
         },
         "/collections/{collection_id}/items": {
             "GET": {"type": "FeatureCollection", "features": []},
             "POST": {"id": "Response from POST@"},
+            "OPTIONS": {"id": "Response from OPTIONS@"},
         },
         "/collections/{collection_id}/items/{item_id}": {
             "GET": {"id": "Response from GET@"},
             "PUT": {"id": "Response from PUT@"},
             "PATCH": {"id": "Response from PATCH@"},
             "DELETE": {"id": "Response from DELETE@"},
+            "OPTIONS": {"id": "Response from OPTIONS@"},
         },
         "/collections/{collection_id}/bulk_items": {
             "POST": {"id": "Response from POST@"},
+            "OPTIONS": {"id": "Response from OPTIONS@"},
         },
     }
 

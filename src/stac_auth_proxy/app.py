@@ -104,7 +104,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             upstream=str(settings.upstream_url),
             override_host=settings.override_host,
         ).proxy_request,
-        methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     )
 
     #

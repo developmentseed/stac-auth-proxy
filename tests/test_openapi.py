@@ -129,7 +129,7 @@ def test_oidc_in_openapi_spec_public_endpoints(
     source_api: FastAPI, source_api_server: str
 ):
     """When OpenAPI spec endpoint is set & endpoints are marked public, those endpoints are not marked private in the spec."""
-    public = {r"^/queryables$": ["GET"], r"^/api": ["GET"]}
+    public = {r"^/queryables$": ["GET"], r"^/api$": ["GET"]}
     app = app_factory(
         upstream_url=source_api_server,
         openapi_spec_endpoint=source_api.openapi_url,
@@ -140,17 +140,29 @@ def test_oidc_in_openapi_spec_public_endpoints(
 
     openapi = client.get(source_api.openapi_url).raise_for_status().json()
 
-    expected_auth = {"/queryables": ["GET"]}
+    expected_required_auth = {"/queryables": ["GET"]}
     for path, method_config in openapi["paths"].items():
         for method, config in method_config.items():
             security = config.get("security")
+
+            if method == "options":
+                assert (
+                    not security
+                ), f"OPTIONS {path} requests should not require authentication"
+                continue
+
             if security:
-                assert path not in expected_auth
-            else:
-                assert path in expected_auth
-                assert any(
-                    method.casefold() == m.casefold() for m in expected_auth[path]
-                )
+                assert (
+                    path not in expected_required_auth
+                ), f"Path {path} should not require authentication"
+                continue
+
+            assert (
+                path in expected_required_auth
+            ), f"Path {path} should require authentication"
+            assert any(
+                method.casefold() == m.casefold() for m in expected_required_auth[path]
+            )
 
 
 def test_auth_scheme_name_override(source_api: FastAPI, source_api_server: str):

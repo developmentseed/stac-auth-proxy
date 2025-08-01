@@ -20,6 +20,7 @@ services:
       DB_MIN_CONN_SIZE: 1
       DB_MAX_CONN_SIZE: 1
       USE_API_HYDRATE: ${USE_API_HYDRATE:-false}
+    hostname: stac
     ports:
       - "8001:8001"
     depends_on:
@@ -30,7 +31,6 @@ services:
     profiles: ["os"]
     container_name: stac-fastapi-os
     image: ghcr.io/stac-utils/stac-fastapi-os:v6.1.0
-    hostname: stac-os
     environment:
       STAC_FASTAPI_TITLEL: stac-fastapi-opensearch
       STAC_FASTAPI_DESCRIPTION: A STAC FastAPI with an Opensearch backend
@@ -47,6 +47,7 @@ services:
       ES_VERIFY_CERTS: false
       BACKEND: opensearch
       STAC_FASTAPI_RATE_LIMIT: 200/minute
+    hostname: stac
     ports:
       - "8001:8001"
     depends_on:
@@ -94,7 +95,7 @@ services:
     build:
       context: .
     environment:
-      UPSTREAM_URL: ${UPSTREAM_URL:-http://stac-pg:8001}
+      UPSTREAM_URL: ${UPSTREAM_URL:-http://stac:8001}
       OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL:-http://localhost:8888/.well-known/openid-configuration}
       OIDC_DISCOVERY_INTERNAL_URL: ${OIDC_DISCOVERY_INTERNAL_URL:-http://oidc:8888/.well-known/openid-configuration}
     env_file:

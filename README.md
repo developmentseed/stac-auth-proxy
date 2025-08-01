@@ -52,12 +52,12 @@ Run all of the services required to run the application locally including the th
 
 Spin up the application stack with the pgSTAC backend using [stac-fastapi-pgstac](https://github.com/stac-utils/stac-fastapi-pgstac):
 ```sh
-UPSTREAM_URL=http://stac-pg:8001 docker compose --profile pg up
+docker compose --profile pg up
 ```
 
 and with the OpenSearch backend using [stac-fastapi-elasticsearch-opensearch](https://github.com/stac-utils/stac-fastapi-elasticsearch-opensearch): 
 ```sh
-UPSTREAM_URL=http://stac-os:8001 docker compose --profile os up
+docker compose --profile os up
 ```
 
 

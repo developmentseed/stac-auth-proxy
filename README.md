@@ -8,6 +8,7 @@
 STAC Auth Proxy is a proxy API that mediates between the client and your internally accessible STAC API to provide flexible authentication, authorization, and content-filtering mechanisms.
 
 > [!IMPORTANT]
+>
 > **We would :heart: to hear from you!**
 > Please [join the discussion](https://github.com/developmentseed/eoAPI/discussions/209) and let us know how you're using eoAPI! This helps us improve the project for you and others.
 > If you prefer to remain anonymous, you can email us at eoapi@developmentseed.org, and we'll be happy to post a summary on your behalf.
@@ -25,7 +26,9 @@ STAC Auth Proxy is a proxy API that mediates between the client and your interna
 
 ### Running
 
-The simplest way to run the project is by invoking the application via Docker:
+#### Docker
+
+The simplest way to run the project is via Docker:
 
 ```sh
 docker run \
@@ -36,30 +39,41 @@ docker run \
   ghcr.io/developmentseed/stac-auth-proxy:latest
 ```
 
-Alternatively, the module can be invoked directly or the application's factory can be passed to Uvicorn:
+#### Python
+
+The installed Python module can be invoked directly:
 
 ```sh
 python -m stac_auth_proxy
 ```
 
+#### Uvicorn
+
+The application's factory can be passed to Uvicorn:
+
 ```sh
 uvicorn --factory stac_auth_proxy:create_app
 ```
 
-### Docker compose
+#### Docker Compose
 
-Run all of the services required to run the application locally including the the database, STAC API, and Mock OICD provider using Docker compose. 
+The codebase ships with a `docker-compose.yaml` file, allowing the proxy to be run locally alongside various supporting services: the database, the STAC API, and a Mock OIDC provider.
 
-Spin up the application stack with the pgSTAC backend using [stac-fastapi-pgstac](https://github.com/stac-utils/stac-fastapi-pgstac):
+##### pgSTAC Backend
+
+Run the application stack with a pgSTAC backend using [stac-fastapi-pgstac](https://github.com/stac-utils/stac-fastapi-pgstac):
+
 ```sh
-UPSTREAM_URL=http://stac-pg:8001 docker compose --profile pg up
+docker compose up
 ```
 
-and with the OpenSearch backend using [stac-fastapi-elasticsearch-opensearch](https://github.com/stac-utils/stac-fastapi-elasticsearch-opensearch): 
-```sh
-UPSTREAM_URL=http://stac-os:8001 docker compose --profile os up
-```
+##### OpenSearch Backend
 
+Run the application stack with an OpenSearch backend using [stac-fastapi-elasticsearch-opensearch](https://github.com/stac-utils/stac-fastapi-elasticsearch-opensearch):
+
+```sh
+docker compose --profile os up
+```
 
 ### Installation
 
@@ -83,6 +97,7 @@ pip install -e .
 The application is configurable via environment variables.
 
 #### Core
+
 - **`UPSTREAM_URL`**, STAC API URL
   - **Type:** HTTP(S) URL
   - **Required:** Yes
@@ -114,6 +129,7 @@ The application is configurable via environment variables.
   - **Note:** This is independent of the upstream API's path. The proxy will handle removing this prefix from incoming requests and adding it to outgoing links.
 
 #### Authentication
+
 - **`OIDC_DISCOVERY_URL`**, OpenID Connect discovery document URL
   - **Type:** HTTP(S) URL
   - **Required:** Yes
@@ -155,6 +171,7 @@ The application is configurable via environment variables.
   - **Example:** `false`, `1`, `True`
 
 #### OpenAPI / Swagger UI
+
 - **`OPENAPI_SPEC_ENDPOINT`**, path of OpenAPI specification, used for augmenting spec response with auth configuration
   - **Type:** string or null
   - **Required:** No, defaults to `null` (disabled)
@@ -177,6 +194,7 @@ The application is configurable via environment variables.
   - **Example:** `{"clientId": "stac-auth-proxy", "usePkceWithAuthorizationCodeGrant": true}`
 
 #### Filtering
+
 - **`ITEMS_FILTER_CLS`**, CQL2 expression generator for item-level filtering
   - **Type:** JSON object with class configuration
   - **Required:** No, defaults to `null` (disabled)

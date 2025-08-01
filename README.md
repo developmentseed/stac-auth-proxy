@@ -48,20 +48,17 @@ uvicorn --factory stac_auth_proxy:create_app
 
 ### Installation
 
+The application can be installed as a standard Python module:
+
+```sh
+pip install stac-auth-proxy
+```
+
 For local development, we use [`uv`](https://docs.astral.sh/uv/) to manage project dependencies and environment.
 
 ```sh
 uv sync
 ```
-
-Otherwise, the application can be installed as a standard Python module:
-
-```sh
-pip install -e .
-```
-
-> [!NOTE]
-> This project will be available on PyPi in the near future[^30].
 
 ### Configuration
 

@@ -6,17 +6,12 @@ services:
       APP_HOST: 0.0.0.0
       APP_PORT: 8001
       RELOAD: true
-      ENVIRONMENT: local
       POSTGRES_USER: username
       POSTGRES_PASS: password
       POSTGRES_DBNAME: postgis
       POSTGRES_HOST_READER: database-pg
       POSTGRES_HOST_WRITER: database-pg
       POSTGRES_PORT: 5432
-      WEB_CONCURRENCY: 10
-      VSI_CACHE: TRUE
-      GDAL_HTTP_MERGE_CONSECUTIVE_RANGES: YES
-      GDAL_DISABLE_READDIR_ON_OPEN: EMPTY_DIR
       DB_MIN_CONN_SIZE: 1
       DB_MAX_CONN_SIZE: 1
       USE_API_HYDRATE: ${USE_API_HYDRATE:-false}
@@ -32,7 +27,7 @@ services:
     container_name: stac-fastapi-os
     image: ghcr.io/stac-utils/stac-fastapi-os:v6.1.0
     environment:
-      STAC_FASTAPI_TITLEL: stac-fastapi-opensearch
+      STAC_FASTAPI_TITLE: stac-fastapi-opensearch
       STAC_FASTAPI_DESCRIPTION: A STAC FastAPI with an Opensearch backend
       STAC_FASTAPI_VERSION: 6.0.0
       STAC_FASTAPI_LANDING_PAGE_ID: stac-fastapi-opensearch
@@ -40,7 +35,6 @@ services:
       APP_PORT: 8001
       RELOAD: true
       ENVIRONMENT: local
-      WEB_CONCURRENCY: 10
       ES_HOST: database-os
       ES_PORT: 9200
       ES_USE_SSL: false
@@ -52,7 +46,7 @@ services:
       - "8001:8001"
     depends_on:
       - database-os
-    command:
+    command: |
       bash -c "./scripts/wait-for-it-es.sh database-os:9200 && python -m stac_fastapi.opensearch.app"
 
   database-pg:
@@ -89,7 +83,7 @@ services:
       - "9200:9200"
 
   proxy:
-        depends_on:
+    depends_on:
       - oidc
     build:
       context: .
@@ -106,7 +100,7 @@ services:
       - ./src:/app/src
 
   oidc:
-        image: ghcr.io/alukach/mock-oidc-server:latest
+    image: ghcr.io/alukach/mock-oidc-server:latest
     environment:
       ISSUER: http://localhost:8888
       SCOPES: item:create,item:update,item:delete,collection:create,collection:update,collection:delete

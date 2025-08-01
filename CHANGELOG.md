@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.2](https://github.com/developmentseed/stac-auth-proxy/compare/v0.7.1...v0.7.2) (2025-08-01)
+
+
+### Documentation
+
+* describe installation via pip ([bfb9ca8](https://github.com/developmentseed/stac-auth-proxy/commit/bfb9ca8e20fa86d248e9c5c375eb18359206761b))
+* **docker:** Add OpenSearch backend stack to docker-compose ([#71](https://github.com/developmentseed/stac-auth-proxy/issues/71)) ([d779321](https://github.com/developmentseed/stac-auth-proxy/commit/d779321e992b0ae724520a38d3353cd7bbb07fcf))
+
 ## [0.7.1](https://github.com/developmentseed/stac-auth-proxy/compare/v0.7.0...v0.7.1) (2025-07-31)
 
 

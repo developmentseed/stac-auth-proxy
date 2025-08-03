@@ -111,6 +111,7 @@ The application is configurable via environment variables.
     **Required:** No, defaults to the following:
     ```json
     {
+      "^/$": ["GET"],
       "^/api.html$": ["GET"],
       "^/api$": ["GET"],
       "^/docs/oauth2-redirect": ["GET"],

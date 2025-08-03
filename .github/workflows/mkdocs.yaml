@@ -1,4 +1,4 @@
-name: Publish docs via GitHub Pages
+name: MkDocs
 
 on:
   push:
@@ -10,12 +10,32 @@ on:
       - "deployment/**"
       - "docs/**"
       - "src/**"
-      - ".github/workflows/deploy-mkdocs.yaml"
+      - ".github/workflows/mkdocs.yaml"
 
 jobs:
+  test:
+    name: Test docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Test docs
+        run: uv run --extra docs mkdocs build --strict
+
   build:
     name: Deploy docs
     runs-on: ubuntu-latest
+    if: github.ref_name == 'main'
     steps:
       - name: Checkout main
         uses: actions/checkout@v4

@@ -16,7 +16,7 @@ EndpointMethodsWithScope: TypeAlias = dict[
 _PREFIX_PATTERN = r"^/.*$"
 
 
-class ClassInput(BaseModel):
+class _ClassInput(BaseModel):
     """Input model for dynamically loading a class or function."""
 
     cls: str
@@ -76,9 +76,9 @@ class Settings(BaseSettings):
     }
 
     # Filters
-    items_filter: Optional[ClassInput] = None
+    items_filter: Optional[_ClassInput] = None
     items_filter_path: str = r"^(/collections/([^/]+)/items(/[^/]+)?$|/search$)"
-    collections_filter: Optional[ClassInput] = None
+    collections_filter: Optional[_ClassInput] = None
     collections_filter_path: str = r"^/collections(/[^/]+)?$"
 
     model_config = SettingsConfigDict(
@@ -87,7 +87,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="before")
     @classmethod
-    def default_oidc_discovery_internal_url(cls, data: Any) -> Any:
+    def _default_oidc_discovery_internal_url(cls, data: Any) -> Any:
         """Set the internal OIDC discovery URL to the public URL if not set."""
         if not data.get("oidc_discovery_internal_url"):
             data["oidc_discovery_internal_url"] = data.get("oidc_discovery_url")

@@ -10,7 +10,7 @@ on:
       - "deployment/**"
       - "docs/**"
       - "src/**"
-      - ".github/workflows/deploy_mkdocs.yml"
+      - ".github/workflows/deploy-mkdocs.yaml"
 
 jobs:
   build:

@@ -92,6 +92,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             ).route,
             include_in_schema=False,
         )
+
     if settings.healthz_prefix:
         app.include_router(
             HealthzHandler(upstream_url=str(settings.upstream_url)).router,

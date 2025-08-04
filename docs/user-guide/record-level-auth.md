@@ -21,7 +21,7 @@ For endpoints where the filter extension doesn't apply (such as single-item endp
 
 ### Collection-Level Filtering
 
-The [`COLLECTIONS_FILTER_CLS`](../configuration.md#collections_filter_cls) applies filters to the following operations:
+The [`COLLECTIONS_FILTER_CLS`](configuration.md#collections_filter_cls) applies filters to the following operations:
 
 **Currently Supported:**
 
@@ -36,7 +36,7 @@ The [`COLLECTIONS_FILTER_CLS`](../configuration.md#collections_filter_cls) appli
 
 ### Item-Level Filtering
 
-The [`ITEMS_FILTER_CLS`](../configuration.md#items_filter_cls) applies filters to the following operations:
+The [`ITEMS_FILTER_CLS`](configuration.md#items_filter_cls) applies filters to the following operations:
 
 **Currently Supported:**
 

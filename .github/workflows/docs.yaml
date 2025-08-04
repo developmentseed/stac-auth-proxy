@@ -1,20 +1,13 @@
-name: MkDocs
+name: Documentation
 
 on:
   push:
     branches:
       - main
-    paths:
-      # Only rebuild website when docs have changed
-      - "README.md"
-      - "deployment/**"
-      - "docs/**"
-      - "src/**"
-      - ".github/workflows/mkdocs.yaml"
 
 jobs:
   test:
-    name: Test docs
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main
@@ -32,8 +25,8 @@ jobs:
       - name: Test docs
         run: uv run --extra docs mkdocs build --strict
 
-  build:
-    name: Deploy docs
+  deploy:
+    name: Deploy
     runs-on: ubuntu-latest
     if: github.ref_name == 'main'
     steps:

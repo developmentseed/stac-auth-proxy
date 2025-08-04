@@ -29,9 +29,9 @@ extra:
       link: https://github.com/developmentseed
 nav:
   - Overview: index.md
-  - Installation and Running: installation-and-running.md
-  - Configuration: configuration.md
   - User Guide:
+      - Installation and Running: user-guide/installation-and-running.md
+      - Configuration: user-guide/configuration.md
       - Route-Level Auth: user-guide/route-level-auth.md
       - Record-Level Auth: user-guide/record-level-auth.md
       - Tips: user-guide/tips.md

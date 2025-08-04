@@ -5,6 +5,10 @@
 
 ---
 
+[![PyPI - Version][pypi-version-badge]][pypi-link]
+[![GHCR - Version][ghcr-version-badge]][ghcr-link]
+[![GHCR - Size][ghcr-size-badge]][ghcr-link]
+
 STAC Auth Proxy is a proxy API that mediates between the client and your internally accessible STAC API to provide flexible authentication, authorization, and content-filtering mechanisms.
 
 > [!IMPORTANT]
@@ -21,3 +25,9 @@ STAC Auth Proxy is a proxy API that mediates between the client and your interna
 - **🧩 Authentication Extension:** Add the [Authentication Extension](https://github.com/stac-extensions/authentication) to API responses to expose auth-related metadata
 - **📘 OpenAPI Augmentation:** Enhance the [OpenAPI spec](https://swagger.io/specification/) with security details to keep auto-generated docs and UIs (e.g., [Swagger UI](https://swagger.io/tools/swagger-ui/)) accurate
 - **🗜️ Response Compression:** Optimize response sizes using [`starlette-cramjam`](https://github.com/developmentseed/starlette-cramjam/)
+
+[pypi-version-badge]: https://badge.fury.io/py/stac-auth-proxy.svg
+[pypi-link]: https://pypi.org/project/stac-auth-proxy/
+[ghcr-version-badge]: https://ghcr-badge.egpl.dev/developmentseed/stac-auth-proxy/latest_tag?color=%2344cc11&ignore=latest&label=image+version&trim=
+[ghcr-size-badge]: https://ghcr-badge.egpl.dev/developmentseed/stac-auth-proxy/size?color=%2344cc11&tag=latest&label=image+size&trim=
+[ghcr-link]: https://github.com/developmentseed/stac-auth-proxy/pkgs/container/stac-auth-proxy

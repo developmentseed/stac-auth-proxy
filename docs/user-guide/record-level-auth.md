@@ -1,6 +1,6 @@
 # Record-Level Authorization
 
-Record-level authorization provides fine-grained access control to individual STAC records (items and collections) based on user and request context. This ensures users only see data they're authorized to access, regardless of their authentication status.
+Record-level authorization (also known as _row-level_ authorization) provides fine-grained access control to individual STAC records (items and collections) based on user and request context. This ensures users only see data they're authorized to access, regardless of their authentication status.
 
 > [!IMPORTANT]
 >

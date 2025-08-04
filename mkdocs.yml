@@ -33,10 +33,10 @@ nav:
   - Configuration: configuration.md
   - User Guide:
       - Route-Level Auth: user-guide/route-level-auth.md
+      - Record-Level Auth: user-guide/record-level-auth.md
       - Tips: user-guide/tips.md
   - Architecture:
       - Middleware Stack: architecture/middleware-stack.md
-      - Data Filtering: architecture/data-filtering.md
 
 plugins:
   - search

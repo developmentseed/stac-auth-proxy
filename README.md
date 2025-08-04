@@ -26,6 +26,12 @@ STAC Auth Proxy is a proxy API that mediates between the client and your interna
 - **📘 OpenAPI Augmentation:** Enhance the [OpenAPI spec](https://swagger.io/specification/) with security details to keep auto-generated docs and UIs (e.g., [Swagger UI](https://swagger.io/tools/swagger-ui/)) accurate
 - **🗜️ Response Compression:** Optimize response sizes using [`starlette-cramjam`](https://github.com/developmentseed/starlette-cramjam/)
 
+## Documentation
+
+[Full documentation is available on the website](https://developmentseed.org/stac-auth-proxy).
+
+Head to [Getting Started](https://developmentseed.org/stac-auth-proxy/getting-started/) to dig in.
+
 [pypi-version-badge]: https://badge.fury.io/py/stac-auth-proxy.svg
 [pypi-link]: https://pypi.org/project/stac-auth-proxy/
 [ghcr-version-badge]: https://ghcr-badge.egpl.dev/developmentseed/stac-auth-proxy/latest_tag?color=%2344cc11&ignore=latest&label=image+version&trim=

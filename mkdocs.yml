@@ -30,7 +30,7 @@ extra:
 nav:
   - Overview: index.md
   - User Guide:
-      - Installation and Running: user-guide/installation-and-running.md
+      - Getting Started: user-guide/getting-started.md
       - Configuration: user-guide/configuration.md
       - Route-Level Auth: user-guide/route-level-auth.md
       - Record-Level Auth: user-guide/record-level-auth.md

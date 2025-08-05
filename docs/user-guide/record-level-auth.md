@@ -17,6 +17,10 @@ Record-level authorization is implemented through **data filtering**—a strateg
 
 For endpoints where the filter extension doesn't apply (such as single-item endpoints), the filters are used to validate response data from the upstream STAC API before the user receives the data, ensuring complete authorization coverage.
 
+> [!NOTE]
+>
+> For more information on _how_ data filtering works, some more information can be found in the [architecture section](../architecture/filtering-data.md) of the docs.
+
 ## Supported Operations
 
 ### Collection-Level Filtering

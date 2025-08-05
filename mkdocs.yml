@@ -37,6 +37,7 @@ nav:
       - Tips: user-guide/tips.md
   - Architecture:
       - Middleware Stack: architecture/middleware-stack.md
+      - Filtering Data: architecture/filtering-data.md
   - Changelog: changelog.md
 
 plugins:

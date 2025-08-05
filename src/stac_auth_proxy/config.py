@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     upstream_url: HttpUrl
     oidc_discovery_url: HttpUrl
     oidc_discovery_internal_url: HttpUrl
+    audience: str
 
     root_path: str = ""
     override_host: bool = True

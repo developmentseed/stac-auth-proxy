@@ -173,6 +173,9 @@ class EnforceAuthMiddleware:
                         detail="Not enough permissions",
                         headers={"WWW-Authenticate": f'Bearer scope="{scope}"'},
                     )
+
+        # if required_permissions:
+        #     for perm in required_permissions:
         return payload
 
     @property

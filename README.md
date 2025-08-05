@@ -30,7 +30,7 @@ STAC Auth Proxy is a proxy API that mediates between the client and your interna
 
 [Full documentation is available on the website](https://developmentseed.org/stac-auth-proxy).
 
-Head to [Getting Started](https://developmentseed.org/stac-auth-proxy/getting-started/) to dig in.
+Head to [Getting Started](https://developmentseed.org/stac-auth-proxy/user-guide/getting-started/) to dig in.
 
 [pypi-version-badge]: https://badge.fury.io/py/stac-auth-proxy.svg
 [pypi-link]: https://pypi.org/project/stac-auth-proxy/

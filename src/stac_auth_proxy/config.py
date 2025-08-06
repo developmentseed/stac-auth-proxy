@@ -3,7 +3,7 @@
 import importlib
 from typing import Any, Literal, Optional, Sequence, TypeAlias, Union
 
-from pydantic import BaseModel, Field, model_validator, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic.networks import HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -17,7 +17,7 @@ _PREFIX_PATTERN = r"^/.*$"
 
 
 def str2list(x: Optional[str] = None) -> Optional[Sequence[str]]:
-    """Convert string to list base on , delimiter."""
+    """Convert string to list based on , delimiter."""
     if x:
         return x.replace(" ", "").split(",")
 
@@ -104,5 +104,6 @@ class Settings(BaseSettings):
 
     @field_validator("allowed_jwt_audiences", mode="before")
     @classmethod
-    def parse_audience(cls, v):
+    def parse_audience(cls, v) -> Optional[Sequence[str]]:
+        """Parse a comma separated string list of audiences into a list."""
         return str2list(v)

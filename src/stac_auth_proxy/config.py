@@ -3,7 +3,7 @@
 import importlib
 from typing import Any, Literal, Optional, Sequence, TypeAlias, Union
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, field_validator
 from pydantic.networks import HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -14,6 +14,14 @@ EndpointMethodsWithScope: TypeAlias = dict[
 ]
 
 _PREFIX_PATTERN = r"^/.*$"
+
+
+def str2list(x: Optional[str] = None) -> Optional[Sequence[str]]:
+    """Convert string to list base on , delimiter."""
+    if x:
+        return x.replace(" ", "").split(",")
+
+    return None
 
 
 class _ClassInput(BaseModel):
@@ -39,7 +47,7 @@ class Settings(BaseSettings):
     upstream_url: HttpUrl
     oidc_discovery_url: HttpUrl
     oidc_discovery_internal_url: HttpUrl
-    audience: Optional[str] = None
+    allowed_jwt_audiences: Optional[Sequence[str]] = None
 
     root_path: str = ""
     override_host: bool = True
@@ -93,3 +101,8 @@ class Settings(BaseSettings):
         if not data.get("oidc_discovery_internal_url"):
             data["oidc_discovery_internal_url"] = data.get("oidc_discovery_url")
         return data
+
+    @field_validator("allowed_jwt_audiences", mode="before")
+    @classmethod
+    def parse_audience(cls, v):
+        return str2list(v)

@@ -398,7 +398,17 @@ def test_jwt_audience_validation(
     assert response.status_code == expected_status
 
 
-def test_audience_validation_with_scopes(source_api_server, token_builder):
+@pytest.mark.parametrize(
+    "aud_value,scope,expected_status,description",
+    [
+        (["stac-api"], "openid", 401, "Valid audience but missing scope"),
+        (["stac-api"], "collection:create", 200, "Valid audience and valid scope"),
+        (["wrong-api"], "collection:create", 401, "Invalid audience but valid scope"),
+    ],
+)
+def test_audience_validation_with_scopes(
+    source_api_server, token_builder, aud_value, scope, expected_status, description
+):
     """Test that audience validation works alongside scope validation."""
     app_factory = AppFactory(
         oidc_discovery_url="https://example-stac-api.com/.well-known/openid-configuration",
@@ -410,29 +420,12 @@ def test_audience_validation_with_scopes(source_api_server, token_builder):
 
     client = TestClient(test_app)
 
-    # Valid audience but missing scope
-    token = token_builder({"aud": ["stac-api"], "scope": "openid"})
+    token = token_builder({"aud": aud_value, "scope": scope})
     response = client.post(
         "/collections",
         headers={"Authorization": f"Bearer {token}"},
     )
-    assert response.status_code == 401  # Missing required scope
-
-    # Valid audience and valid scope
-    token = token_builder({"aud": ["stac-api"], "scope": "collection:create"})
-    response = client.post(
-        "/collections",
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert response.status_code == 200
-
-    # Invalid audience but valid scope
-    token = token_builder({"aud": ["wrong-api"], "scope": "collection:create"})
-    response = client.post(
-        "/collections",
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert response.status_code == 401  # Wrong audience
+    assert response.status_code == expected_status
 
 
 @pytest.mark.parametrize(

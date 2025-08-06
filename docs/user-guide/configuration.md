@@ -79,6 +79,14 @@ The application is configurable via environment variables.
     **Required:** No, defaults to the value of `OIDC_DISCOVERY_URL`  
     **Example:** `http://auth/.well-known/openid-configuration`
 
+### `AUDIENCE` 
+
+: The unique identifier of your API resource server
+
+    The AUDIENCE environment variable specifies the intended recipient of OAuth2 access tokens. This value represents the unique identifier of your API resource server and must match the `aud` (audience) claim present in incoming OAuth2 access tokens. If undefined the API will not impose a check on the `aud` claim
+
+OAuth2 Audience Claim
+
 ### `DEFAULT_PUBLIC`
 
 : Default access policy for endpoints

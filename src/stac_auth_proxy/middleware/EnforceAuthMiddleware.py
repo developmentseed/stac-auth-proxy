@@ -173,6 +173,7 @@ class EnforceAuthMiddleware:
                         detail="Not enough permissions",
                         headers={"WWW-Authenticate": f'Bearer scope="{scope}"'},
                     )
+
         return payload
 
     @property

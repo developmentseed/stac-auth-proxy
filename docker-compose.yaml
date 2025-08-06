@@ -91,7 +91,6 @@ services:
       UPSTREAM_URL: ${UPSTREAM_URL:-http://stac:8001}
       OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL:-http://localhost:8888/.well-known/openid-configuration}
       OIDC_DISCOVERY_INTERNAL_URL: ${OIDC_DISCOVERY_INTERNAL_URL:-http://oidc:8888/.well-known/openid-configuration}
-      AUDIENCE: ${AUDIENCE}
 
 
     env_file:

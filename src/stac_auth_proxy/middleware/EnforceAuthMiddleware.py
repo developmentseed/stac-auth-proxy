@@ -153,6 +153,13 @@ class EnforceAuthMiddleware:
                 # NOTE: Audience validation MUST match audience claim if set in token (https://pyjwt.readthedocs.io/en/stable/changelog.html?highlight=audience#id40)
                 audience=self.allowed_jwt_audiences,
             )
+        except jwt.InvalidAudienceError as e:
+            logger.error("InvalidAudienceError: %r", e)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate Audience",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         except (
             jwt.exceptions.InvalidTokenError,
             jwt.exceptions.DecodeError,
@@ -173,7 +180,6 @@ class EnforceAuthMiddleware:
                         detail="Not enough permissions",
                         headers={"WWW-Authenticate": f'Bearer scope="{scope}"'},
                     )
-
         return payload
 
     @property

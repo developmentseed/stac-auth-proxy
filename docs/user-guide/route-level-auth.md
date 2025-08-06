@@ -1,13 +1,13 @@
-# Route-Level Auth
+# Route-Level Authorization
 
-Route-level authentication and authorization can provide a base layer of security for the simplest use cases. This typically looks like:
+Route-level authorization can provide a base layer of security for the simplest use cases. This typically looks like:
 
 - the entire catalog being private, available only to authenticated users
 - most of the catalog being public, available to anonymous or authenticated users. However, a subset of endpoints (typically the [transactions extension](https://github.com/stac-api-extensions/transaction) endpoints) are only available to all or a subset of authenticated users
 
 ## Configuration Variables
 
-Route-level authentication is controlled by three key environment variables:
+Route-level authorization is controlled by three key environment variables:
 
 - **[`DEFAULT_PUBLIC`](../../configuration/#default_public)**: Sets the default access policy for all endpoints
 - **[`PUBLIC_ENDPOINTS`](../../configuration/#public_endpoints)**: Marks endpoints as not requiring authentication (used only when `DEFAULT_PUBLIC=false`). By default, we keep the catalog root, OpenAPI spec, Swagger UI, Swagger UI auth redirect, and the proxy health endpoint as public. Note that these are all endpoints that don't serve actual STAC data; they only acknowledge the presence of a STAC catalog. This is defined by a mapping of regex path expressions to arrays of HTTP methods.

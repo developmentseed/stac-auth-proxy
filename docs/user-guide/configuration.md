@@ -79,13 +79,13 @@ The application is configurable via environment variables.
     **Required:** No, defaults to the value of `OIDC_DISCOVERY_URL`  
     **Example:** `http://auth/.well-known/openid-configuration`
 
-### `ALLOWED_JWT AUDIENCES` 
+### `ALLOWED_JWT_AUDIENCES` 
 
 : The unique identifier of your API resource server
 
-    The ALLOWED_JWT AUDIENCES environment variable specifies the intended recipient of the JWT. This value represents the unique identifier of your API resource server and must match the `aud` (audience) claim present in incoming JWT. Multiple audiences can be defined by using a comma separated string. If undefined, the API will not impose a check on the `aud` claim
+    The ALLOWED_JWT_AUDIENCES environment variable specifies the intended recipient of the JWT. This value represents the unique identifier of your API resource server and must match the `aud` (audience) claim present in the incoming JWT. Multiple audiences can be defined by using a comma separated string. If undefined, the API will not impose a check on the `aud` claim
 
-    `e.g. "https://auth.example.audience.1.net, https://auth.example.audience.2.net"`
+    `e.g. "https://auth.example.audience.1.net,https://auth.example.audience.2.net"`
 
 ### `DEFAULT_PUBLIC`
 

@@ -81,11 +81,13 @@ The application is configurable via environment variables.
 
 ### `ALLOWED_JWT_AUDIENCES` 
 
-: The unique identifier of your API resource server
+: Unique identifiers of your API resource server(s)
 
-    The ALLOWED_JWT_AUDIENCES environment variable specifies the intended recipient of the JWT. This value represents the unique identifier of your API resource server and must match the `aud` (audience) claim present in the incoming JWT. Multiple audiences can be defined by using a comma separated string. If undefined, the API will not impose a check on the `aud` claim
+    **Type:** string  
+    **Required:** No  
+    **Example:** `https://auth.example.audience.1.net,https://auth.example.audience.2.net`
+    **Note** A comma-separated list of the intended recipient of the JWT. At least one audience value must match the `aud` (audience) claim present in the incoming JWT. If undefined, the API will not impose a check on the `aud` claim
 
-    `e.g. "https://auth.example.audience.1.net,https://auth.example.audience.2.net"`
 
 ### `DEFAULT_PUBLIC`
 

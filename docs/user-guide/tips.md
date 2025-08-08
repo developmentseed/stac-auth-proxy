@@ -2,10 +2,12 @@
 
 ## CORS
 
-The STAC Auth Proxy does not make any alterations to the [CORS Response headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS#the_http_response_headers) returned by the upstream STAC API. As such, all CORS configuration should be set within the upstream API.  However, the upstream API's CORS settings may need to be altered, given that the STAC Auth Proxy brings authentication into the situation. Namely, CORS must support credentials.  This typically looks like:
+The STAC Auth Proxy does not modify the [CORS response headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS#the_http_response_headers) from the upstream STAC API. All CORS configuration must be handled by the upstream API.  
 
-* [`Access-Control-Allow-Credentials`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Access-Control-Allow-Credentials) is set to `true`
-* [`Access-Control-Allow-Origin`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Access-Control-Allow-Origin) is _not_ be set to `*`[^CORSNotSupportingCredentials]
+Because the STAC Auth Proxy introduces authentication, the upstream API’s CORS settings may need adjustment to support credentials. In most cases, this means:
+
+* [`Access-Control-Allow-Credentials`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Access-Control-Allow-Credentials) must be `true`  
+* [`Access-Control-Allow-Origin`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Access-Control-Allow-Origin) must _not_ be `*`[^CORSNotSupportingCredentials]  
 
 [^CORSNotSupportingCredentials]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS/Errors/CORSNotSupportingCredentials
 

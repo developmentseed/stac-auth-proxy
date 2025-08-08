@@ -1,5 +1,14 @@
 # Tips
 
+## CORS
+
+The STAC Auth Proxy does not make any alterations to the [CORS Response headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS#the_http_response_headers) returned by the upstream STAC API. As such, all CORS configuration should be set within the upstream API.  However, the upstream API's CORS settings may need to be altered, given that the STAC Auth Proxy brings authentication into the situation. Namely, CORS must support credentials.  This typically looks like:
+
+* [`Access-Control-Allow-Credentials`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Access-Control-Allow-Credentials) is set to `true`
+* [`Access-Control-Allow-Origin`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Access-Control-Allow-Origin) is _not_ be set to `*`[^CORSNotSupportingCredentials]
+
+[^CORSNotSupportingCredentials]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS/Errors/CORSNotSupportingCredentials
+
 ## Root Paths
 
 The proxy can be optionally served from a non-root path (e.g., `/api/v1`). Additionally, the proxy can optionally proxy requests to an upstream API served from a non-root path (e.g., `/stac`). To handle this, the proxy will:

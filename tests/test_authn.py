@@ -342,3 +342,125 @@ def test_options_requests_with_cors_headers(source_api_server):
     assert (
         response.status_code == 200
     ), "OPTIONS request with CORS headers should succeed"
+
+
+@pytest.mark.parametrize(
+    "token_audiences,allowed_audiences,expected_status",
+    [
+        # Single audience scenarios
+        (["stac-api"], "stac-api", 200),
+        (["stac-api"], "different-api", 401),
+        (["stac-api"], "stac-api,other-api", 200),
+        # Multiple audiences in token
+        (["stac-api", "other-api"], "stac-api", 200),
+        (["stac-api", "other-api"], "other-api", 200),
+        (["stac-api", "other-api"], "different-api", 401),
+        (["stac-api", "other-api"], "stac-api, other-api,third-api", 200),
+        # No audience in token
+        (None, "stac-api", 401),
+        ("", "stac-api", 401),
+        # Empty allowed audiences will regect tokens with an `aud` claim
+        ("any-api", "", 401),
+        ("any-api", None, 401),
+        # Backward compatibility - no audience configured
+        (None, None, 200),
+        ("", None, 200),
+    ],
+)
+def test_jwt_audience_validation(
+    source_api_server,
+    token_builder,
+    token_audiences,
+    allowed_audiences,
+    expected_status,
+):
+    """Test JWT audience validation with various configurations."""
+    # Build app with audience configuration
+    app_factory = AppFactory(
+        oidc_discovery_url="https://example-stac-api.com/.well-known/openid-configuration",
+        default_public=False,
+        allowed_jwt_audiences=allowed_audiences,
+    )
+    test_app = app_factory(upstream_url=source_api_server)
+
+    # Build token with audience claim
+    token_payload = {}
+    if token_audiences is not None:
+        token_payload["aud"] = token_audiences
+
+    valid_auth_token = token_builder(token_payload)
+
+    client = TestClient(test_app)
+    response = client.get(
+        "/collections",
+        headers={"Authorization": f"Bearer {valid_auth_token}"},
+    )
+    assert response.status_code == expected_status
+
+
+@pytest.mark.parametrize(
+    "aud_value,scope,expected_status,description",
+    [
+        (["stac-api"], "openid", 401, "Valid audience but missing scope"),
+        (["stac-api"], "collection:create", 200, "Valid audience and valid scope"),
+        (["wrong-api"], "collection:create", 401, "Invalid audience but valid scope"),
+    ],
+)
+def test_audience_validation_with_scopes(
+    source_api_server, token_builder, aud_value, scope, expected_status, description
+):
+    """Test that audience validation works alongside scope validation."""
+    app_factory = AppFactory(
+        oidc_discovery_url="https://example-stac-api.com/.well-known/openid-configuration",
+        default_public=False,
+        allowed_jwt_audiences="stac-api",
+        private_endpoints={r"^/collections$": [("POST", "collection:create")]},
+    )
+    test_app = app_factory(upstream_url=source_api_server)
+
+    client = TestClient(test_app)
+
+    token = token_builder({"aud": aud_value, "scope": scope})
+    response = client.post(
+        "/collections",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == expected_status
+
+
+@pytest.mark.parametrize(
+    "allowed_audiences_config,test_audience,expected_status",
+    [
+        # Comma-separated string
+        ("stac-api,other-api", "stac-api", 200),
+        ("stac-api,other-api", "other-api", 200),
+        ("stac-api,other-api", "unknown-api", 401),
+        # Comma-separated with spaces
+        ("stac-api, other-api", "stac-api", 200),
+        ("stac-api, other-api", "other-api", 200),
+        ("stac-api, other-api", "unknown-api", 401),
+    ],
+)
+def test_allowed_audiences_configuration_formats(
+    source_api_server,
+    token_builder,
+    allowed_audiences_config,
+    test_audience,
+    expected_status,
+):
+    """Test different configuration formats for ALLOWED_JWT_AUDIENCES."""
+    app_factory = AppFactory(
+        oidc_discovery_url="https://example-stac-api.com/.well-known/openid-configuration",
+        default_public=False,
+        allowed_jwt_audiences=allowed_audiences_config,
+    )
+    test_app = app_factory(upstream_url=source_api_server)
+
+    client = TestClient(test_app)
+
+    token = token_builder({"aud": [test_audience]})
+    response = client.get(
+        "/collections",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == expected_status

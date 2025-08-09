@@ -31,7 +31,12 @@ Rather than performing the login flow, the Swagger UI can be configured to accep
 
 ```sh
 OPENAPI_AUTH_SCHEME_NAME=jwtAuth
-OPENAPI_AUTH_SCHEME_OVERRIDE={"type": "http", "scheme": "bearer", "bearerFormat": "JWT", "description": "Paste your raw JWT here. This API uses Bearer token authorization."}
+OPENAPI_AUTH_SCHEME_OVERRIDE='{
+  "type": "http", 
+  "scheme": "bearer", 
+  "bearerFormat": "JWT", 
+  "description": "Paste your raw JWT here. This API uses Bearer token authorization."
+}'
 ```
 
 ## Runtime Customization

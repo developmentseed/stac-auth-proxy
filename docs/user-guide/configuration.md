@@ -144,9 +144,9 @@ The application is configurable via environment variables.
 
 : Path of OpenAPI specification, used for augmenting spec response with auth configuration
 
-    **Type:** string or null  
-    **Required:** No, defaults to `null` (disabled)  
-    **Example:** `/api`
+    **Type:** string or null
+    **Required:** No, defaults to `/api`
+    **Example:** `''` (disabled)
 
 ### `OPENAPI_AUTH_SCHEME_NAME`
 
@@ -176,9 +176,9 @@ The application is configurable via environment variables.
 
 : Path of Swagger UI, used to indicate that a custom Swagger UI should be hosted, typically useful when providing accompanying `SWAGGER_UI_INIT_OAUTH` arguments
 
-    **Type:** string or null  
-    **Required:** No, defaults to `null` (disabled)  
-    **Example:** `/api.html`
+    **Type:** string or null
+    **Required:** No, defaults to `/api.html`
+    **Example:** `''` (disabled)
 
 ### `SWAGGER_UI_INIT_OAUTH`
 

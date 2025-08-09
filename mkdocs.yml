@@ -29,12 +29,17 @@ extra:
       link: https://github.com/developmentseed
 nav:
   - Overview: index.md
-  - Installation and Running: installation-and-running.md
-  - Configuration: configuration.md
+  - User Guide:
+      - Getting Started: user-guide/getting-started.md
+      - Configuration: user-guide/configuration.md
+      - Route-Level Auth: user-guide/route-level-auth.md
+      - Record-Level Auth: user-guide/record-level-auth.md
+      - Deployment: user-guide/deployment.md
+      - Tips: user-guide/tips.md
   - Architecture:
       - Middleware Stack: architecture/middleware-stack.md
-      - Data Filtering: architecture/data-filtering.md
-  - Tips: tips.md
+      - Filtering Data: architecture/filtering-data.md
+  - Changelog: changelog.md
 
 plugins:
   - search

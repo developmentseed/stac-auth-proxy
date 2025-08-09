@@ -966,6 +966,18 @@ wheels = [
 ]
 
 [[package]]
+name = "mangum"
+version = "0.19.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/97/e0/6ee9bfa27226252a449cba12fc57d3f1c3ce661813377ab33e29245389a4/mangum-0.19.0.tar.gz", hash = "sha256:e388e7c491b7b67970f8234e46fd4a7b21ff87785848f418de08148f71cf0bd6", size = 85792, upload-time = "2024-09-26T20:44:49.773Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/77/ec/dd1cae5f6b1b4a08c01de587b45e889036b2f8c06408621e0cb273909965/mangum-0.19.0-py3-none-any.whl", hash = "sha256:e500b35f495d5e68ac98bc97334896d6101523f2ee2c57ba6a61893b65266e59", size = 17083, upload-time = "2024-09-26T20:44:48.357Z" },
+]
+
+[[package]]
 name = "markdown"
 version = "3.8.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1734,6 +1746,9 @@ docs = [
     { name = "mkdocs-material", extra = ["imaging"] },
     { name = "mkdocstrings", extra = ["python"] },
 ]
+lambda = [
+    { name = "mangum" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -1757,6 +1772,7 @@ requires-dist = [
     { name = "griffe-inherited-docstrings", marker = "extra == 'docs'", specifier = ">=1.1.1" },
     { name = "httpx", extras = ["http2"], specifier = ">=0.28.0" },
     { name = "jinja2", specifier = ">=3.1.4" },
+    { name = "mangum", marker = "extra == 'lambda'", specifier = ">=0.19.0" },
     { name = "markdown-gfm-admonition", marker = "extra == 'docs'", specifier = ">=0.1.1" },
     { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.6.1" },
     { name = "mkdocs-api-autonav", marker = "extra == 'docs'", specifier = ">=0.3.0" },
@@ -1767,7 +1783,7 @@ requires-dist = [
     { name = "starlette-cramjam", specifier = ">=0.4.0" },
     { name = "uvicorn", specifier = ">=0.32.1" },
 ]
-provides-extras = ["docs"]
+provides-extras = ["docs", "lambda"]
 
 [package.metadata.requires-dev]
 dev = [

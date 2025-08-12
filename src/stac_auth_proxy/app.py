@@ -31,50 +31,9 @@ from .utils.lifespan import check_conformance, check_server_health
 logger = logging.getLogger(__name__)
 
 
-def create_app(settings: Optional[Settings] = None) -> FastAPI:
-    """FastAPI Application Factory."""
+def configure_app(app: FastAPI, settings: Optional[Settings] = None) -> FastAPI:
+    """Apply routes and middleware to an existing FastAPI app."""
     settings = settings or Settings()
-
-    #
-    # Application
-    #
-
-    @asynccontextmanager
-    async def lifespan(app: FastAPI):
-        assert settings
-
-        # Wait for upstream servers to become available
-        if settings.wait_for_upstream:
-            logger.info("Running upstream server health checks...")
-            urls = [settings.upstream_url, settings.oidc_discovery_internal_url]
-            for url in urls:
-                await check_server_health(url=url)
-            logger.info(
-                "Upstream servers are healthy:\n%s",
-                "\n".join([f" - {url}" for url in urls]),
-            )
-
-        # Log all middleware connected to the app
-        logger.info(
-            "Connected middleware:\n%s",
-            "\n".join([f" - {m.cls.__name__}" for m in app.user_middleware]),
-        )
-
-        if settings.check_conformance:
-            await check_conformance(
-                app.user_middleware,
-                str(settings.upstream_url),
-            )
-
-        yield
-
-    app = FastAPI(
-        openapi_url=None,  # Disable OpenAPI schema endpoint, we want to serve upstream's schema
-        lifespan=lifespan,
-        root_path=settings.root_path,
-    )
-    if app.root_path:
-        logger.debug("Mounted app at %s", app.root_path)
 
     #
     # Handlers (place catch-all proxy handler last)
@@ -104,15 +63,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             HealthzHandler(upstream_url=str(settings.upstream_url)).router,
             prefix=settings.healthz_prefix,
         )
-
-    app.add_api_route(
-        "/{path:path}",
-        ReverseProxyHandler(
-            upstream=str(settings.upstream_url),
-            override_host=settings.override_host,
-        ).proxy_request,
-        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    )
 
     #
     # Middleware (order is important, last added = first to run)
@@ -184,5 +134,64 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         app.add_middleware(
             CompressionMiddleware,
         )
+
+    return app
+
+
+def create_app(settings: Optional[Settings] = None) -> FastAPI:
+    """FastAPI Application Factory."""
+    settings = settings or Settings()
+
+    #
+    # Application
+    #
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        assert settings
+
+        # Wait for upstream servers to become available
+        if settings.wait_for_upstream:
+            logger.info("Running upstream server health checks...")
+            urls = [settings.upstream_url, settings.oidc_discovery_internal_url]
+            for url in urls:
+                await check_server_health(url=url)
+            logger.info(
+                "Upstream servers are healthy:\n%s",
+                "\n".join([f" - {url}" for url in urls]),
+            )
+
+        # Log all middleware connected to the app
+        logger.info(
+            "Connected middleware:\n%s",
+            "\n".join([f" - {m.cls.__name__}" for m in app.user_middleware]),
+        )
+
+        if settings.check_conformance:
+            await check_conformance(
+                app.user_middleware,
+                str(settings.upstream_url),
+            )
+
+        yield
+
+    app = FastAPI(
+        openapi_url=None,  # Disable OpenAPI schema endpoint, we want to serve upstream's schema
+        lifespan=lifespan,
+        root_path=settings.root_path,
+    )
+    if app.root_path:
+        logger.debug("Mounted app at %s", app.root_path)
+
+    configure_app(app, settings)
+
+    app.add_api_route(
+        "/{path:path}",
+        ReverseProxyHandler(
+            upstream=str(settings.upstream_url),
+            override_host=settings.override_host,
+        ).proxy_request,
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    )
 
     return app

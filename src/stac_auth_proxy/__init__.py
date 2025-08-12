@@ -6,7 +6,7 @@ It includes FastAPI routes for handling authentication, authorization, and inter
 with some internal STAC API.
 """
 
-from .app import create_app
+from .app import configure_app, create_app
 from .config import Settings
 
-__all__ = ["create_app", "Settings"]
+__all__ = ["create_app", "configure_app", "Settings"]

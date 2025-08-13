@@ -3,8 +3,7 @@
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 
-from stac_auth_proxy import Settings
-from stac_auth_proxy.app import configure_app
+from stac_auth_proxy import Settings, configure_app
 
 
 def test_configure_app_excludes_proxy_route():

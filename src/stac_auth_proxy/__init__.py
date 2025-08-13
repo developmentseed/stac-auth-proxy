@@ -8,5 +8,12 @@ with some internal STAC API.
 
 from .app import configure_app, create_app
 from .config import Settings
+from .lifespan import check_conformance, check_server_health
 
-__all__ = ["create_app", "configure_app", "Settings"]
+__all__ = [
+    "create_app",
+    "configure_app",
+    "check_conformance",
+    "check_server_health",
+    "Settings",
+]

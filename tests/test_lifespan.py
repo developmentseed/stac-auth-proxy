@@ -7,7 +7,7 @@ import pytest
 from starlette.middleware import Middleware
 from starlette.types import ASGIApp
 
-from stac_auth_proxy.utils.lifespan import check_conformance, check_server_health
+from stac_auth_proxy import check_conformance, check_server_health
 from stac_auth_proxy.utils.middleware import required_conformance
 
 

@@ -9,8 +9,11 @@ from fastapi.testclient import TestClient
 from starlette.middleware import Middleware
 from starlette.types import ASGIApp
 
-from stac_auth_proxy import Settings, lifespan as lifespan_handler
-from stac_auth_proxy.utils.lifespan import check_conformance, check_server_health
+from stac_auth_proxy import (
+    check_conformance,
+    check_server_health,
+    lifespan as lifespan_handler,
+)
 from stac_auth_proxy.utils.middleware import required_conformance
 
 
@@ -87,10 +90,8 @@ async def test_check_conformance_no_required(source_api_server):
 
 def test_lifespan_reusable():
     """Ensure the public lifespan handler runs health and conformance checks."""
-    settings = Settings(
-        upstream_url="https://example.com",
-        oidc_discovery_url="https://example.com/.well-known/openid-configuration",
-    )
+    upstream_url = "https://example.com"
+    oidc_discovery_url = "https://example.com/.well-known/openid-configuration"
     with patch(
         "stac_auth_proxy.lifespan.check_server_health",
         new=AsyncMock(),
@@ -98,10 +99,16 @@ def test_lifespan_reusable():
         "stac_auth_proxy.lifespan.check_conformance",
         new=AsyncMock(),
     ) as mock_conf:
-        app = FastAPI(lifespan=lifespan_handler(settings))
+        app = FastAPI(
+            lifespan=lifespan_handler(
+                upstream_url=upstream_url,
+                oidc_discovery_url=oidc_discovery_url,
+            )
+        )
         with TestClient(app):
             pass
         assert mock_health.await_count == 2
+        expected_upstream = upstream_url.rstrip("/") + "/"
         mock_conf.assert_awaited_once_with(
-            app.user_middleware, str(settings.upstream_url)
+            app.user_middleware, expected_upstream
         )

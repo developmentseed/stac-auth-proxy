@@ -2,6 +2,8 @@
 
 from contextlib import asynccontextmanager
 import logging
+from typing import Any
+
 from fastapi import FastAPI
 
 from .config import Settings
@@ -10,14 +12,17 @@ from .utils.lifespan import check_conformance, check_server_health
 logger = logging.getLogger(__name__)
 
 
-def lifespan(settings: Settings | None = None):
+def lifespan(settings: Settings | None = None, **settings_kwargs: Any):
     """Create a lifespan handler that runs startup checks.
 
     Parameters
     ----------
-    settings : Settings | None
-        Configuration for health and conformance checks. If omitted, default
-        settings are loaded.
+    settings : Settings | None, optional
+        Pre-built settings instance. If omitted, a new one is constructed from
+        ``settings_kwargs``.
+    **settings_kwargs : Any
+        Keyword arguments used to configure the health and conformance checks if
+        ``settings`` is not provided.
 
     Returns
     -------
@@ -25,7 +30,8 @@ def lifespan(settings: Settings | None = None):
         A callable suitable for the ``lifespan`` parameter of ``FastAPI``.
     """
 
-    settings = settings or Settings()
+    if settings is None:
+        settings = Settings(**settings_kwargs)
 
     @asynccontextmanager
     async def _lifespan(app: FastAPI):
@@ -54,5 +60,5 @@ def lifespan(settings: Settings | None = None):
     return _lifespan
 
 
-__all__ = ["lifespan"]
+__all__ = ["lifespan", "check_conformance", "check_server_health"]
 

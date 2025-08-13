@@ -6,7 +6,6 @@ authentication, authorization, and proxying of requests to some internal STAC AP
 """
 
 import logging
-from contextlib import asynccontextmanager
 from typing import Optional
 
 from fastapi import FastAPI
@@ -26,7 +25,7 @@ from .middleware import (
     ProcessLinksMiddleware,
     RemoveRootPathMiddleware,
 )
-from .utils.lifespan import check_conformance, check_server_health
+from .lifespan import lifespan
 
 logger = logging.getLogger(__name__)
 
@@ -136,48 +135,13 @@ def configure_app(app: FastAPI, settings: Optional[Settings] = None) -> FastAPI:
         )
 
     return app
-
-
 def create_app(settings: Optional[Settings] = None) -> FastAPI:
     """FastAPI Application Factory."""
     settings = settings or Settings()
 
-    #
-    # Application
-    #
-
-    @asynccontextmanager
-    async def lifespan(app: FastAPI):
-        assert settings
-
-        # Wait for upstream servers to become available
-        if settings.wait_for_upstream:
-            logger.info("Running upstream server health checks...")
-            urls = [settings.upstream_url, settings.oidc_discovery_internal_url]
-            for url in urls:
-                await check_server_health(url=url)
-            logger.info(
-                "Upstream servers are healthy:\n%s",
-                "\n".join([f" - {url}" for url in urls]),
-            )
-
-        # Log all middleware connected to the app
-        logger.info(
-            "Connected middleware:\n%s",
-            "\n".join([f" - {m.cls.__name__}" for m in app.user_middleware]),
-        )
-
-        if settings.check_conformance:
-            await check_conformance(
-                app.user_middleware,
-                str(settings.upstream_url),
-            )
-
-        yield
-
     app = FastAPI(
         openapi_url=None,  # Disable OpenAPI schema endpoint, we want to serve upstream's schema
-        lifespan=lifespan,
+        lifespan=lifespan(settings),
         root_path=settings.root_path,
     )
     if app.root_path:

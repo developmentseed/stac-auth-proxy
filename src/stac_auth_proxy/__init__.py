@@ -8,8 +8,10 @@ with some internal STAC API.
 
 from .app import configure_app, create_app
 from .config import Settings
+from .lifespan import build_lifespan
 
 __all__ = [
+    "build_lifespan",
     "create_app",
     "configure_app",
     "Settings",

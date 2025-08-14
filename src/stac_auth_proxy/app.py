@@ -6,7 +6,7 @@ authentication, authorization, and proxying of requests to some internal STAC AP
 """
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import FastAPI
 from starlette_cramjam.middleware import CompressionMiddleware
@@ -30,9 +30,26 @@ from .middleware import (
 logger = logging.getLogger(__name__)
 
 
-def configure_app(app: FastAPI, settings: Optional[Settings] = None) -> FastAPI:
-    """Apply routes and middleware to a FastAPI app."""
-    settings = settings or Settings()
+def configure_app(
+    app: FastAPI,
+    settings: Optional[Settings] = None,
+    **settings_kwargs: Any,
+) -> FastAPI:
+    """
+    Apply routes and middleware to a FastAPI app.
+
+    Parameters
+    ----------
+    app : FastAPI
+        The FastAPI app to configure.
+    settings : Settings | None, optional
+        Pre-built settings instance. If omitted, a new one is constructed from
+        ``settings_kwargs``.
+    **settings_kwargs : Any
+        Keyword arguments used to configure the health and conformance checks if
+        ``settings`` is not provided.
+    """
+    settings = settings or Settings(**settings_kwargs)
 
     #
     # Route Handlers

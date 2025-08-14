@@ -1,7 +1,7 @@
 """Reusable lifespan handler for FastAPI applications."""
 
-from contextlib import asynccontextmanager
 import logging
+from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI
@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 def lifespan(settings: Settings | None = None, **settings_kwargs: Any):
-    """Create a lifespan handler that runs startup checks.
+    """
+    Create a lifespan handler that runs startup checks.
 
     Parameters
     ----------
@@ -29,13 +30,13 @@ def lifespan(settings: Settings | None = None, **settings_kwargs: Any):
     Callable[[FastAPI], AsyncContextManager[Any]]
         A callable suitable for the ``lifespan`` parameter of ``FastAPI``.
     """
-
     if settings is None:
         settings = Settings(**settings_kwargs)
-    assert settings is not None
 
     @asynccontextmanager
     async def _lifespan(app: FastAPI):
+        assert settings is not None  # Required for type checking
+
         # Wait for upstream servers to become available
         if settings.wait_for_upstream:
             logger.info("Running upstream server health checks...")
@@ -62,4 +63,3 @@ def lifespan(settings: Settings | None = None, **settings_kwargs: Any):
 
 
 __all__ = ["lifespan", "check_conformance", "check_server_health"]
-

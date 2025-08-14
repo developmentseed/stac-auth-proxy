@@ -13,6 +13,7 @@ from starlette_cramjam.middleware import CompressionMiddleware
 
 from .config import Settings
 from .handlers import HealthzHandler, ReverseProxyHandler, SwaggerUI
+from .lifespan import lifespan
 from .middleware import (
     AddProcessTimeHeaderMiddleware,
     AuthenticationExtensionMiddleware,
@@ -25,7 +26,6 @@ from .middleware import (
     ProcessLinksMiddleware,
     RemoveRootPathMiddleware,
 )
-from .lifespan import lifespan
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +135,8 @@ def configure_app(app: FastAPI, settings: Optional[Settings] = None) -> FastAPI:
         )
 
     return app
+
+
 def create_app(settings: Optional[Settings] = None) -> FastAPI:
     """FastAPI Application Factory."""
     settings = settings or Settings()

@@ -9,11 +9,8 @@ from fastapi.testclient import TestClient
 from starlette.middleware import Middleware
 from starlette.types import ASGIApp
 
-from stac_auth_proxy import (
-    check_conformance,
-    check_server_health,
-    lifespan as lifespan_handler,
-)
+from stac_auth_proxy import check_conformance, check_server_health
+from stac_auth_proxy import lifespan as lifespan_handler
 from stac_auth_proxy.utils.middleware import required_conformance
 
 
@@ -109,6 +106,4 @@ def test_lifespan_reusable():
             pass
         assert mock_health.await_count == 2
         expected_upstream = upstream_url.rstrip("/") + "/"
-        mock_conf.assert_awaited_once_with(
-            app.user_middleware, expected_upstream
-        )
+        mock_conf.assert_awaited_once_with(app.user_middleware, expected_upstream)

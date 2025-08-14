@@ -13,7 +13,7 @@ from starlette_cramjam.middleware import CompressionMiddleware
 
 from .config import Settings
 from .handlers import HealthzHandler, ReverseProxyHandler, SwaggerUI
-from .lifespan import lifespan
+from .lifespan import build_lifespan
 from .middleware import (
     AddProcessTimeHeaderMiddleware,
     AuthenticationExtensionMiddleware,
@@ -31,11 +31,11 @@ logger = logging.getLogger(__name__)
 
 
 def configure_app(app: FastAPI, settings: Optional[Settings] = None) -> FastAPI:
-    """Apply routes and middleware to an existing FastAPI app."""
+    """Apply routes and middleware to a FastAPI app."""
     settings = settings or Settings()
 
     #
-    # Handlers (place catch-all proxy handler last)
+    # Route Handlers
     #
 
     # If we have customized Swagger UI Init settings (e.g. a provided client_id)
@@ -143,7 +143,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     app = FastAPI(
         openapi_url=None,  # Disable OpenAPI schema endpoint, we want to serve upstream's schema
-        lifespan=lifespan(settings=settings),
+        lifespan=build_lifespan(settings=settings),
         root_path=settings.root_path,
     )
     if app.root_path:

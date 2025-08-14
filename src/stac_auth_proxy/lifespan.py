@@ -32,6 +32,7 @@ def lifespan(settings: Settings | None = None, **settings_kwargs: Any):
 
     if settings is None:
         settings = Settings(**settings_kwargs)
+    assert settings is not None
 
     @asynccontextmanager
     async def _lifespan(app: FastAPI):

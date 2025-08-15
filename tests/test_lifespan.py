@@ -9,8 +9,8 @@ from fastapi.testclient import TestClient
 from starlette.middleware import Middleware
 from starlette.types import ASGIApp
 
-from stac_auth_proxy import check_conformance, check_server_health
-from stac_auth_proxy import lifespan as lifespan_handler
+from stac_auth_proxy import build_lifespan
+from stac_auth_proxy.lifespan import check_conformance, check_server_health
 from stac_auth_proxy.utils.middleware import required_conformance
 
 
@@ -97,7 +97,7 @@ def test_lifespan_reusable():
         new=AsyncMock(),
     ) as mock_conf:
         app = FastAPI(
-            lifespan=lifespan_handler(
+            lifespan=build_lifespan(
                 upstream_url=upstream_url,
                 oidc_discovery_url=oidc_discovery_url,
             )

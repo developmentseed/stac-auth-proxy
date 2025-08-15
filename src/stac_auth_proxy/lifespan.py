@@ -1,14 +1,31 @@
-"""Health check implementations for lifespan events."""
+"""Reusable lifespan handler for FastAPI applications."""
 
 import asyncio
 import logging
 import re
+from contextlib import asynccontextmanager
+from typing import Any
 
 import httpx
+from fastapi import FastAPI
 from pydantic import HttpUrl
 from starlette.middleware import Middleware
 
+from .config import Settings
+
 logger = logging.getLogger(__name__)
+__all__ = ["build_lifespan", "check_conformance", "check_server_health"]
+
+
+async def check_server_healths(*urls: str | HttpUrl) -> None:
+    """Wait for upstream APIs to become available."""
+    logger.info("Running upstream server health checks...")
+    for url in urls:
+        await check_server_health(url)
+    logger.info(
+        "Upstream servers are healthy:\n%s",
+        "\n".join([f" - {url}" for url in urls]),
+    )
 
 
 async def check_server_health(
@@ -91,3 +108,48 @@ async def check_conformance(
         "Upstream catalog conforms to the following required conformance classes: \n%s",
         "\n".join([conformance_str(c) for c in required_conformances]),
     )
+
+
+def build_lifespan(settings: Settings | None = None, **settings_kwargs: Any):
+    """
+    Create a lifespan handler that runs startup checks.
+
+    Parameters
+    ----------
+    settings : Settings | None, optional
+        Pre-built settings instance. If omitted, a new one is constructed from
+        ``settings_kwargs``.
+    **settings_kwargs : Any
+        Keyword arguments used to configure the health and conformance checks if
+        ``settings`` is not provided.
+
+    Returns
+    -------
+    Callable[[FastAPI], AsyncContextManager[Any]]
+        A callable suitable for the ``lifespan`` parameter of ``FastAPI``.
+    """
+    if settings is None:
+        settings = Settings(**settings_kwargs)
+
+    @asynccontextmanager
+    async def lifespan(app: "FastAPI"):
+        assert settings is not None  # Required for type checking
+
+        # Wait for upstream servers to become available
+        if settings.wait_for_upstream:
+            await check_server_healths(
+                settings.upstream_url, settings.oidc_discovery_internal_url
+            )
+
+        # Log all middleware connected to the app
+        logger.info(
+            "Connected middleware:\n%s",
+            "\n".join([f" - {m.cls.__name__}" for m in app.user_middleware]),
+        )
+
+        if settings.check_conformance:
+            await check_conformance(app.user_middleware, str(settings.upstream_url))
+
+        yield
+
+    return lifespan

@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.8.0](https://github.com/developmentseed/stac-auth-proxy/compare/v0.7.1...v0.8.0) (2025-08-16)
+
+
+### Features
+
+* add `configure_app` for applying middleware to existing FastAPI applications ([#85](https://github.com/developmentseed/stac-auth-proxy/issues/85)) ([3c5cf69](https://github.com/developmentseed/stac-auth-proxy/commit/3c5cf694c26520fd141faf84c23fe621413e244e))
+* add aws lambda handler ([#81](https://github.com/developmentseed/stac-auth-proxy/issues/81)) ([214de02](https://github.com/developmentseed/stac-auth-proxy/commit/214de02301b909347e847c66c7e12b88ba74fdea))
+* add configurable audiences ([#83](https://github.com/developmentseed/stac-auth-proxy/issues/83)) ([58d05ea](https://github.com/developmentseed/stac-auth-proxy/commit/58d05ea665c48cc86e4774e2e7337b7ad277ab2f))
+* **config:** expand default endpoints ([#79](https://github.com/developmentseed/stac-auth-proxy/issues/79)) ([6718991](https://github.com/developmentseed/stac-auth-proxy/commit/67189917c2b38620dc92fb7836d25b68901f59ae))
+
+
+### Documentation
+
+* add changelog ([5710853](https://github.com/developmentseed/stac-auth-proxy/commit/57108531a5259f0d5db81a449e9b2246b2f0a522))
+* add version badges to README ([d962230](https://github.com/developmentseed/stac-auth-proxy/commit/d9622300275f4488cf1cda90a60f2f4ee013aa69))
+* **architecture:** add data filtering diagrams ([48afd7e](https://github.com/developmentseed/stac-auth-proxy/commit/48afd7e353144b98e5b97bfc87cc067f34933634))
+* build out separate documentation website ([#78](https://github.com/developmentseed/stac-auth-proxy/issues/78)) ([6c9b6ba](https://github.com/developmentseed/stac-auth-proxy/commit/6c9b6ba15c63a39410a71cac13de87daa84284f3))
+* **cicd:** correct filename in deploy-mkdocs workflow ([5f00eca](https://github.com/developmentseed/stac-auth-proxy/commit/5f00eca440926652d4bb7abcf20748aac96e16bb))
+* **cicd:** fix deploy step ([5178b92](https://github.com/developmentseed/stac-auth-proxy/commit/5178b92b189a8af8aff6ed923b312a494b03b573))
+* **deployment:** Add details of deploying STAC Auth Proxy ([aaf3802](https://github.com/developmentseed/stac-auth-proxy/commit/aaf3802ed97096ffb1233875b1be59230da2a043))
+* describe installation via pip ([bfb9ca8](https://github.com/developmentseed/stac-auth-proxy/commit/bfb9ca8e20fa86d248e9c5c375eb18359206761b))
+* **docker:** Add OpenSearch backend stack to docker-compose ([#71](https://github.com/developmentseed/stac-auth-proxy/issues/71)) ([d779321](https://github.com/developmentseed/stac-auth-proxy/commit/d779321e992b0ae724520a38d3353cd7bbb07fcf))
+* fix getting started link ([8efe5e5](https://github.com/developmentseed/stac-auth-proxy/commit/8efe5e5d6c449d91b2f957bad259649008bcc308))
+* **tips:** add details about CORS configuration ([#84](https://github.com/developmentseed/stac-auth-proxy/issues/84)) ([fc1e217](https://github.com/developmentseed/stac-auth-proxy/commit/fc1e2173e778f148f4f23cabe19611eb43c2df6a))
+* **user-guide:** Add record-level auth section ([89377c6](https://github.com/developmentseed/stac-auth-proxy/commit/89377c6e23b3d21751b08eceb0dd222f8217663a))
+* **user-guide:** Add route-level auth user guide ([#80](https://github.com/developmentseed/stac-auth-proxy/issues/80)) ([a840234](https://github.com/developmentseed/stac-auth-proxy/commit/a84023431634f933db965d09632736d55b3d26e8))
+* **user-guide:** create getting-started section ([6ba081e](https://github.com/developmentseed/stac-auth-proxy/commit/6ba081ef174d529a2341058d262f324b6354819a))
+* **user-guide:** fix configuration links ([11a5d28](https://github.com/developmentseed/stac-auth-proxy/commit/11a5d28756057e868d731d72ca3174e613f1a474))
+* **user-guide:** fix tips file ref ([2d5d2ac](https://github.com/developmentseed/stac-auth-proxy/commit/2d5d2ac511fc304e8d88cae1567fb065c0316b4d))
+* **user-guide:** formatting ([8ed08bc](https://github.com/developmentseed/stac-auth-proxy/commit/8ed08bc0713c816dbb0af336f147a62756114ffc))
+* **user-guide:** Mention row-level authorization ([5fbd5df](https://github.com/developmentseed/stac-auth-proxy/commit/5fbd5dff311518684b566b6837a835ee1b753962))
+* **user-guide:** Move configuration & installation to user guide ([170f001](https://github.com/developmentseed/stac-auth-proxy/commit/170f0015a6349cfdd45b7ea13464082128f70b7b))
+* **user-guide:** Mv tips to user-guide ([d829800](https://github.com/developmentseed/stac-auth-proxy/commit/d829800fa838cb34a977e135e7576e4dc0ea03b7))
+* **user-guide:** Reword authentication to authorization ([37fa12d](https://github.com/developmentseed/stac-auth-proxy/commit/37fa12d315ba6bd0f01a41cf906510a9f149e88b))
+
 ## [0.7.1](https://github.com/developmentseed/stac-auth-proxy/compare/v0.7.0...v0.7.1) (2025-07-31)
 
 

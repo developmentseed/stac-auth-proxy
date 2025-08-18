@@ -1,5 +1,16 @@
 # Tips
 
+## CORS
+
+The STAC Auth Proxy does not modify the [CORS response headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS#the_http_response_headers) from the upstream STAC API. All CORS configuration must be handled by the upstream API.
+
+Because the STAC Auth Proxy introduces authentication, the upstream API’s CORS settings may need adjustment to support credentials. In most cases, this means:
+
+- [`Access-Control-Allow-Credentials`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Access-Control-Allow-Credentials) must be `true`
+- [`Access-Control-Allow-Origin`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Access-Control-Allow-Origin) must _not_ be `*`[^CORSNotSupportingCredentials]
+
+[^CORSNotSupportingCredentials]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS/Errors/CORSNotSupportingCredentials
+
 ## Root Paths
 
 The proxy can be optionally served from a non-root path (e.g., `/api/v1`). Additionally, the proxy can optionally proxy requests to an upstream API served from a non-root path (e.g., `/stac`). To handle this, the proxy will:
@@ -20,9 +31,41 @@ Rather than performing the login flow, the Swagger UI can be configured to accep
 
 ```sh
 OPENAPI_AUTH_SCHEME_NAME=jwtAuth
-OPENAPI_AUTH_SCHEME_OVERRIDE={"type": "http", "scheme": "bearer", "bearerFormat": "JWT", "description": "Paste your raw JWT here. This API uses Bearer token authorization."}
+OPENAPI_AUTH_SCHEME_OVERRIDE='{
+  "type": "http",
+  "scheme": "bearer",
+  "bearerFormat": "JWT",
+  "description": "Paste your raw JWT here. This API uses Bearer token authorization."
+}'
 ```
 
-## Runtime Customization
+## Non-proxy Configuration
 
-While the project is designed to work out-of-the-box as an application, it might not address every projects needs. When the need for customization arises, the codebase can instead be treated as a library of components that can be used to augment any [ASGI](https://asgi.readthedocs.io/en/latest/)-compliant webserver (e.g. [Django](https://docs.djangoproject.com/en/3.0/topics/async/), [Falcon](https://falconframework.org/), [FastAPI](https://github.com/tiangolo/fastapi), [Litestar](https://litestar.dev/), [Responder](https://responder.readthedocs.io/en/latest/), [Sanic](https://sanic.dev/), [Starlette](https://www.starlette.io/)). Review [`app.py`](https://github.com/developmentseed/stac-auth-proxy/blob/main/src/stac_auth_proxy/app.py) to get a sense of how we make use of the various components to construct a FastAPI application.
+While the project is designed to work out-of-the-box as an application, it might not address every projects needs. When the need for customization arises, the codebase can instead be treated as a library of components that can be used to augment a FastAPI server. This may look something like the following:
+
+```py
+from fastapi import FastAPI
+from stac_fastapi.api.app import StacApi
+from stac_auth_proxy import build_lifespan, configure_app, Settings as StacAuthSettings
+
+# Create Auth Settings
+auth_settings = StacAuthSettings(
+  upstream_url='https://stac-server',
+  oidc_discovery_url='https://auth-server/.well-known/openid-configuration',
+)
+
+# Setup App
+app = FastAPI(
+  ...
+  lifespan=build_lifespan(auth_settings),
+)
+
+# Apply STAC Auth Proxy middleware
+configure_app(app, auth_settings)
+
+# Setup STAC API
+api = StacApi(
+  app,
+  ...
+)
+```

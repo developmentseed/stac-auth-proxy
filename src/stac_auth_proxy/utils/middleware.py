@@ -29,6 +29,7 @@ class JsonResponseMiddleware(ABC):
         Returns
         -------
             bool: True if the response should be transformed
+
         """
         ...
 
@@ -39,10 +40,12 @@ class JsonResponseMiddleware(ABC):
 
         Args:
             data: The parsed JSON data
+            request: The HTTP request object
 
-        Returns
+        Returns:
         -------
             The transformed JSON data
+
         """
         ...
 

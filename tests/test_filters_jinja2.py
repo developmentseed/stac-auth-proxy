@@ -188,9 +188,9 @@ async def test_search_post(
         "filter-lang": "cql2-json",
     }
 
-    assert (
-        proxied_body == expected_output
-    ), "POST query should combine filter expressions."
+    assert proxied_body == expected_output, (
+        "POST query should combine filter expressions."
+    )
 
 
 @pytest.mark.parametrize(
@@ -241,9 +241,9 @@ async def test_search_get(
         ),
         "filter-lang": filter_lang,
     }
-    assert (
-        proxied_request.query_params == expected_output
-    ), "GET query should combine filter expressions."
+    assert proxied_request.query_params == expected_output, (
+        "GET query should combine filter expressions."
+    )
 
 
 @pytest.mark.parametrize(
@@ -444,9 +444,9 @@ async def test_collections_list(
         ),
         "filter-lang": filter_lang,
     }
-    assert (
-        proxied_request.query_params == expected_output
-    ), "Collections query should combine filter expressions."
+    assert proxied_request.query_params == expected_output, (
+        "Collections query should combine filter expressions."
+    )
 
 
 @pytest.mark.parametrize(

@@ -279,6 +279,6 @@ async def test_nginx_headers_behavior(scope_overrides, headers, expected_forward
     # Check that the Forwarded header contains expected values
     forwarded = result_headers["Forwarded"]
     for key, expected_value in expected_forwarded.items():
-        assert (
-            f"{key}={expected_value}" in forwarded
-        ), f"Expected {key}={expected_value} in {forwarded}"
+        assert f"{key}={expected_value}" in forwarded, (
+            f"Expected {key}={expected_value} in {forwarded}"
+        )

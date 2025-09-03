@@ -49,6 +49,7 @@ def configure_app(
     **settings_kwargs : Any
         Keyword arguments used to configure the health and conformance checks if
         ``settings`` is not provided.
+
     """
     settings = settings or Settings(**settings_kwargs)
 

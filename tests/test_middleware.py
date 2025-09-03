@@ -101,3 +101,21 @@ def test_json_response_middleware_error_handling():
     assert response.status_code == 200
     assert "text/plain" in response.headers["content-type"]
     assert response.text == "invalid json"
+
+
+def test_json_response_middleware_invalid_json_upstream():
+    """Test that invalid JSON from upstream server returns 502 error."""
+    app = FastAPI()
+    app.add_middleware(ExampleJsonResponseMiddleware)
+
+    @app.get("/test")
+    async def test_endpoint():
+        # Return invalid JSON with JSON content type to trigger the error handling
+        return Response(content="invalid json content", media_type="application/json")
+
+    client = TestClient(app)
+    response = client.get("/test")
+    assert response.status_code == 502
+    assert response.headers["content-type"] == "application/json"
+    data = response.json()
+    assert data == {"error": "Received invalid JSON from upstream server"}

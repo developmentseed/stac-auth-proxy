@@ -37,14 +37,18 @@ class ReverseProxyHandler:
         headers = MutableHeaders(request.headers)
         headers.setdefault("Via", f"1.1 {self.proxy_name}")
 
-        proxy_client = request.client.host if request.client else "unknown"
-        proxy_proto = request.url.scheme
-        proxy_host = request.url.netloc
-        proxy_path = request.base_url.path
+        proxy_client = headers.get(
+            "X-Forwarded-For", request.client.host if request.client else "unknown"
+        )
+        proxy_proto = headers.get("X-Forwarded-Proto", request.url.scheme)
+        proxy_host = headers.get("X-Forwarded-Host", request.url.netloc)
+        proxy_path = headers.get("X-Forwarded-Path", request.base_url.path)
         headers.setdefault(
             "Forwarded",
             f"for={proxy_client};host={proxy_host};proto={proxy_proto};path={proxy_path}",
         )
+
+        # NOTE: This is useful if the upstream API does not support the Forwarded header
         if self.legacy_forwarded_headers:
             headers.setdefault("X-Forwarded-For", proxy_client)
             headers.setdefault("X-Forwarded-Host", proxy_host)

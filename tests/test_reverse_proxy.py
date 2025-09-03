@@ -6,10 +6,9 @@ from fastapi import Request
 from stac_auth_proxy.handlers.reverse_proxy import ReverseProxyHandler
 
 
-@pytest.fixture
-def mock_request():
-    """Create a mock FastAPI request."""
-    scope = {
+def create_request(scope_overrides=None, headers=None):
+    """Create a mock FastAPI request with custom scope and headers."""
+    default_scope = {
         "type": "http",
         "method": "GET",
         "path": "/test",
@@ -19,7 +18,20 @@ def mock_request():
             (b"accept", b"application/json"),
         ],
     }
-    return Request(scope)
+
+    if scope_overrides:
+        default_scope.update(scope_overrides)
+
+    if headers:
+        default_scope["headers"] = headers
+
+    return Request(default_scope)
+
+
+@pytest.fixture
+def mock_request():
+    """Create a mock FastAPI request."""
+    return create_request()
 
 
 @pytest.fixture
@@ -28,15 +40,33 @@ def reverse_proxy_handler():
     return ReverseProxyHandler(upstream="http://upstream-api.com")
 
 
+@pytest.mark.parametrize(
+    "legacy_headers,override_host,proxy_name,expected_host,expected_via",
+    [
+        (False, True, "stac-auth-proxy", "upstream-api.com", "1.1 stac-auth-proxy"),
+        (True, True, "stac-auth-proxy", "upstream-api.com", "1.1 stac-auth-proxy"),
+        (False, False, "stac-auth-proxy", "localhost:8000", "1.1 stac-auth-proxy"),
+        (False, True, "custom-proxy", "upstream-api.com", "1.1 custom-proxy"),
+    ],
+)
 @pytest.mark.asyncio
-async def test_basic_headers(mock_request, reverse_proxy_handler):
-    """Test that basic headers are properly set."""
-    headers = reverse_proxy_handler._prepare_headers(mock_request)
+async def test_basic_headers(
+    mock_request, legacy_headers, override_host, proxy_name, expected_host, expected_via
+):
+    """Test basic header functionality with various configurations."""
+    handler = ReverseProxyHandler(
+        upstream="http://upstream-api.com",
+        legacy_forwarded_headers=legacy_headers,
+        override_host=override_host,
+        proxy_name=proxy_name,
+    )
+    headers = handler._prepare_headers(mock_request)
 
     # Check standard headers
-    assert headers["Host"] == "upstream-api.com"
+    assert headers["Host"] == expected_host
     assert headers["User-Agent"] == "test-agent"
     assert headers["Accept"] == "application/json"
+    assert headers["Via"] == expected_via
 
     # Check modern forwarded header
     assert "Forwarded" in headers
@@ -46,60 +76,28 @@ async def test_basic_headers(mock_request, reverse_proxy_handler):
     assert "proto=http" in forwarded
     assert "path=/" in forwarded
 
-    # Check Via header
-    assert headers["Via"] == "1.1 stac-auth-proxy"
+    # Check legacy headers based on configuration
+    if legacy_headers:
+        assert headers["X-Forwarded-For"] == "unknown"
+        assert headers["X-Forwarded-Host"] == "localhost:8000"
+        assert headers["X-Forwarded-Proto"] == "http"
+        assert headers["X-Forwarded-Path"] == "/"
+    else:
+        assert "X-Forwarded-For" not in headers
+        assert "X-Forwarded-Host" not in headers
+        assert "X-Forwarded-Proto" not in headers
+        assert "X-Forwarded-Path" not in headers
 
-    # Legacy headers should not be present by default
-    assert "X-Forwarded-For" not in headers
-    assert "X-Forwarded-Host" not in headers
-    assert "X-Forwarded-Proto" not in headers
-    assert "X-Forwarded-Path" not in headers
 
-
+@pytest.mark.parametrize("legacy_headers", [False, True])
 @pytest.mark.asyncio
-async def test_legacy_forwarded_headers(mock_request):
-    """Test that legacy X-Forwarded-* headers are set when enabled."""
-    handler = ReverseProxyHandler(
-        upstream="http://upstream-api.com", legacy_forwarded_headers=True
-    )
-    headers = handler._prepare_headers(mock_request)
-
-    # Check legacy headers
-    assert headers["X-Forwarded-For"] == "unknown"
-    assert headers["X-Forwarded-Host"] == "localhost:8000"
-    assert headers["X-Forwarded-Proto"] == "http"
-    assert headers["X-Forwarded-Path"] == "/"
-
-    # Modern Forwarded header should still be present
-    assert "Forwarded" in headers
-
-
-@pytest.mark.asyncio
-async def test_override_host_disabled(mock_request):
-    """Test that host override can be disabled."""
-    handler = ReverseProxyHandler(
-        upstream="http://upstream-api.com", override_host=False
-    )
-    headers = handler._prepare_headers(mock_request)
-    assert headers["Host"] == "localhost:8000"
-
-
-@pytest.mark.asyncio
-async def test_custom_proxy_name(mock_request):
-    """Test that custom proxy name is used in Via header."""
-    handler = ReverseProxyHandler(
-        upstream="http://upstream-api.com", proxy_name="custom-proxy"
-    )
-    headers = handler._prepare_headers(mock_request)
-    assert headers["Via"] == "1.1 custom-proxy"
-
-
-@pytest.mark.asyncio
-async def test_forwarded_headers_with_client(mock_request):
+async def test_forwarded_headers_with_client(mock_request, legacy_headers):
     """Test forwarded headers when client information is available."""
     # Add client information to the request
     mock_request.scope["client"] = ("192.168.1.1", 12345)
-    handler = ReverseProxyHandler(upstream="http://upstream-api.com")
+    handler = ReverseProxyHandler(
+        upstream="http://upstream-api.com", legacy_forwarded_headers=legacy_headers
+    )
     headers = handler._prepare_headers(mock_request)
 
     # Check modern Forwarded header
@@ -109,56 +107,37 @@ async def test_forwarded_headers_with_client(mock_request):
     assert "proto=http" in forwarded
     assert "path=/" in forwarded
 
-    # Legacy headers should not be present by default
-    assert "X-Forwarded-For" not in headers
-    assert "X-Forwarded-Host" not in headers
-    assert "X-Forwarded-Proto" not in headers
-    assert "X-Forwarded-Path" not in headers
+    # Check legacy headers based on configuration
+    if legacy_headers:
+        assert headers["X-Forwarded-For"] == "192.168.1.1"
+        assert headers["X-Forwarded-Host"] == "localhost:8000"
+        assert headers["X-Forwarded-Proto"] == "http"
+        assert headers["X-Forwarded-Path"] == "/"
+    else:
+        assert "X-Forwarded-For" not in headers
+        assert "X-Forwarded-Host" not in headers
+        assert "X-Forwarded-Proto" not in headers
+        assert "X-Forwarded-Path" not in headers
 
 
+@pytest.mark.parametrize("legacy_headers", [False, True])
 @pytest.mark.asyncio
-async def test_legacy_forwarded_headers_with_client(mock_request):
-    """Test legacy forwarded headers when client information is available."""
-    mock_request.scope["client"] = ("192.168.1.1", 12345)
-    handler = ReverseProxyHandler(
-        upstream="http://upstream-api.com", legacy_forwarded_headers=True
-    )
-    headers = handler._prepare_headers(mock_request)
-
-    # Check legacy headers
-    assert headers["X-Forwarded-For"] == "192.168.1.1"
-    assert headers["X-Forwarded-Host"] == "localhost:8000"
-    assert headers["X-Forwarded-Proto"] == "http"
-    assert headers["X-Forwarded-Path"] == "/"
-
-    # Modern Forwarded header should still be present
-    assert "Forwarded" in headers
-
-
-@pytest.mark.asyncio
-async def test_https_proto(mock_request):
-    """Test that X-Forwarded-Proto is set correctly for HTTPS."""
+async def test_https_proto(mock_request, legacy_headers):
+    """Test that protocol is set correctly for HTTPS."""
     mock_request.scope["scheme"] = "https"
-    handler = ReverseProxyHandler(upstream="http://upstream-api.com")
+    handler = ReverseProxyHandler(
+        upstream="http://upstream-api.com", legacy_forwarded_headers=legacy_headers
+    )
     headers = handler._prepare_headers(mock_request)
 
     # Check modern Forwarded header
     assert "proto=https" in headers["Forwarded"]
 
-    # Legacy headers should not be present by default
-    assert "X-Forwarded-Proto" not in headers
-
-
-@pytest.mark.asyncio
-async def test_https_proto_legacy(mock_request):
-    """Test that X-Forwarded-Proto is set correctly for HTTPS with legacy headers."""
-    mock_request.scope["scheme"] = "https"
-    handler = ReverseProxyHandler(
-        upstream="http://upstream-api.com", legacy_forwarded_headers=True
-    )
-    headers = handler._prepare_headers(mock_request)
-    assert headers["X-Forwarded-Proto"] == "https"
-    assert "proto=https" in headers["Forwarded"]
+    # Check legacy headers based on configuration
+    if legacy_headers:
+        assert headers["X-Forwarded-Proto"] == "https"
+    else:
+        assert "X-Forwarded-Proto" not in headers
 
 
 @pytest.mark.asyncio
@@ -173,25 +152,23 @@ async def test_non_standard_port(mock_request):
     assert headers["Host"] == "upstream-api.com:8080"
 
 
+@pytest.mark.parametrize("legacy_headers", [False, True])
 @pytest.mark.asyncio
-async def test_nginx_proxy_headers_preserved():
+async def test_nginx_proxy_headers_preserved(legacy_headers):
     """Test that existing proxy headers from NGINX are preserved."""
     # Simulate a request that already has proxy headers set by NGINX
-    scope = {
-        "type": "http",
-        "method": "GET",
-        "path": "/test",
-        "headers": [
-            (b"host", b"localhost:8000"),
-            (b"user-agent", b"test-agent"),
-            (b"x-forwarded-for", b"203.0.113.1, 198.51.100.1"),
-            (b"x-forwarded-proto", b"https"),
-            (b"x-forwarded-host", b"api.example.com"),
-            (b"x-forwarded-path", b"/api/v1"),
-        ],
-    }
-    request = Request(scope)
-    handler = ReverseProxyHandler(upstream="http://upstream-api.com")
+    headers = [
+        (b"host", b"localhost:8000"),
+        (b"user-agent", b"test-agent"),
+        (b"x-forwarded-for", b"203.0.113.1, 198.51.100.1"),
+        (b"x-forwarded-proto", b"https"),
+        (b"x-forwarded-host", b"api.example.com"),
+        (b"x-forwarded-path", b"/api/v1"),
+    ]
+    request = create_request(headers=headers)
+    handler = ReverseProxyHandler(
+        upstream="http://upstream-api.com", legacy_forwarded_headers=legacy_headers
+    )
     headers = handler._prepare_headers(request)
 
     # Check that the existing proxy headers are preserved in the Forwarded header
@@ -208,204 +185,100 @@ async def test_nginx_proxy_headers_preserved():
     assert headers["X-Forwarded-Path"] == "/api/v1"
 
 
+@pytest.mark.parametrize(
+    "scope_overrides,headers,expected_forwarded",
+    [
+        pytest.param(
+            {},
+            [
+                (b"host", b"localhost:8000"),
+                (b"user-agent", b"test-agent"),
+                (b"x-forwarded-for", b"203.0.113.1"),
+                (b"x-forwarded-proto", b"https"),
+                # Missing X-Forwarded-Host and X-Forwarded-Path
+            ],
+            {
+                "for": "203.0.113.1",  # From existing header
+                "host": "localhost:8000",  # Fallback to request host
+                "proto": "https",  # From existing header
+                "path": "/",  # Fallback to request path
+            },
+            id="partial_headers_fallback",
+        ),
+        pytest.param(
+            {"client": ("192.168.1.1", 12345)},  # This should be ignored
+            [
+                (b"host", b"localhost:8000"),
+                (b"user-agent", b"test-agent"),
+                (b"x-forwarded-for", b"203.0.113.1, 198.51.100.1"),
+            ],
+            {
+                "for": "203.0.113.1, 198.51.100.1",  # From existing header
+                "host": "localhost:8000",
+                "proto": "http",
+                "path": "/",
+            },
+            id="client_info_precedence",
+        ),
+        pytest.param(
+            {"scheme": "https"},  # This should be ignored
+            [
+                (b"host", b"localhost:8000"),
+                (b"user-agent", b"test-agent"),
+                (b"x-forwarded-proto", b"http"),  # NGINX says it's HTTP
+            ],
+            {
+                "for": "unknown",
+                "host": "localhost:8000",
+                "proto": "http",  # From existing header
+                "path": "/",
+            },
+            id="scheme_precedence",
+        ),
+        pytest.param(
+            {"path": "/custom/path"},
+            [
+                (b"host", b"localhost:8000"),
+                (b"user-agent", b"test-agent"),
+                (b"x-forwarded-path", b"/api/v1/root"),  # NGINX says different path
+            ],
+            {
+                "for": "unknown",
+                "host": "localhost:8000",
+                "proto": "http",
+                "path": "/api/v1/root",  # From existing header
+            },
+            id="path_precedence",
+        ),
+        pytest.param(
+            {},
+            [
+                (b"host", b"localhost:8000"),
+                (b"user-agent", b"test-agent"),
+                (b"X-Forwarded-For", b"203.0.113.1"),  # Mixed case
+                (b"x-forwarded-proto", b"https"),  # Lower case
+                (b"X-FORWARDED-HOST", b"api.example.com"),  # Upper case
+            ],
+            {
+                "for": "203.0.113.1",
+                "host": "api.example.com",
+                "proto": "https",
+                "path": "/",
+            },
+            id="case_insensitive",
+        ),
+    ],
+)
 @pytest.mark.asyncio
-async def test_nginx_proxy_headers_preserved_with_legacy():
-    """Test that existing proxy headers from NGINX are preserved with legacy mode."""
-    # Simulate a request that already has proxy headers set by NGINX
-    scope = {
-        "type": "http",
-        "method": "GET",
-        "path": "/test",
-        "headers": [
-            (b"host", b"localhost:8000"),
-            (b"user-agent", b"test-agent"),
-            (b"x-forwarded-for", b"203.0.113.1, 198.51.100.1"),
-            (b"x-forwarded-proto", b"https"),
-            (b"x-forwarded-host", b"api.example.com"),
-            (b"x-forwarded-path", b"/api/v1"),
-        ],
-    }
-    request = Request(scope)
-    handler = ReverseProxyHandler(
-        upstream="http://upstream-api.com", legacy_forwarded_headers=True
-    )
-    headers = handler._prepare_headers(request)
-
-    # Check that the existing proxy headers are preserved in both formats
-    forwarded = headers["Forwarded"]
-    assert "for=203.0.113.1, 198.51.100.1" in forwarded
-    assert "host=api.example.com" in forwarded
-    assert "proto=https" in forwarded
-    assert "path=/api/v1" in forwarded
-
-    # Legacy headers should also be preserved
-    assert headers["X-Forwarded-For"] == "203.0.113.1, 198.51.100.1"
-    assert headers["X-Forwarded-Host"] == "api.example.com"
-    assert headers["X-Forwarded-Proto"] == "https"
-    assert headers["X-Forwarded-Path"] == "/api/v1"
-
-
-@pytest.mark.asyncio
-async def test_partial_nginx_headers_fallback():
-    """Test fallback behavior when only some proxy headers are present."""
-    # Simulate a request with only some proxy headers set by NGINX
-    scope = {
-        "type": "http",
-        "method": "GET",
-        "path": "/test",
-        "headers": [
-            (b"host", b"localhost:8000"),
-            (b"user-agent", b"test-agent"),
-            (b"x-forwarded-for", b"203.0.113.1"),
-            (b"x-forwarded-proto", b"https"),
-            # Missing X-Forwarded-Host and X-Forwarded-Path
-        ],
-    }
-    request = Request(scope)
+async def test_nginx_headers_behavior(scope_overrides, headers, expected_forwarded):
+    """Test various NGINX header behaviors and precedence rules."""
+    request = create_request(scope_overrides=scope_overrides, headers=headers)
     handler = ReverseProxyHandler(upstream="http://upstream-api.com")
-    headers = handler._prepare_headers(request)
+    result_headers = handler._prepare_headers(request)
 
-    # Check that existing headers are preserved and missing ones fall back to request values
-    forwarded = headers["Forwarded"]
-    assert "for=203.0.113.1" in forwarded  # From existing header
-    assert "host=localhost:8000" in forwarded  # Fallback to request host
-    assert "proto=https" in forwarded  # From existing header
-    assert "path=/" in forwarded  # Fallback to request path
-
-
-@pytest.mark.asyncio
-async def test_nginx_headers_with_client_info():
-    """Test that NGINX headers take precedence over client info."""
-    # Simulate a request with both client info and existing proxy headers
-    scope = {
-        "type": "http",
-        "method": "GET",
-        "path": "/test",
-        "client": ("192.168.1.1", 12345),  # This should be ignored
-        "headers": [
-            (b"host", b"localhost:8000"),
-            (b"user-agent", b"test-agent"),
-            (b"x-forwarded-for", b"203.0.113.1, 198.51.100.1"),
-        ],
-    }
-    request = Request(scope)
-    handler = ReverseProxyHandler(upstream="http://upstream-api.com")
-    headers = handler._prepare_headers(request)
-
-    # The existing X-Forwarded-For should take precedence over client info
-    forwarded = headers["Forwarded"]
-    assert "for=203.0.113.1, 198.51.100.1" in forwarded
-    assert "for=192.168.1.1" not in forwarded
-
-
-@pytest.mark.asyncio
-async def test_nginx_headers_with_https_scheme():
-    """Test that NGINX headers take precedence over request scheme."""
-    # Simulate an HTTPS request with existing proxy headers
-    scope = {
-        "type": "http",
-        "method": "GET",
-        "path": "/test",
-        "scheme": "https",  # This should be ignored
-        "headers": [
-            (b"host", b"localhost:8000"),
-            (b"user-agent", b"test-agent"),
-            (b"x-forwarded-proto", b"http"),  # NGINX says it's HTTP
-        ],
-    }
-    request = Request(scope)
-    handler = ReverseProxyHandler(upstream="http://upstream-api.com")
-    headers = handler._prepare_headers(request)
-
-    # The existing X-Forwarded-Proto should take precedence over request scheme
-    forwarded = headers["Forwarded"]
-    assert "proto=http" in forwarded  # From existing header
-    assert "proto=https" not in forwarded
-
-
-@pytest.mark.asyncio
-async def test_nginx_headers_with_custom_path():
-    """Test that NGINX headers take precedence over request path."""
-    # Simulate a request with a custom path and existing proxy headers
-    scope = {
-        "type": "http",
-        "method": "GET",
-        "path": "/custom/path",
-        "headers": [
-            (b"host", b"localhost:8000"),
-            (b"user-agent", b"test-agent"),
-            (b"x-forwarded-path", b"/api/v1/root"),  # NGINX says different path
-        ],
-    }
-    request = Request(scope)
-    handler = ReverseProxyHandler(upstream="http://upstream-api.com")
-    headers = handler._prepare_headers(request)
-
-    # The existing X-Forwarded-Path should take precedence over request path
-    forwarded = headers["Forwarded"]
-    assert "path=/api/v1/root" in forwarded  # From existing header
-    assert "path=/custom/path" not in forwarded
-
-
-@pytest.mark.asyncio
-async def test_nginx_headers_legacy_mode_preservation():
-    """Test that NGINX headers are preserved in legacy mode without duplication."""
-    # Simulate a request that already has proxy headers set by NGINX
-    scope = {
-        "type": "http",
-        "method": "GET",
-        "path": "/test",
-        "headers": [
-            (b"host", b"localhost:8000"),
-            (b"user-agent", b"test-agent"),
-            (b"x-forwarded-for", b"203.0.113.1"),
-            (b"x-forwarded-proto", b"https"),
-            (b"x-forwarded-host", b"api.example.com"),
-            (b"x-forwarded-path", b"/api/v1"),
-        ],
-    }
-    request = Request(scope)
-    handler = ReverseProxyHandler(
-        upstream="http://upstream-api.com", legacy_forwarded_headers=True
-    )
-    headers = handler._prepare_headers(request)
-
-    # Check that headers are preserved (not duplicated or overwritten)
-    assert headers["X-Forwarded-For"] == "203.0.113.1"
-    assert headers["X-Forwarded-Host"] == "api.example.com"
-    assert headers["X-Forwarded-Proto"] == "https"
-    assert headers["X-Forwarded-Path"] == "/api/v1"
-
-    # Modern Forwarded header should also be present with the same values
-    forwarded = headers["Forwarded"]
-    assert "for=203.0.113.1" in forwarded
-    assert "host=api.example.com" in forwarded
-    assert "proto=https" in forwarded
-    assert "path=/api/v1" in forwarded
-
-
-@pytest.mark.asyncio
-async def test_nginx_headers_case_insensitive():
-    """Test that NGINX headers are handled case-insensitively."""
-    # Simulate a request with mixed case proxy headers (some proxies do this)
-    scope = {
-        "type": "http",
-        "method": "GET",
-        "path": "/test",
-        "headers": [
-            (b"host", b"localhost:8000"),
-            (b"user-agent", b"test-agent"),
-            (b"X-Forwarded-For", b"203.0.113.1"),  # Mixed case
-            (b"x-forwarded-proto", b"https"),  # Lower case
-            (b"X-FORWARDED-HOST", b"api.example.com"),  # Upper case
-        ],
-    }
-    request = Request(scope)
-    handler = ReverseProxyHandler(upstream="http://upstream-api.com")
-    headers = handler._prepare_headers(request)
-
-    # All headers should be preserved regardless of case
-    forwarded = headers["Forwarded"]
-    assert "for=203.0.113.1" in forwarded
-    assert "host=api.example.com" in forwarded
-    assert "proto=https" in forwarded
+    # Check that the Forwarded header contains expected values
+    forwarded = result_headers["Forwarded"]
+    for key, expected_value in expected_forwarded.items():
+        assert (
+            f"{key}={expected_value}" in forwarded
+        ), f"Expected {key}={expected_value} in {forwarded}"

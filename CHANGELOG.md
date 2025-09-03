@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.9.0](https://github.com/developmentseed/stac-auth-proxy/compare/v0.8.0...v0.9.0) (2025-09-03)
+
+
+### Features
+
+* make use of Server-Timing header ([c894026](https://github.com/developmentseed/stac-auth-proxy/commit/c8940260cbe69bdc7868f16f5c8a76f9ae29b9d6)), closes [#69](https://github.com/developmentseed/stac-auth-proxy/issues/69)
+* remove applied filters on response links ([#67](https://github.com/developmentseed/stac-auth-proxy/issues/67)) ([2b2b224](https://github.com/developmentseed/stac-auth-proxy/commit/2b2b22459c0e577b5a1d5d1e04c7de406d074a99)), closes [#64](https://github.com/developmentseed/stac-auth-proxy/issues/64)
+
+
+### Bug Fixes
+
+* **middleware:** enhance JSON parsing error handling ([#73](https://github.com/developmentseed/stac-auth-proxy/issues/73)) ([daf5d09](https://github.com/developmentseed/stac-auth-proxy/commit/daf5d095660ebe2401200fed1399168afe23e717)), closes [#72](https://github.com/developmentseed/stac-auth-proxy/issues/72)
+* retain proxy headers when behind proxy ([#88](https://github.com/developmentseed/stac-auth-proxy/issues/88)) ([74780f0](https://github.com/developmentseed/stac-auth-proxy/commit/74780f02e47963eb04be01a285895049a0cb1da3))
+
 ## [0.8.0](https://github.com/developmentseed/stac-auth-proxy/compare/v0.7.1...v0.8.0) (2025-08-16)
 
 

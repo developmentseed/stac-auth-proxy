@@ -85,6 +85,11 @@ class EnforceAuthMiddleware:
             return await self.app(scope, receive, send)
 
         request = Request(scope)
+
+        # Skip authentication for OPTIONS requests, https://fetch.spec.whatwg.org/#cors-protocol-and-credentials
+        if request.method == "OPTIONS":
+            return await self.app(scope, receive, send)
+
         match = find_match(
             request.url.path,
             request.method,
@@ -148,7 +153,18 @@ class EnforceAuthMiddleware:
                 # NOTE: Audience validation MUST match audience claim if set in token (https://pyjwt.readthedocs.io/en/stable/changelog.html?highlight=audience#id40)
                 audience=self.allowed_jwt_audiences,
             )
-        except (jwt.exceptions.InvalidTokenError, jwt.exceptions.DecodeError) as e:
+        except jwt.InvalidAudienceError as e:
+            logger.error("InvalidAudienceError: %r", e)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate Audience",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        except (
+            jwt.exceptions.InvalidTokenError,
+            jwt.exceptions.DecodeError,
+            jwt.exceptions.PyJWKClientError,
+        ) as e:
             logger.error("InvalidTokenError: %r", e)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

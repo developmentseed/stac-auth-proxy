@@ -6,14 +6,14 @@ authentication, authorization, and proxying of requests to some internal STAC AP
 """
 
 import logging
-from contextlib import asynccontextmanager
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import FastAPI
 from starlette_cramjam.middleware import CompressionMiddleware
 
 from .config import Settings
 from .handlers import HealthzHandler, ReverseProxyHandler, SwaggerUI
+from .lifespan import build_lifespan
 from .middleware import (
     AddProcessTimeHeaderMiddleware,
     AuthenticationExtensionMiddleware,
@@ -27,86 +27,59 @@ from .middleware import (
     ProcessLinksMiddleware,
     RemoveRootPathMiddleware,
 )
-from .utils.lifespan import check_conformance, check_server_health
 
 logger = logging.getLogger(__name__)
 
 
-def create_app(settings: Optional[Settings] = None) -> FastAPI:
-    """FastAPI Application Factory."""
-    settings = settings or Settings()
+def configure_app(
+    app: FastAPI,
+    settings: Optional[Settings] = None,
+    **settings_kwargs: Any,
+) -> FastAPI:
+    """
+    Apply routes and middleware to a FastAPI app.
+
+    Parameters
+    ----------
+    app : FastAPI
+        The FastAPI app to configure.
+    settings : Settings | None, optional
+        Pre-built settings instance. If omitted, a new one is constructed from
+        ``settings_kwargs``.
+    **settings_kwargs : Any
+        Keyword arguments used to configure the health and conformance checks if
+        ``settings`` is not provided.
+    """
+    settings = settings or Settings(**settings_kwargs)
 
     #
-    # Application
+    # Route Handlers
     #
 
-    @asynccontextmanager
-    async def lifespan(app: FastAPI):
-        assert settings
-
-        # Wait for upstream servers to become available
-        if settings.wait_for_upstream:
-            logger.info("Running upstream server health checks...")
-            urls = [settings.upstream_url, settings.oidc_discovery_internal_url]
-            for url in urls:
-                await check_server_health(url=url)
-            logger.info(
-                "Upstream servers are healthy:\n%s",
-                "\n".join([f" - {url}" for url in urls]),
-            )
-
-        # Log all middleware connected to the app
-        logger.info(
-            "Connected middleware:\n%s",
-            "\n".join([f" - {m.cls.__name__}" for m in app.user_middleware]),
-        )
-
-        if settings.check_conformance:
-            await check_conformance(
-                app.user_middleware,
-                str(settings.upstream_url),
-            )
-
-        yield
-
-    app = FastAPI(
-        openapi_url=None,  # Disable OpenAPI schema endpoint, we want to serve upstream's schema
-        lifespan=lifespan,
-        root_path=settings.root_path,
-    )
-    if app.root_path:
-        logger.debug("Mounted app at %s", app.root_path)
-
-    #
-    # Handlers (place catch-all proxy handler last)
-    #
-
-    if settings.swagger_ui_endpoint:
-        assert (
-            settings.openapi_spec_endpoint
-        ), "openapi_spec_endpoint must be set when using swagger_ui_endpoint"
+    # If we have customized Swagger UI Init settings (e.g. a provided client_id)
+    # then we need to serve our own Swagger UI in place of the upstream's. This requires
+    # that we know the Swagger UI endpoint and the OpenAPI spec endpoint.
+    if all(
+        [
+            settings.swagger_ui_endpoint,
+            settings.openapi_spec_endpoint,
+            settings.swagger_ui_init_oauth,
+        ]
+    ):
         app.add_route(
             settings.swagger_ui_endpoint,
             SwaggerUI(
-                openapi_url=settings.openapi_spec_endpoint,
+                openapi_url=settings.openapi_spec_endpoint,  # type: ignore
                 init_oauth=settings.swagger_ui_init_oauth,
             ).route,
             include_in_schema=False,
         )
+
     if settings.healthz_prefix:
         app.include_router(
             HealthzHandler(upstream_url=str(settings.upstream_url)).router,
             prefix=settings.healthz_prefix,
         )
-
-    app.add_api_route(
-        "/{path:path}",
-        ReverseProxyHandler(
-            upstream=str(settings.upstream_url),
-            override_host=settings.override_host,
-        ).proxy_request,
-        methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-    )
 
     #
     # Middleware (order is important, last added = first to run)
@@ -159,6 +132,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         private_endpoints=settings.private_endpoints,
         default_public=settings.default_public,
         oidc_discovery_url=settings.oidc_discovery_internal_url,
+        allowed_jwt_audiences=settings.allowed_jwt_audiences,
     )
 
     if settings.root_path or settings.upstream_url.path != "/":
@@ -178,5 +152,31 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         app.add_middleware(
             CompressionMiddleware,
         )
+
+    return app
+
+
+def create_app(settings: Optional[Settings] = None) -> FastAPI:
+    """FastAPI Application Factory."""
+    settings = settings or Settings()
+
+    app = FastAPI(
+        openapi_url=None,  # Disable OpenAPI schema endpoint, we want to serve upstream's schema
+        lifespan=build_lifespan(settings=settings),
+        root_path=settings.root_path,
+    )
+    if app.root_path:
+        logger.debug("Mounted app at %s", app.root_path)
+
+    configure_app(app, settings)
+
+    app.add_api_route(
+        "/{path:path}",
+        ReverseProxyHandler(
+            upstream=str(settings.upstream_url),
+            override_host=settings.override_host,
+        ).proxy_request,
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    )
 
     return app

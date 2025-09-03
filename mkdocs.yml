@@ -1,0 +1,128 @@
+site_name: STAC Auth Proxy
+site_description: A reverse proxy to mediate communication between a client and an internally accessible STAC API in order to provide a flexible authentication mechanism.
+site_dir: build
+
+repo_name: developmentseed/stac-auth-proxy
+repo_url: https://github.com/developmentseed/stac-auth-proxy
+edit_uri: blob/main/docs/
+site_url: https://developmentseed.org/stac-auth-proxy
+
+extra:
+  analytics:
+    provider: plausible
+    domain: developmentseed.org/stac-auth-proxy
+
+    feedback:
+      title: Was this page helpful?
+      ratings:
+        - icon: material/emoticon-happy-outline
+          name: This page was helpful
+          data: good
+          note: Thanks for your feedback!
+
+        - icon: material/emoticon-sad-outline
+          name: This page could be improved
+          data: bad
+          note: Thanks for your feedback!
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/developmentseed
+nav:
+  - Overview: index.md
+  - User Guide:
+      - Getting Started: user-guide/getting-started.md
+      - Configuration: user-guide/configuration.md
+      - Route-Level Auth: user-guide/route-level-auth.md
+      - Record-Level Auth: user-guide/record-level-auth.md
+      - Deployment: user-guide/deployment.md
+      - Tips: user-guide/tips.md
+  - Architecture:
+      - Middleware Stack: architecture/middleware-stack.md
+      - Filtering Data: architecture/filtering-data.md
+  - Changelog: changelog.md
+
+plugins:
+  - search
+  - social
+  - api-autonav:
+      modules:
+        - src/stac_auth_proxy
+  - mkdocstrings:
+      enable_inventory: true
+      handlers:
+        python:
+          paths:
+            - src
+          options:
+            extensions:
+              - griffe_fieldz
+            show_signature_annotations: true
+          inventories:
+            - https://docs.python.org/3/objects.inv
+            - https://docs.pydantic.dev/latest/objects.inv
+            - https://fastapi.tiangolo.com/objects.inv
+            - https://www.starlette.io/objects.inv
+
+theme:
+  name: material
+  palette:
+    # Palette toggle for automatic mode
+    - media: (prefers-color-scheme)
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+  custom_dir: docs/overrides
+  favicon: assets/ds-symbol-positive-mono.png
+  logo: assets/ds-symbol-negative-mono.png
+
+  features:
+    - content.code.annotate
+    - content.code.copy
+    - navigation.indexes
+    - navigation.instant
+    - navigation.tracking
+    - search.suggest
+    - search.share
+
+# https://github.com/kylebarron/cogeo-mosaic/blob/mkdocs/mkdocs.yml#L50-L75
+markdown_extensions:
+  - attr_list
+  - codehilite:
+      guess_lang: false
+  - def_list
+  - footnotes
+  - markdown_gfm_admonition # support github-flavored admonitions
+  - pymdownx.emoji: # Convert emoji shortcodes to images
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.magiclink: # render hrefs as links
+      hide_protocol: true
+      repo_url_shortener: true # handle github links
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid # support mermaid diagrams
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - toc:
+      permalink: true # Add permalink hover link to each heading
+  - pymdownx.tasklist:
+      custom_checkbox: true

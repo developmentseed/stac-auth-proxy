@@ -3,7 +3,7 @@
 import importlib
 from typing import Any, Literal, Optional, Sequence, TypeAlias, Union
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic.networks import HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -16,7 +16,15 @@ EndpointMethodsWithScope: TypeAlias = dict[
 _PREFIX_PATTERN = r"^/.*$"
 
 
-class ClassInput(BaseModel):
+def str2list(x: Optional[str] = None) -> Optional[Sequence[str]]:
+    """Convert string to list based on , delimiter."""
+    if x:
+        return x.replace(" ", "").split(",")
+
+    return None
+
+
+class _ClassInput(BaseModel):
     """Input model for dynamically loading a class or function."""
 
     cls: str
@@ -39,6 +47,7 @@ class Settings(BaseSettings):
     upstream_url: HttpUrl
     oidc_discovery_url: HttpUrl
     oidc_discovery_internal_url: HttpUrl
+    allowed_jwt_audiences: Optional[Sequence[str]] = None
 
     root_path: str = ""
     override_host: bool = True
@@ -48,10 +57,14 @@ class Settings(BaseSettings):
     enable_compression: bool = True
 
     # OpenAPI / Swagger UI
-    openapi_spec_endpoint: Optional[str] = Field(pattern=_PREFIX_PATTERN, default=None)
+    openapi_spec_endpoint: Optional[str] = Field(
+        pattern=_PREFIX_PATTERN, default="/api"
+    )
     openapi_auth_scheme_name: str = "oidcAuth"
     openapi_auth_scheme_override: Optional[dict] = None
-    swagger_ui_endpoint: Optional[str] = None
+    swagger_ui_endpoint: Optional[str] = Field(
+        pattern=_PREFIX_PATTERN, default="/api.html"
+    )
     swagger_ui_init_oauth: dict = Field(default_factory=dict)
 
     # Auth
@@ -61,6 +74,7 @@ class Settings(BaseSettings):
         r"^/$": ["GET"],
         r"^/api.html$": ["GET"],
         r"^/api$": ["GET"],
+        r"^/conformance$": ["GET"],
         r"^/docs/oauth2-redirect": ["GET"],
         r"^/healthz": ["GET"],
     }
@@ -76,9 +90,9 @@ class Settings(BaseSettings):
     }
 
     # Filters
-    items_filter: Optional[ClassInput] = None
+    items_filter: Optional[_ClassInput] = None
     items_filter_path: str = r"^(/collections/([^/]+)/items(/[^/]+)?$|/search$)"
-    collections_filter: Optional[ClassInput] = None
+    collections_filter: Optional[_ClassInput] = None
     collections_filter_path: str = r"^/collections(/[^/]+)?$"
 
     model_config = SettingsConfigDict(
@@ -87,8 +101,14 @@ class Settings(BaseSettings):
 
     @model_validator(mode="before")
     @classmethod
-    def default_oidc_discovery_internal_url(cls, data: Any) -> Any:
+    def _default_oidc_discovery_internal_url(cls, data: Any) -> Any:
         """Set the internal OIDC discovery URL to the public URL if not set."""
         if not data.get("oidc_discovery_internal_url"):
             data["oidc_discovery_internal_url"] = data.get("oidc_discovery_url")
         return data
+
+    @field_validator("allowed_jwt_audiences", mode="before")
+    @classmethod
+    def parse_audience(cls, v) -> Optional[Sequence[str]]:
+        """Parse a comma separated string list of audiences into a list."""
+        return str2list(v)

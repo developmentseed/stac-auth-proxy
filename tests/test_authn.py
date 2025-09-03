@@ -312,14 +312,14 @@ def test_with_invalid_tokens_fails(invalid_token, expected_status, source_api_se
     )
     client = TestClient(test_app)
     response = client.get("/collections", headers={"Authorization": invalid_token})
-    assert (
-        response.status_code == expected_status
-    ), f"GET request should fail with token: {invalid_token}"
+    assert response.status_code == expected_status, (
+        f"GET request should fail with token: {invalid_token}"
+    )
 
     response = client.options("/collections", headers={"Authorization": invalid_token})
-    assert (
-        response.status_code == 200
-    ), f"OPTIONS request should succeed with token: {invalid_token}"
+    assert response.status_code == 200, (
+        f"OPTIONS request should succeed with token: {invalid_token}"
+    )
 
 
 def test_options_requests_with_cors_headers(source_api_server):
@@ -339,9 +339,9 @@ def test_options_requests_with_cors_headers(source_api_server):
     }
 
     response = client.options("/collections", headers=cors_headers)
-    assert (
-        response.status_code == 200
-    ), "OPTIONS request with CORS headers should succeed"
+    assert response.status_code == 200, (
+        "OPTIONS request with CORS headers should succeed"
+    )
 
 
 @pytest.mark.parametrize(

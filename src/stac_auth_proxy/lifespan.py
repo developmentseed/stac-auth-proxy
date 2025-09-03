@@ -72,7 +72,6 @@ async def check_conformance(
     """Check if the upstream API supports a given conformance class."""
     required_conformances: dict[str, list[str]] = {}
     for middleware in middleware_classes:
-
         for conformance in getattr(middleware.cls, attr_name, []):
             required_conformances.setdefault(conformance, []).append(
                 middleware.cls.__name__
@@ -127,6 +126,7 @@ def build_lifespan(settings: Settings | None = None, **settings_kwargs: Any):
     -------
     Callable[[FastAPI], AsyncContextManager[Any]]
         A callable suitable for the ``lifespan`` parameter of ``FastAPI``.
+
     """
     if settings is None:
         settings = Settings(**settings_kwargs)

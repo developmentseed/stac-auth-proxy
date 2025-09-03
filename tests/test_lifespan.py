@@ -89,13 +89,16 @@ def test_lifespan_reusable():
     """Ensure the public lifespan handler runs health and conformance checks."""
     upstream_url = "https://example.com"
     oidc_discovery_url = "https://example.com/.well-known/openid-configuration"
-    with patch(
-        "stac_auth_proxy.lifespan.check_server_health",
-        new=AsyncMock(),
-    ) as mock_health, patch(
-        "stac_auth_proxy.lifespan.check_conformance",
-        new=AsyncMock(),
-    ) as mock_conf:
+    with (
+        patch(
+            "stac_auth_proxy.lifespan.check_server_health",
+            new=AsyncMock(),
+        ) as mock_health,
+        patch(
+            "stac_auth_proxy.lifespan.check_conformance",
+            new=AsyncMock(),
+        ) as mock_conf,
+    ):
         app = FastAPI(
             lifespan=build_lifespan(
                 upstream_url=upstream_url,

@@ -146,20 +146,20 @@ def test_oidc_in_openapi_spec_public_endpoints(
             security = config.get("security")
 
             if method == "options":
-                assert (
-                    not security
-                ), f"OPTIONS {path} requests should not require authentication"
+                assert not security, (
+                    f"OPTIONS {path} requests should not require authentication"
+                )
                 continue
 
             if security:
-                assert (
-                    path not in expected_required_auth
-                ), f"Path {path} should not require authentication"
+                assert path not in expected_required_auth, (
+                    f"Path {path} should not require authentication"
+                )
                 continue
 
-            assert (
-                path in expected_required_auth
-            ), f"Path {path} should require authentication"
+            assert path in expected_required_auth, (
+                f"Path {path} should require authentication"
+            )
             assert any(
                 method.casefold() == m.casefold() for m in expected_required_auth[path]
             )

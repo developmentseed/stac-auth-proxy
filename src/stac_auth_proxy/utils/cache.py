@@ -78,9 +78,10 @@ def get_value_by_path(obj: dict, path: str, default: Any = None) -> Any:
         path: The dot notation path (e.g. "payload.sub")
         default: Default value to return if path doesn't exist
 
-    Returns
+    Returns:
     -------
         The value at the specified path or default if path doesn't exist
+
     """
     try:
         for key in path.split("."):

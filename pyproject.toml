@@ -42,12 +42,43 @@ lambda = [
 
 [tool.coverage.run]
 branch = true
+source = ["src/stac_auth_proxy"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/build/*",
+    "*/dist/*",
+    "*/htmlcov/*",
+    "*/lambda.py",  # Lambda entry point not tested in unit tests
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.xml]
+output = "coverage.xml"
 
 [tool.isort]
 known_first_party = ["stac_auth_proxy"]
 profile = "black"
 
-[tool.ruff]
+[tool.ruff.lint]
 ignore = ["E501", "D203", "D205", "D212"]
 select = ["D", "E", "F"]
 
@@ -58,14 +89,38 @@ requires = ["hatchling>=1.12.0"]
 [dependency-groups]
 dev = [
   "jwcrypto>=1.5.6",
+  "mypy>=1.3.0",
   "pre-commit>=3.5.0",
   "pytest-asyncio>=0.25.1",
   "pytest-cov>=5.0.0",
   "pytest-xdist>=3.6.1",
   "pytest>=8.3.3",
+  "ruff>=0.0.238",
   "starlette-cramjam>=0.4.0",
+  "types-simplejson",
+  "types-attrs",
 ]
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--verbose",
+    "--tb=short",
+    "--cov=src/stac_auth_proxy",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--cov-fail-under=85",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]

@@ -8,6 +8,8 @@
 [![PyPI - Version][pypi-version-badge]][pypi-link]
 [![GHCR - Version][ghcr-version-badge]][ghcr-link]
 [![GHCR - Size][ghcr-size-badge]][ghcr-link]
+[![codecov][codecov-badge]][codecov-link]
+[![Tests][tests-badge]][tests-link]
 
 STAC Auth Proxy is a proxy API that mediates between the client and your internally accessible STAC API to provide flexible authentication, authorization, and content-filtering mechanisms.
 
@@ -37,3 +39,7 @@ Head to [Getting Started](https://developmentseed.org/stac-auth-proxy/user-guide
 [ghcr-version-badge]: https://ghcr-badge.egpl.dev/developmentseed/stac-auth-proxy/latest_tag?color=%2344cc11&ignore=latest&label=image+version&trim=
 [ghcr-size-badge]: https://ghcr-badge.egpl.dev/developmentseed/stac-auth-proxy/size?color=%2344cc11&tag=latest&label=image+size&trim=
 [ghcr-link]: https://github.com/developmentseed/stac-auth-proxy/pkgs/container/stac-auth-proxy
+[codecov-badge]: https://codecov.io/gh/developmentseed/stac-auth-proxy/branch/main/graph/badge.svg
+[codecov-link]: https://codecov.io/gh/developmentseed/stac-auth-proxy
+[tests-badge]: https://github.com/developmentseed/stac-auth-proxy/actions/workflows/cicd.yaml/badge.svg
+[tests-link]: https://github.com/developmentseed/stac-auth-proxy/actions/workflows/cicd.yaml

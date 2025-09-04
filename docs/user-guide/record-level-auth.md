@@ -134,11 +134,11 @@ Configure filters using environment variables:
 
 ```bash
 # Basic configuration
-ITEMS_FILTER_CLS=stac_auth_proxy.filters.Template
+ITEMS_FILTER_CLS=stac_auth_proxy.filters:Template
 ITEMS_FILTER_ARGS='["collection IN ('public')"]'
 
 # With keyword arguments
-ITEMS_FILTER_CLS=stac_auth_proxy.filters.Opa
+ITEMS_FILTER_CLS=stac_auth_proxy.filters:Opa
 ITEMS_FILTER_ARGS='["http://opa:8181", "stac/items/allow"]'
 ITEMS_FILTER_KWARGS='{"cache_ttl": 30.0}'
 ```
@@ -156,7 +156,7 @@ ITEMS_FILTER_KWARGS='{"cache_ttl": 30.0}'
 Generate CQL2 expressions using the [Jinja](https://jinja.palletsprojects.com/en/stable/) templating engine. Given the request context, the Jinja template expression should render a valid CQL2 expression (likely in `cql2-text` format).
 
 ```bash
-ITEMS_FILTER_CLS=stac_auth_proxy.filters.Template
+ITEMS_FILTER_CLS=stac_auth_proxy.filters:Template
 ITEMS_FILTER_ARGS='["{{ \"true\" if payload else \"(preview IS NULL) OR (preview = false)\" }}"]'
 ```
 
@@ -169,7 +169,7 @@ ITEMS_FILTER_ARGS='["{{ \"true\" if payload else \"(preview IS NULL) OR (preview
 Delegate authorization to [Open Policy Agent](https://www.openpolicyagent.org/). For each request, we call out to an OPA decision with the request context, expecting that OPA will return a valid CQL2 expression.
 
 ```bash
-ITEMS_FILTER_CLS=stac_auth_proxy.filters.opa.Opa
+ITEMS_FILTER_CLS=stac_auth_proxy.filters:opa.Opa
 ITEMS_FILTER_ARGS='["http://opa:8181","stac/items_cql2"]'
 ```
 

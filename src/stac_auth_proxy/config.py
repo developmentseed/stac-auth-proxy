@@ -40,17 +40,14 @@ class _ClassInput(BaseModel):
         return cls(*self.args, **self.kwargs)
 
 
-class Settings(BaseSettings):
+class CoreSettings(BaseSettings):
     """Configuration settings for the STAC Auth Proxy."""
 
     # External URLs
-    upstream_url: HttpUrl
     oidc_discovery_url: HttpUrl
     oidc_discovery_internal_url: HttpUrl
     allowed_jwt_audiences: Optional[Sequence[str]] = None
 
-    root_path: str = ""
-    override_host: bool = True
     healthz_prefix: str = Field(pattern=_PREFIX_PATTERN, default="/healthz")
     wait_for_upstream: bool = True
     check_conformance: bool = True
@@ -112,3 +109,15 @@ class Settings(BaseSettings):
     def parse_audience(cls, v) -> Optional[Sequence[str]]:
         """Parse a comma separated string list of audiences into a list."""
         return str2list(v)
+
+
+class ProxySettings(CoreSettings):
+    """Configuration settings for the STAC Auth Proxy."""
+
+    # Proxy Configuration
+    upstream_url: HttpUrl
+    root_path: str = ""
+    override_host: bool = True
+
+
+Settings = ProxySettings

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/developmentseed/stac-auth-proxy/compare/v0.9.0...v0.9.1) (2025-09-04)
+
+
+### Bug Fixes
+
+* **openapi:** remove upstream servers ([#90](https://github.com/developmentseed/stac-auth-proxy/issues/90)) ([b54059b](https://github.com/developmentseed/stac-auth-proxy/commit/b54059bbdebd32078e9272701fa753e4a7e0f4ed)), closes [#74](https://github.com/developmentseed/stac-auth-proxy/issues/74)
+
 ## [0.9.0](https://github.com/developmentseed/stac-auth-proxy/compare/v0.8.0...v0.9.0) (2025-09-03)
 
 

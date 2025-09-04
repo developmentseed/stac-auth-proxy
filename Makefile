@@ -63,6 +63,7 @@ ci: ## Run CI checks locally
 	uv run pre-commit run --all-files
 	@echo "🧪 Running tests with coverage..."
 	uv run pytest \
+		-n auto \
 		--cov=src/stac_auth_proxy \
 		--cov-report=term-missing \
 		--cov-report=html \

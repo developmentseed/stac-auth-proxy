@@ -47,6 +47,11 @@ class OpenApiMiddleware(JsonResponseMiddleware):
 
     def transform_json(self, data: dict[str, Any], request: Request) -> dict[str, Any]:
         """Augment the OpenAPI spec with auth information."""
+        # Remove any existing servers field from upstream API
+        # This ensures we don't have conflicting server declarations
+        if "servers" in data:
+            del data["servers"]
+
         # Add servers field with root path if root_path is set
         if self.root_path:
             data["servers"] = [{"url": self.root_path}]

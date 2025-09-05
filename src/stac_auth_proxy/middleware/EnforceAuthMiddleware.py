@@ -47,7 +47,7 @@ class OidcService:
             )
             if jwks_uri != self.metadata["jwks_uri"]:
                 logger.warning(
-                    "JWKS URI has been rewritten from %s to %s",
+                    "OIDC Discovery reported a JWKS URI of %s but we're going to use %s to match the OIDC Discovery URL",
                     self.metadata["jwks_uri"],
                     jwks_uri,
                 )

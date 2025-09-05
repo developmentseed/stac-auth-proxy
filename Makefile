@@ -1,4 +1,4 @@
-.PHONY: help test test-coverage test-fast lint format clean install dev-install
+.PHONY: help test test-coverage test-fast lint format clean install dev-install docs
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -71,3 +71,7 @@ ci: ## Run CI checks locally
 		--cov-fail-under=85 \
 		-v
 	@echo "✅ CI checks completed!"
+
+docs: ## Serve documentation locally
+	uv sync --extra docs
+	DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib uv run mkdocs serve

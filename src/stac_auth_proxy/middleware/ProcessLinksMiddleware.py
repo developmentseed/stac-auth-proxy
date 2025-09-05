@@ -58,7 +58,7 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
                     parsed_req_url.netloc,
                     parsed_upstream_url.netloc,
                 ]:
-                    logger.warning(
+                    logger.debug(
                         "Ignoring link %s because it is not for an endpoint behind this proxy (%s or %s)",
                         href,
                         parsed_req_url.netloc,
@@ -66,8 +66,19 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
                     )
                     continue
 
+                # If the link path is not a descendant of the upstream path, don't transform it
+                if parsed_upstream_url.path != "/" and not parsed_link.path.startswith(
+                    parsed_upstream_url.path
+                ):
+                    logger.debug(
+                        "Ignoring link %s because it is not descendant of upstream path (%s)",
+                        href,
+                        parsed_upstream_url.path,
+                    )
+                    continue
+
+                # Replace the upstream host with the client's host
                 if parsed_link.netloc == parsed_upstream_url.netloc:
-                    # Replace the upstream host with the client's host
                     parsed_link = parsed_link._replace(
                         netloc=parsed_req_url.netloc
                     )._replace(scheme=parsed_req_url.scheme)

@@ -347,12 +347,66 @@ def test_transform_without_prefix():
     assert transformed["links"][1]["href"] == "http://proxy.example.com/collections"
 
 
-def test_transform_mixed_links():
+@pytest.mark.parametrize(
+    "upstream_url,root_path,input_links,expected_links",
+    [
+        # Upstream links with upstream path
+        (
+            "http://upstream.example.com/api",
+            "/proxy",
+            [
+                {"rel": "self", "href": "http://upstream.example.com/api/collections"},
+                {"rel": "root", "href": "http://upstream.example.com/api"},
+                {
+                    "rel": "items",
+                    "href": "http://upstream.example.com/api/collections/test/items",
+                },
+            ],
+            [
+                "http://proxy.example.com/proxy/collections",
+                "http://proxy.example.com/proxy",
+                "http://proxy.example.com/proxy/collections/test/items",
+            ],
+        ),
+        # Upstream links without upstream path
+        (
+            "http://upstream.example.com",
+            "/proxy",
+            [
+                {"rel": "self", "href": "http://upstream.example.com/collections"},
+                {"rel": "root", "href": "http://upstream.example.com/"},
+                {"rel": "root", "href": "http://upstream.example.com/other/path"},
+            ],
+            [
+                "http://proxy.example.com/proxy/collections",
+                "http://proxy.example.com/proxy/",
+                "http://proxy.example.com/proxy/other/path",
+            ],
+        ),
+        # Upstream links without root path
+        (
+            "http://upstream.example.com/api",
+            None,
+            [
+                {"rel": "self", "href": "http://upstream.example.com/api/collections"},
+                {"rel": "root", "href": "http://upstream.example.com/api"},
+                {"rel": "root", "href": "http://upstream.example.com/other/path"},
+            ],
+            [
+                "http://proxy.example.com/collections",
+                "http://proxy.example.com",
+                # Upstream links without matching root path should be ignored
+                "http://upstream.example.com/other/path",
+            ],
+        ),
+    ],
+)
+def test_transform_mixed_links(upstream_url, root_path, input_links, expected_links):
     """Test transforming a mix of proxy links and upstream links."""
     middleware = ProcessLinksMiddleware(
         app=None,
-        upstream_url="http://upstream.example.com/api",
-        root_path="/proxy",
+        upstream_url=upstream_url,
+        root_path=root_path,
     )
     request_scope = {
         "type": "http",
@@ -363,35 +417,15 @@ def test_transform_mixed_links():
         ],
     }
 
-    data = {
-        "links": [
-            # Proxy links (should be processed as before)
-            {"rel": "self", "href": "http://proxy.example.com/api/collections"},
-            # Upstream links (should be rewritten to proxy)
-            {"rel": "root", "href": "http://upstream.example.com/api"},
-            {
-                "rel": "items",
-                "href": "http://upstream.example.com/api/collections/test/items",
-            },
-            # External links (should be ignored)
-            {"rel": "external", "href": "http://other.example.com/api"},
-        ]
-    }
-
-    transformed = middleware.transform_json(data, Request(request_scope))
-
-    # Proxy links should be processed as before
-    assert (
-        transformed["links"][0]["href"] == "http://proxy.example.com/proxy/collections"
+    transformed = middleware.transform_json(
+        {
+            "links": input_links,
+        },
+        Request(request_scope),
     )
-    # Upstream links should be rewritten to proxy
-    assert transformed["links"][1]["href"] == "http://proxy.example.com/proxy"
-    assert (
-        transformed["links"][2]["href"]
-        == "http://proxy.example.com/proxy/collections/test/items"
-    )
-    # External links should be ignored
-    assert transformed["links"][3]["href"] == "http://other.example.com/api"
+
+    for i, expected in enumerate(expected_links):
+        assert transformed["links"][i]["href"] == expected
 
 
 def test_transform_upstream_links_nested_objects():

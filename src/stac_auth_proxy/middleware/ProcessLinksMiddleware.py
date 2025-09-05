@@ -11,6 +11,7 @@ from starlette.requests import Request
 from starlette.types import ASGIApp, Scope
 
 from ..utils.middleware import JsonResponseMiddleware
+from ..utils.requests import get_base_url
 from ..utils.stac import get_links
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,11 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
 
     def transform_json(self, data: dict[str, Any], request: Request) -> dict[str, Any]:
         """Update links in the response to include root_path."""
+        # Get the client's actual base URL (accounting for load balancers/proxies)
+        req_base_url = get_base_url(request)
+        parsed_req_url = urlparse(req_base_url)
+        parsed_upstream_url = urlparse(self.upstream_url)
+
         for link in get_links(data):
             href = link.get("href")
             if not href:
@@ -48,12 +54,25 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
             try:
                 parsed_link = urlparse(href)
 
-                # Ignore links that are not for this proxy
-                if parsed_link.netloc != request.headers.get("host"):
+                if parsed_link.netloc not in [
+                    parsed_req_url.netloc,
+                    parsed_upstream_url.netloc,
+                ]:
+                    logger.warning(
+                        "Ignoring link %s because it is not for an endpoint behind this proxy (%s or %s)",
+                        href,
+                        parsed_req_url.netloc,
+                        parsed_upstream_url.netloc,
+                    )
                     continue
 
-                # Remove the upstream_url path from the link if it exists
-                parsed_upstream_url = urlparse(self.upstream_url)
+                if parsed_link.netloc == parsed_upstream_url.netloc:
+                    # Replace the upstream host with the client's host
+                    parsed_link = parsed_link._replace(
+                        netloc=parsed_req_url.netloc
+                    )._replace(scheme=parsed_req_url.scheme)
+
+                # Rewrite the link path
                 if parsed_upstream_url.path != "/" and parsed_link.path.startswith(
                     parsed_upstream_url.path
                 ):
@@ -68,6 +87,7 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
                     )
 
                 link["href"] = urlunparse(parsed_link)
+
             except Exception as e:
                 logger.error(
                     "Failed to parse link href %r, (ignoring): %s", href, str(e)

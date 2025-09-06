@@ -5,6 +5,8 @@ import time
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from stac_auth_proxy.utils.requests import build_server_timing_header
+
 
 class AddProcessTimeHeaderMiddleware(BaseHTTPMiddleware):
     """Middleware to add Server-Timing header with proxy processing time."""
@@ -16,16 +18,11 @@ class AddProcessTimeHeaderMiddleware(BaseHTTPMiddleware):
         process_time = time.perf_counter() - start_time
 
         # Add Server-Timing header with proxy processing time
-        # Format: Server-Timing: proxy;dur=123.456
-        server_timing_value = f"proxy;dur={process_time:.3f}"
-
-        # If there's already a Server-Timing header, append to it
-        existing_timing = response.headers.get("Server-Timing")
-        if existing_timing:
-            response.headers["Server-Timing"] = (
-                f"{existing_timing}, {server_timing_value}"
-            )
-        else:
-            response.headers["Server-Timing"] = server_timing_value
+        response.headers["Server-Timing"] = build_server_timing_header(
+            response.headers.get("Server-Timing"),
+            name="proxy",
+            dur=process_time,
+            desc="Proxy processing time",
+        )
 
         return response

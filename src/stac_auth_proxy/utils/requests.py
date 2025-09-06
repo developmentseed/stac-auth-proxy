@@ -3,7 +3,7 @@
 import json
 import re
 from dataclasses import dataclass, field
-from typing import Sequence
+from typing import Optional, Sequence
 from urllib.parse import urlparse
 
 from ..config import EndpointMethods
@@ -80,3 +80,13 @@ class MatchResult:
 
     is_private: bool
     required_scopes: Sequence[str] = field(default_factory=list)
+
+
+def build_server_timing_header(
+    current_value: Optional[str] = None, *, name: str, desc: str, dur: float
+):
+    """Append a timing header to headers."""
+    metric = f'{name};desc="{desc}";dur={dur:.3f}'
+    if current_value:
+        return f"{current_value}, {metric}"
+    return metric

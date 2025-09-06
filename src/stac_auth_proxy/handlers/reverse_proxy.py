@@ -9,6 +9,8 @@ from fastapi import Request
 from starlette.datastructures import MutableHeaders
 from starlette.responses import Response
 
+from stac_auth_proxy.utils.requests import build_server_timing_header
+
 logger = logging.getLogger(__name__)
 
 
@@ -86,11 +88,15 @@ class ReverseProxyHandler:
         start_time = time.perf_counter()
         rp_resp = await self.client.send(rp_req, stream=True)
         proxy_time = time.perf_counter() - start_time
-
+        rp_resp.headers["Server-Timing"] = build_server_timing_header(
+            rp_resp.headers.get("Server-Timing"),
+            name="upstream",
+            dur=proxy_time,
+            desc="Upstream processing time",
+        )
         logger.debug(
             f"Received response status {rp_resp.status_code!r} from {rp_req.url} in {proxy_time:.3f}s"
         )
-        rp_resp.headers["X-Upstream-Time"] = f"{proxy_time:.3f}"
 
         # We read the content here to make use of HTTPX's decompression, ensuring we have
         # non-compressed content for the middleware to work with.

@@ -97,7 +97,12 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
                         path=f"{self.root_path}{parsed_link.path}"
                     )
 
-                logger.debug("Rewriting link %r to %r", href, urlunparse(parsed_link))
+                logger.debug(
+                    "Rewriting %r link %r to %r",
+                    link.get("rel"),
+                    href,
+                    urlunparse(parsed_link),
+                )
                 link["href"] = urlunparse(parsed_link)
 
             except Exception as e:

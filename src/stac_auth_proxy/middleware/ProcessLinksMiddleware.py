@@ -4,7 +4,7 @@ import logging
 import re
 from dataclasses import dataclass
 from typing import Any, Optional
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import ParseResult, urlparse, urlunparse
 
 from starlette.datastructures import Headers
 from starlette.requests import Request
@@ -47,67 +47,75 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
         parsed_upstream_url = urlparse(self.upstream_url)
 
         for link in get_links(data):
-            href = link.get("href")
-            if not href:
-                continue
-
             try:
-                parsed_link = urlparse(href)
-
-                if parsed_link.netloc not in [
-                    parsed_req_url.netloc,
-                    parsed_upstream_url.netloc,
-                ]:
-                    logger.debug(
-                        "Ignoring link %s because it is not for an endpoint behind this proxy (%s or %s)",
-                        href,
-                        parsed_req_url.netloc,
-                        parsed_upstream_url.netloc,
-                    )
-                    continue
-
-                # If the link path is not a descendant of the upstream path, don't transform it
-                if parsed_upstream_url.path != "/" and not parsed_link.path.startswith(
-                    parsed_upstream_url.path
-                ):
-                    logger.debug(
-                        "Ignoring link %s because it is not descendant of upstream path (%s)",
-                        href,
-                        parsed_upstream_url.path,
-                    )
-                    continue
-
-                # Replace the upstream host with the client's host
-                if parsed_link.netloc == parsed_upstream_url.netloc:
-                    parsed_link = parsed_link._replace(
-                        netloc=parsed_req_url.netloc
-                    )._replace(scheme=parsed_req_url.scheme)
-
-                # Rewrite the link path
-                if parsed_upstream_url.path != "/" and parsed_link.path.startswith(
-                    parsed_upstream_url.path
-                ):
-                    parsed_link = parsed_link._replace(
-                        path=parsed_link.path[len(parsed_upstream_url.path) :]
-                    )
-
-                # Add the root_path to the link if it exists
-                if self.root_path:
-                    parsed_link = parsed_link._replace(
-                        path=f"{self.root_path}{parsed_link.path}"
-                    )
-
-                logger.debug(
-                    "Rewriting %r link %r to %r",
-                    link.get("rel"),
-                    href,
-                    urlunparse(parsed_link),
-                )
-                link["href"] = urlunparse(parsed_link)
-
+                self._update_link(link, parsed_req_url, parsed_upstream_url)
             except Exception as e:
                 logger.error(
-                    "Failed to parse link href %r, (ignoring): %s", href, str(e)
+                    "Failed to parse link href %r, (ignoring): %s",
+                    link.get("href"),
+                    str(e),
                 )
-
         return data
+
+    def _update_link(
+        self, link: dict[str, Any], request_url: ParseResult, upstream_url: ParseResult
+    ) -> None:
+        """
+        Ensure that link hrefs that are local to upstream url are rewritten as local to
+        the proxy.
+        """
+        if "href" not in link:
+            logger.warning("Link %r has no href", link)
+            return
+
+        parsed_link = urlparse(link["href"])
+
+        if parsed_link.netloc not in [
+            request_url.netloc,
+            upstream_url.netloc,
+        ]:
+            logger.debug(
+                "Ignoring link %s because it is not for an endpoint behind this proxy (%s or %s)",
+                link["href"],
+                request_url.netloc,
+                upstream_url.netloc,
+            )
+            return
+
+        # If the link path is not a descendant of the upstream path, don't transform it
+        if upstream_url.path != "/" and not parsed_link.path.startswith(
+            upstream_url.path
+        ):
+            logger.debug(
+                "Ignoring link %s because it is not descendant of upstream path (%s)",
+                link["href"],
+                upstream_url.path,
+            )
+            return
+
+        # Replace the upstream host with the client's host
+        if parsed_link.netloc == upstream_url.netloc:
+            parsed_link = parsed_link._replace(netloc=request_url.netloc)._replace(
+                scheme=request_url.scheme
+            )
+
+        # Rewrite the link path
+        if upstream_url.path != "/" and parsed_link.path.startswith(upstream_url.path):
+            parsed_link = parsed_link._replace(
+                path=parsed_link.path[len(upstream_url.path) :]
+            )
+
+        # Add the root_path to the link if it exists
+        if self.root_path:
+            parsed_link = parsed_link._replace(
+                path=f"{self.root_path}{parsed_link.path}"
+            )
+
+        logger.debug(
+            "Rewriting %r link %r to %r",
+            link.get("rel"),
+            link["href"],
+            urlunparse(parsed_link),
+        )
+
+        link["href"] = urlunparse(parsed_link)

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.3](https://github.com/developmentseed/stac-auth-proxy/compare/v0.9.2...v0.9.3) (2025-09-08)
+
+
+### Documentation
+
+* update tips to describe non-upstream URL ([ebadd52](https://github.com/developmentseed/stac-auth-proxy/commit/ebadd52fd050543906f3a6c61b110900de62b330))
+
 ## [0.9.2](https://github.com/developmentseed/stac-auth-proxy/compare/v0.9.1...v0.9.2) (2025-09-08)
 
 

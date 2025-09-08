@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.9.2](https://github.com/developmentseed/stac-auth-proxy/compare/v0.9.1...v0.9.2) (2025-09-08)
+
+
+### Bug Fixes
+
+* improve link processing ([#95](https://github.com/developmentseed/stac-auth-proxy/issues/95)) ([e52b5a9](https://github.com/developmentseed/stac-auth-proxy/commit/e52b5a972539232da4fc0a74b3a8abad7579f41e))
+* properly return error on invalid CQL2 filters ([5c5c856](https://github.com/developmentseed/stac-auth-proxy/commit/5c5c8562dc32994c6748f53f80ed101725962f9d))
+
+
+### Documentation
+
+* enhance middleware stack documentation with detailed descriptions and execution order ([06b51cb](https://github.com/developmentseed/stac-auth-proxy/commit/06b51cb8a48801d71f01aa1c433516e4832bcfcc))
+* update filter class path syntax ([a7f5b1b](https://github.com/developmentseed/stac-auth-proxy/commit/a7f5b1b81606ae33e67cb6a98627367600d1e0db))
+
 ## [0.9.1](https://github.com/developmentseed/stac-auth-proxy/compare/v0.9.0...v0.9.1) (2025-09-04)
 
 

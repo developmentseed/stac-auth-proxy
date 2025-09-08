@@ -91,7 +91,7 @@ def build_server_timing_header(
     current_value: Optional[str] = None, *, name: str, desc: str, dur: float
 ):
     """Append a timing header to headers."""
-    metric = f"{name};desc={desc};dur={dur:.3f}"
+    metric = f'{name};desc="{desc}";dur={dur:.3f}'
     if current_value:
         return f"{current_value}, {metric}"
     return metric

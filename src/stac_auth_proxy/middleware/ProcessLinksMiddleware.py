@@ -99,7 +99,7 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
                 scheme=request_url.scheme
             )
 
-        # Rewrite the link path
+        # Remove the upstream prefix from the link path
         if upstream_url.path != "/" and parsed_link.path.startswith(upstream_url.path):
             parsed_link = parsed_link._replace(
                 path=parsed_link.path[len(upstream_url.path) :]

@@ -215,6 +215,48 @@ def test_transform_upstream_links_with_ports(
         assert transformed["links"][i]["href"] == expected
 
 
+@pytest.mark.parametrize(
+    "upstream_url,root_path,input_links,expected_links",
+    [
+        # Different ports
+        (
+            "http://upstream-api:8080/",
+            "",
+            [
+                {
+                    "rel": "self",
+                    "href": "http://upstream-api:8080/collections",
+                },
+            ],
+            [
+                "http://proxy.example.com/collections",
+            ],
+        ),
+    ],
+)
+def test_transform_upstream_links_with_port_only_upstream(
+    upstream_url, root_path, input_links, expected_links
+):
+    """Test transforming upstream links with different ports."""
+    middleware = ProcessLinksMiddleware(
+        app=None, upstream_url=upstream_url, root_path=root_path
+    )
+    request_scope = {
+        "type": "http",
+        "path": "/test",
+        "headers": [
+            (b"host", f"proxy.example.com".encode()),
+            (b"content-type", b"application/json"),
+        ],
+    }
+
+    data = {"links": input_links}
+    transformed = middleware.transform_json(data, Request(request_scope))
+
+    for i, expected in enumerate(expected_links):
+        assert transformed["links"][i]["href"] == expected
+
+
 def test_transform_json_different_host():
     """Test that links with different hostnames are not transformed."""
     middleware = ProcessLinksMiddleware(

@@ -45,6 +45,12 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
         req_base_url = get_base_url(request)
         parsed_req_url = urlparse(req_base_url)
         parsed_upstream_url = urlparse(self.upstream_url)
+        
+        # DEBUG: Log URL processing
+        logger.info(f"DEBUG ProcessLinks: req_base_url = {req_base_url}")
+        logger.info(f"DEBUG ProcessLinks: parsed_req_url.netloc = {parsed_req_url.netloc}")
+        logger.info(f"DEBUG ProcessLinks: upstream_url = {self.upstream_url}")
+        logger.info(f"DEBUG ProcessLinks: parsed_upstream_url.netloc = {parsed_upstream_url.netloc}")
 
         for link in get_links(data):
             try:
@@ -95,6 +101,8 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
 
         # Replace the upstream host with the client's host
         if parsed_link.netloc == upstream_url.netloc:
+            logger.info(f"DEBUG _update_link: Original link href = {link['href']}")
+            logger.info(f"DEBUG _update_link: Replacing netloc {parsed_link.netloc} with {request_url.netloc}")
             parsed_link = parsed_link._replace(netloc=request_url.netloc)._replace(
                 scheme=request_url.scheme
             )
@@ -118,4 +126,6 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
             urlunparse(parsed_link),
         )
 
-        link["href"] = urlunparse(parsed_link)
+        new_href = urlunparse(parsed_link)
+        logger.info(f"DEBUG _update_link: Final transformed href = {new_href}")
+        link["href"] = new_href

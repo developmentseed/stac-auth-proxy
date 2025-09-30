@@ -189,16 +189,27 @@ def get_base_url(request: Request) -> str:
     forwarded_proto = request.headers.get("X-Forwarded-Proto")
     forwarded_path = request.headers.get("X-Forwarded-Path")
 
+    # DEBUG: Log request details
+    logger.info(f"DEBUG get_base_url: request.url = {request.url}")
+    logger.info(f"DEBUG get_base_url: request.url.netloc = {request.url.netloc}")
+    logger.info(f"DEBUG get_base_url: Host header = {request.headers.get('host')}")
+    logger.info(f"DEBUG get_base_url: X-Forwarded-Host = {forwarded_host}")
+    logger.info(f"DEBUG get_base_url: X-Forwarded-Proto = {forwarded_proto}")
+
     if forwarded_host:
         # Use forwarded headers to reconstruct the original client URL
         scheme = forwarded_proto or request.url.scheme
         netloc = forwarded_host
         # Use forwarded path if available, otherwise use request base URL path
         path = forwarded_path or request.base_url.path
+        logger.info(f"DEBUG get_base_url: Using forwarded headers - netloc = {netloc}")
     else:
         # Fall back to the request's base URL if no forwarded headers
         scheme = request.url.scheme
         netloc = request.url.netloc
         path = request.base_url.path
+        logger.info(f"DEBUG get_base_url: Using request URL - netloc = {netloc}")
 
-    return f"{scheme}://{netloc}{path}"
+    result = f"{scheme}://{netloc}{path}"
+    logger.info(f"DEBUG get_base_url: Final result = {result}")
+    return result

@@ -639,3 +639,160 @@ def test_transform_with_forwarded_headers(headers, expected_base_url):
     # but not include the forwarded path in the response URLs
     assert transformed["links"][0]["href"] == f"{expected_base_url}/proxy/collections"
     assert transformed["links"][1]["href"] == f"{expected_base_url}/proxy"
+
+
+@pytest.mark.parametrize(
+    "upstream_url,request_host,request_port,scheme,input_links,expected_links",
+    [
+        # Test case 1: Non-standard port (should work correctly)
+        (
+            "http://montandon-eoapi-stac:8080",
+            "stac-test.whydidweevendothis.com",
+            1234,
+            "http",
+            [
+                {"rel": "self", "href": "http://montandon-eoapi-stac:8080/collections"},
+            ],
+            [
+                "http://stac-test.whydidweevendothis.com:1234/collections",
+            ],
+        ),
+        # Test case 2: Standard port HTTP (80) - BUG: should NOT include upstream port
+        (
+            "http://montandon-eoapi-stac:8080",
+            "stac-test.whydidweevendothis.com",
+            80,
+            "http",
+            [
+                {"rel": "self", "href": "http://montandon-eoapi-stac:8080/collections"},
+            ],
+            [
+                "http://stac-test.whydidweevendothis.com/collections",  # Should NOT have :8080
+            ],
+        ),
+        # Test case 3: Standard port HTTPS (443) - BUG: should NOT include upstream port
+        (
+            "http://montandon-eoapi-stac:8080",
+            "stac-test.whydidweevendothis.com",
+            443,
+            "https",
+            [
+                {"rel": "self", "href": "http://montandon-eoapi-stac:8080/collections"},
+            ],
+            [
+                "https://stac-test.whydidweevendothis.com/collections",  # Should NOT have :8080
+            ],
+        ),
+        # Test case 4: Standard port but NO server info (simulate real-world missing port)
+        (
+            "http://montandon-eoapi-stac:8080",
+            "stac-test.whydidweevendothis.com",
+            None,  # No port specified - simulate real-world scenario
+            "https",
+            [
+                {"rel": "self", "href": "http://montandon-eoapi-stac:8080/collections"},
+            ],
+            [
+                "https://stac-test.whydidweevendothis.com/collections",  # Should NOT have :8080
+            ],
+        ),
+    ],
+)
+def test_transform_upstream_links_standard_ports_bug(
+    upstream_url, request_host, request_port, scheme, input_links, expected_links
+):
+    """Test that demonstrates the port handling bug with standard ports.
+    
+    This test demonstrates the issue where standard ports (80, 443) cause
+    the upstream port to appear in the final URLs incorrectly.
+    """
+    middleware = ProcessLinksMiddleware(
+        app=None, upstream_url=upstream_url, root_path=None
+    )
+    
+    # Simulate request coming through standard port (80 or 443)
+    # For standard ports, browsers don't include port in Host header and ASGI scope
+    if request_port is None:
+        # Simulate real-world scenario where port is not specified anywhere
+        host_header = request_host  # No port in Host header
+        server_info = (request_host, 443)  # Server might default to 443 for HTTPS
+    elif request_port in [80, 443]:
+        host_header = request_host  # No port in Host header for standard ports
+        server_info = (request_host, request_port)  # But server info might be available
+    else:
+        host_header = f"{request_host}:{request_port}"  # Non-standard ports include port
+        server_info = (request_host, request_port)
+    
+    request_scope = {
+        "type": "http",
+        "scheme": scheme,
+        "path": "/test",
+        "headers": [
+            (b"host", host_header.encode()),
+            (b"content-type", b"application/json"),
+        ],
+        "server": server_info,
+    }
+
+    data = {"links": input_links}
+    transformed = middleware.transform_json(data, Request(request_scope))
+
+    for i, expected in enumerate(expected_links):
+        actual = transformed["links"][i]["href"]
+        print(f"Test case: port {request_port}")
+        print(f"Expected: {expected}")
+        print(f"Actual:   {actual}")
+        assert actual == expected, f"Port {request_port} test failed: expected {expected}, got {actual}"
+
+
+def test_transform_upstream_links_no_host_port_edge_case():
+    """Test the specific edge case that causes the bug.
+    
+    This test simulates what happens when:
+    1. Browser accesses http://localhost (no port in Host header)
+    2. Server is running on port 8000 internally
+    3. Upstream URL has port 8080
+    4. The bug: final URLs incorrectly show :8080 instead of no port
+    """
+    middleware = ProcessLinksMiddleware(
+        app=None, 
+        upstream_url="http://montandon-eoapi-stac:8080", 
+        root_path=None
+    )
+    
+    # Simulate the exact scenario that fails:
+    # - Host header: just "localhost" (no port)
+    # - Server port: 8000 (internal container port)
+    # - Scheme: http
+    # - Expected result: http://localhost/collections (no port)
+    # - Bug: gets http://localhost:8080/collections (upstream port!)
+    request_scope = {
+        "type": "http",
+        "scheme": "http",
+        "path": "/collections",
+        "query_string": b"",
+        "headers": [
+            (b"host", b"localhost"),  # NO PORT in host header
+            (b"content-type", b"application/json"),
+        ],
+        "server": ("127.0.0.1", 8000),  # Internal server port
+    }
+
+    # Test with a link from upstream that has port 8080
+    data = {
+        "links": [
+            {"rel": "self", "href": "http://montandon-eoapi-stac:8080/collections"},
+        ]
+    }
+    
+    # This should transform to http://localhost/collections (no port)
+    transformed = middleware.transform_json(data, Request(request_scope))
+    actual = transformed["links"][0]["href"]
+    expected = "http://localhost/collections"
+    
+    print(f"Edge case test:")
+    print(f"Expected: {expected}")
+    print(f"Actual:   {actual}")
+    
+    # This test should FAIL and demonstrate the bug
+    assert actual == expected, f"Edge case failed: expected {expected}, got {actual}"

@@ -52,6 +52,10 @@ The application is configurable via environment variables.
     - **Required:** No, defaults to `true`
     - **Example:** `false`, `1`, `True`
 
+    > [!TIP]
+    > **Default (`true`):** Overrides the [`Host` header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Host) in requests sent to the upstream API to match the upstream API origin, enabling proper `link` element construction via the [`Forwarded` header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Forwarded).
+    >
+    > **Disable (`false`):** Preserves the original `Host` header in requests sent to the upstream API so that the upstream API can use it when generating `link` elements instead of relying on proxy headers.
 
 ### `ROOT_PATH`
 
@@ -89,6 +93,9 @@ The application is configurable via environment variables.
     - **Type:** string
     - **Required:** No
     - **Example:** `https://auth.example.audience.1.net,https://auth.example.audience.2.net`
+
+    > [!NOTE]
+    > A comma-separated list of the intended recipient(s) of the JWT. At least one audience value must match the `aud` (audience) claim present in the incoming JWT. If unset, the API will not impose a check on the `aud` claim
 
 ### `DEFAULT_PUBLIC`
 

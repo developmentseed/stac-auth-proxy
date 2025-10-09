@@ -111,11 +111,15 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
                 path=f"{self.root_path}{parsed_link.path}"
             )
 
+        updated_href = urlunparse(parsed_link)
+        if updated_href == link["href"]:
+            return
+
         logger.debug(
             "Rewriting %r link %r to %r",
             link.get("rel"),
             link["href"],
-            urlunparse(parsed_link),
+            updated_href,
         )
 
-        link["href"] = urlunparse(parsed_link)
+        link["href"] = updated_href

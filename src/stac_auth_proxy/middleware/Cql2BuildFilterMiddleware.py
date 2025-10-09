@@ -108,5 +108,7 @@ class Cql2BuildFilterMiddleware:
         ]
         for expr, builder in endpoint_filters:
             if re.match(expr, path):
+                logger.debug("Path %s matched expression %s", path, expr)
                 return builder
+        logger.debug("Path %s did not match expressions %s", path, ','.join(p[0] for p in endpoint_filters))
         return None

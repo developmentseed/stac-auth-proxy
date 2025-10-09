@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.9.3](https://github.com/developmentseed/stac-auth-proxy/compare/v0.9.2...v0.9.3) (2025-10-09)
+
+
+### Documentation
+
+* **config:** add admonitions for more details ([40444cf](https://github.com/developmentseed/stac-auth-proxy/commit/40444cf2cfdd6cb8e660ecd35ce5f03055ca3f7e))
+* **config:** cleanup formatting ([8a82d3d](https://github.com/developmentseed/stac-auth-proxy/commit/8a82d3d99156cf046d35e04278e78b33fe861899))
+* update tips to describe non-upstream URL ([ebadd52](https://github.com/developmentseed/stac-auth-proxy/commit/ebadd52fd050543906f3a6c61b110900de62b330))
+
 ## [0.9.2](https://github.com/developmentseed/stac-auth-proxy/compare/v0.9.1...v0.9.2) (2025-09-08)
 
 

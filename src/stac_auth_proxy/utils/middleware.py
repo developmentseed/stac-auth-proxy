@@ -18,6 +18,10 @@ class JsonResponseMiddleware(ABC):
 
     app: ASGIApp
 
+    # Expected data type for JSON responses. Only responses matching this type will be transformed.
+    # If None, all JSON responses will be transformed regardless of type.
+    expected_data_type: Optional[type] = dict
+
     @abstractmethod
     def should_transform_response(
         self, request: Request, scope: Scope
@@ -97,8 +101,21 @@ class JsonResponseMiddleware(ABC):
                     )
                     await response(scope, receive, send)
                     return
-                transformed = self.transform_json(data, request=request)
-                body = json.dumps(transformed).encode()
+
+                if self.expected_data_type is None or isinstance(
+                    data, self.expected_data_type
+                ):
+                    transformed = self.transform_json(data, request=request)
+                    body = json.dumps(transformed).encode()
+                else:
+                    logger.warning(
+                        "Received JSON response with unexpected data type %r from upstream server (%r %r), "
+                        "skipping transformation (expected: %r)",
+                        type(data).__name__,
+                        request.method,
+                        request.url,
+                        self.expected_data_type.__name__,
+                    )
 
             # Update content-length header
             headers["content-length"] = str(len(body))

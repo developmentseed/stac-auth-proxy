@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.10.0](https://github.com/developmentseed/stac-auth-proxy/compare/v0.9.2...v0.10.0) (2025-10-14)
+
+
+### Features
+
+* skip json middleware based on response data type ([#103](https://github.com/developmentseed/stac-auth-proxy/issues/103)) ([16b05c3](https://github.com/developmentseed/stac-auth-proxy/commit/16b05c3c201e04b2027c6a7ef632477febdbecfb))
+* support customizing port when running as a module ([9a18c49](https://github.com/developmentseed/stac-auth-proxy/commit/9a18c49f74695dfdde516f6554a6bb6f6244937c))
+
+
+### Documentation
+
+* **config:** add admonitions for more details ([40444cf](https://github.com/developmentseed/stac-auth-proxy/commit/40444cf2cfdd6cb8e660ecd35ce5f03055ca3f7e))
+* **config:** cleanup formatting ([8a82d3d](https://github.com/developmentseed/stac-auth-proxy/commit/8a82d3d99156cf046d35e04278e78b33fe861899))
+* update tips to describe non-upstream URL ([ebadd52](https://github.com/developmentseed/stac-auth-proxy/commit/ebadd52fd050543906f3a6c61b110900de62b330))
+
 ## [0.9.2](https://github.com/developmentseed/stac-auth-proxy/compare/v0.9.1...v0.9.2) (2025-09-08)
 
 

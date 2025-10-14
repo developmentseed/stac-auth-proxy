@@ -206,7 +206,7 @@ def test_json_response_middleware_non_dict_json(content, expected_data):
 
 
 @pytest.mark.parametrize(
-    "middleware_class,expected_data_type,test_data,expected_result,should_transform",
+    "middleware_class, test_data, expected_result, should_transform",
     [
         # String middleware tests
         (

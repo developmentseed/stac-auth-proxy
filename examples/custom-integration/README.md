@@ -1,6 +1,6 @@
 # Custom Integration Example
 
-This example demonstrates how to integrate with a custom filter generator.
+This example demonstrates how to integrate with a custom filter factory.
 
 ## Running the Example
 

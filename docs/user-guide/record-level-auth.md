@@ -58,20 +58,20 @@ The [`ITEMS_FILTER_CLS`](configuration.md#items_filter_cls) applies filters to t
 
 ## Filter Contract
 
-A filter generator implements the following contract:
+A filter factory implements the following contract:
 
 - A class or function that may take initialization arguments
-- Once initialized, the generator is a callable with the following behavior:
+- Once initialized, the factory is a callable with the following behavior:
   - **Input**: A context dictionary containing request and user information
   - **Output**: A valid CQL2 expression (as a string or dict) that filters the data
 
 In Python typing syntax, it conforms to:
 
 ```py
-FilterGenerator = Callable[..., Callable[[dict[str, Any]], Awaitable[str | dict[str, Any]]]]
+FilterFactory = Callable[..., Callable[[dict[str, Any]], Awaitable[str | dict[str, Any]]]]
 ```
 
-### Example Filter Generator
+### Example Filter Factory
 
 ```py
 import dataclasses
@@ -87,7 +87,7 @@ class ExampleFilter:
 ```
 
 > [!TIP]
-> Despite being referred to as a _class_, a filter generator could be written as a function.
+> Despite being referred to as a _class_ in the settings, a filter factory could be written as a function.
 >
 >   <details>
 >
@@ -149,7 +149,7 @@ ITEMS_FILTER_KWARGS='{"cache_ttl": 30.0}'
 - `{FILTER_TYPE}_FILTER_ARGS`: Positional arguments (comma-separated)
 - `{FILTER_TYPE}_FILTER_KWARGS`: Keyword arguments (comma-separated key=value pairs)
 
-## Built-in Filter Generators
+## Built-in Filter Factorys
 
 ### Template Filter
 
@@ -195,14 +195,14 @@ items_cql2 := "true" if {
 }
 ```
 
-## Custom Filter Generators
+## Custom Filter Factories
 
 > [!TIP]
 > An example integration can be found in [`examples/custom-integration`](https://github.com/developmentseed/stac-auth-proxy/blob/main/examples/custom-integration).
 
-### Complex Filter Generator
+### Complex Filter Factory
 
-An example of a more complex filter generator where the filter is generated based on the response of an external API:
+An example of a more complex filter factory where the filter is generated based on the response of an external API:
 
 ```py
 import dataclasses

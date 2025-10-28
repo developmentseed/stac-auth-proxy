@@ -200,7 +200,7 @@ The application is configurable via environment variables.
 
 ### `ITEMS_FILTER_CLS`
 
-: CQL2 expression generator for item-level filtering
+: CQL2 expression factor for item-level filtering
 
     - **Type:** JSON object with class configuration
     - **Required:** No, defaults to `null` (disabled)
@@ -208,7 +208,7 @@ The application is configurable via environment variables.
 
 ### `ITEMS_FILTER_ARGS`
 
-: Positional arguments for CQL2 expression generator
+: Positional arguments for CQL2 expression factor
 
     - **Type:** List of positional arguments used to initialize the class
     - **Required:** No, defaults to `[]`
@@ -216,7 +216,7 @@ The application is configurable via environment variables.
 
 ### `ITEMS_FILTER_KWARGS`
 
-: Keyword arguments for CQL2 expression generator
+: Keyword arguments for CQL2 expression factor
 
     - **Type:** Dictionary of keyword arguments used to initialize the class
     - **Required:** No, defaults to `{}`
@@ -232,7 +232,7 @@ The application is configurable via environment variables.
 
 ### `COLLECTIONS_FILTER_CLS`
 
-: CQL2 expression generator for collection-level filtering
+: CQL2 expression factor for collection-level filtering
 
     - **Type:** JSON object with class configuration
     - **Required:** No, defaults to `null` (disabled)
@@ -240,7 +240,7 @@ The application is configurable via environment variables.
 
 ### `COLLECTIONS_FILTER_ARGS`
 
-: Positional arguments for CQL2 expression generator
+: Positional arguments for CQL2 expression factor
 
     - **Type:** List of positional arguments used to initialize the class
     - **Required:** No, defaults to `[]`
@@ -248,7 +248,7 @@ The application is configurable via environment variables.
 
 ### `COLLECTIONS_FILTER_KWARGS`
 
-: Keyword arguments for CQL2 expression generator
+: Keyword arguments for CQL2 expression factor
 
     - **Type:** Dictionary of keyword arguments used to initialize the class
     - **Required:** No, defaults to `{}`

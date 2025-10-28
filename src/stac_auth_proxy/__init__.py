@@ -7,7 +7,7 @@ with some internal STAC API.
 """
 
 from .app import configure_app, create_app
-from .config import Settings
+from .config import CoreSettings, ProxySettings, Settings
 from .lifespan import build_lifespan
 
 __all__ = [
@@ -15,4 +15,6 @@ __all__ = [
     "create_app",
     "configure_app",
     "Settings",
+    "ProxySettings",
+    "CoreSettings",
 ]

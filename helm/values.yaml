@@ -46,6 +46,14 @@ nodeSelector: {}
 tolerations: []
 affinity: {}
 
+# Init containers to run before the main container starts
+# initContainers: []
+# Example:
+# initContainers:
+#   - name: wait-for-oidc
+#     image: busybox:1.35
+#     command: ['sh', '-c', 'until nc -z oidc-server 8080; do sleep 2; done']
+
 # Environment variables for the application
 env:
   # Required configuration

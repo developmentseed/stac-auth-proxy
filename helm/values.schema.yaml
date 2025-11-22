@@ -229,6 +229,13 @@ properties:
     additionalProperties: true
     description: "Pod affinity rules"
 
+  initContainers:
+    type: array
+    items:
+      type: object
+      additionalProperties: true
+    description: "Init containers to run before the main container starts"
+
   serviceAccount:
     type: object
     properties:

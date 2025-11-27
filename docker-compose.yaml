@@ -1,7 +1,7 @@
 services:
   stac-pg:
     profiles: [""] # default profile
-    image: ghcr.io/stac-utils/stac-fastapi-pgstac:5.0.2
+    image: ghcr.io/stac-utils/stac-fastapi-pgstac:6.1.1
     environment:
       APP_HOST: 0.0.0.0
       APP_PORT: 8001
@@ -20,7 +20,8 @@ services:
       - "8001:8001"
     depends_on:
       - database-pg
-    command: bash -c "./scripts/wait-for-it.sh database-pg:5432 && python -m stac_fastapi.pgstac.app"
+    command: python -m stac_fastapi.pgstac.app
+    # command: bash -c "./scripts/wait-for-it.sh database-pg:5432 && python -m stac_fastapi.pgstac.app"
 
   stac-os:
     profiles: ["os"]
@@ -107,3 +108,18 @@ services:
       PORT: 8888
     ports:
       - "8888:8888"
+
+  stac-browser:
+    image: ghcr.io/radiantearth/stac-browser:latest
+    ports:
+      - 8080:8080
+    environment:
+      SB_catalogUrl: "http://localhost:8001"
+      SB_authConfig: |
+        {
+          "type": "openIdConnect",
+          "openIdConnectUrl": "http://localhost:8888/.well-known/openid-configuration",
+          "oidcOptions": {
+            "client_id": "stac-browser"
+          }
+        }

@@ -15,6 +15,7 @@ services:
       DB_MIN_CONN_SIZE: 1
       DB_MAX_CONN_SIZE: 1
       USE_API_HYDRATE: ${USE_API_HYDRATE:-false}
+      CORS_HEADERS: "Content-Type,Authorization"
     hostname: stac
     ports:
       - "8001:8001"
@@ -114,7 +115,7 @@ services:
     ports:
       - 8080:8080
     environment:
-      SB_catalogUrl: "http://localhost:8001"
+      SB_catalogUrl: "http://localhost:8000"
       SB_authConfig: |
         {
           "type": "openIdConnect",

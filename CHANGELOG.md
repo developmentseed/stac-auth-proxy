@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.11.0](https://github.com/developmentseed/stac-auth-proxy/compare/v0.10.0...v0.11.0) (2025-11-28)
+
+
+### Features
+
+* **helm:** Add support for initContainers. ([#104](https://github.com/developmentseed/stac-auth-proxy/issues/104)) ([a7ca408](https://github.com/developmentseed/stac-auth-proxy/commit/a7ca408b73379cd75980f005a5e2fac2d815b700))
+
+
+### Documentation
+
+* Remove unused import of 'Expr' from record-level-auth ([4f86e7b](https://github.com/developmentseed/stac-auth-proxy/commit/4f86e7bb5a9306ba90584c86efb3017a96bb57fc))
+
 ## [0.10.0](https://github.com/developmentseed/stac-auth-proxy/compare/v0.9.2...v0.10.0) (2025-10-14)
 
 

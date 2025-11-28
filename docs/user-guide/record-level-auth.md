@@ -77,8 +77,6 @@ FilterFactory = Callable[..., Callable[[dict[str, Any]], Awaitable[str | dict[st
 import dataclasses
 from typing import Any
 
-from cql2 import Expr
-
 
 @dataclasses.dataclass
 class ExampleFilter:
@@ -96,12 +94,10 @@ class ExampleFilter:
 > ```py
 > from typing import Any
 >
-> from cql2 import Expr
->
 >
 > def example_filter():
 >     async def example_filter(context: dict[str, Any]) -> str | dict[str, Any]:
->         return Expr("true")
+>         return "true"
 >     return example_filter
 > ```
 >

@@ -26,4 +26,5 @@ repos:
         additional_dependencies:
         - types-simplejson
         - types-attrs
+        - types-PyYAML
         - pydantic~=2.0

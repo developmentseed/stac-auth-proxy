@@ -1,0 +1,205 @@
+# Example auth rules test file demonstrating YAML anchors and aliases
+#
+# This file shows how to use YAML features to reduce repetition:
+# - Anchors (&name) define reusable content
+# - Aliases (*name) reference anchored content
+# - The tuple format pairs items with their expected results
+
+# Define reusable STAC items using YAML anchors
+items:
+  # Public items (no private property or private=false)
+  public_item_1: &public_item_1
+    id: public-item-1
+    type: Feature
+    collection: my-collection
+    properties:
+      private: false
+      created: "2024-01-01"
+    geometry: null
+
+  public_item_no_flag: &public_item_no_flag
+    id: public-item-2
+    type: Feature
+    collection: my-collection
+    properties:
+      created: "2024-01-02"
+    geometry: null
+
+  # Private items
+  private_item_1: &private_item_1
+    id: private-item-1
+    type: Feature
+    collection: my-collection
+    properties:
+      private: true
+      sensitive: "data"
+    geometry: null
+
+  private_item_2: &private_item_2
+    id: private-item-2
+    type: Feature
+    collection: another-collection
+    properties:
+      private: true
+    geometry: null
+
+  # Items from different collections
+  allowed_collection_item: &allowed_collection_item
+    id: allowed-item-1
+    type: Feature
+    collection: my-collection
+    properties:
+      private: true
+    geometry: null
+
+  another_allowed_item: &another_allowed_item
+    id: allowed-item-2
+    type: Feature
+    collection: another-collection
+    properties:
+      private: true
+    geometry: null
+
+  forbidden_collection_item: &forbidden_collection_item
+    id: forbidden-item-1
+    type: Feature
+    collection: forbidden-collection
+    properties:
+      private: true
+      secret: "classified"
+    geometry: null
+
+# Define reusable context blocks
+contexts:
+  anonymous: &anonymous_context
+    req:
+      path: /collections/my-collection/items
+      method: GET
+      query_params: {}
+      path_params:
+        collection_id: my-collection
+      headers: {}
+    # No payload = anonymous user
+
+  authenticated_user: &authenticated_user_context
+    req:
+      path: /collections/my-collection/items
+      method: GET
+      query_params: {}
+      path_params:
+        collection_id: my-collection
+      headers:
+        authorization: Bearer fake-token
+    payload:
+      sub: user123
+      collections:
+        - my-collection
+        - another-collection
+      superuser: "false"
+
+  superuser: &superuser_context
+    req:
+      path: /search
+      method: POST
+      query_params: {}
+      path_params: {}
+      headers:
+        authorization: Bearer admin-token
+    payload:
+      sub: admin
+      collections: []
+      superuser: "true"
+
+# Test cases using anchors and the tuple format
+test_cases:
+  - name: Anonymous user can only see public items
+    context: *anonymous_context
+    tests:
+      - [*public_item_1, true]           # Public item with private=false
+      - [*public_item_no_flag, true]     # Public item without private flag
+      - [*private_item_1, false]         # Private item should be hidden
+      - [*private_item_2, false]         # Another private item should be hidden
+
+  - name: Authenticated user with collection access
+    context: *authenticated_user_context
+    tests:
+      # User has access to "my-collection" and "another-collection"
+      - [*allowed_collection_item, true]     # In allowed collection
+      - [*another_allowed_item, true]        # In another allowed collection
+      - [*forbidden_collection_item, false]  # In forbidden collection
+      - [*public_item_1, true]               # Public items still visible
+
+  - name: Authenticated user with limited collection access
+    context:
+      req:
+        path: /search
+        method: POST
+        query_params: {}
+        path_params: {}
+        headers:
+          authorization: Bearer limited-token
+      payload:
+        sub: limited-user
+        collections:
+          - my-collection  # Only has access to my-collection
+        superuser: "false"
+    tests:
+      - [*allowed_collection_item, true]     # In allowed collection
+      - [*another_allowed_item, false]       # NOT in allowed collection
+      - [*forbidden_collection_item, false]  # NOT in allowed collection
+
+  - name: Superuser can access everything
+    context: *superuser_context
+    tests:
+      - [*public_item_1, true]
+      - [*private_item_1, true]
+      - [*private_item_2, true]
+      - [*allowed_collection_item, true]
+      - [*another_allowed_item, true]
+      - [*forbidden_collection_item, true]
+
+  - name: Anonymous user with search endpoint
+    context:
+      req:
+        path: /search
+        method: POST
+        query_params: {}
+        path_params: {}
+        headers: {}
+      # No payload = anonymous
+    tests:
+      - [*public_item_1, true]
+      - [*public_item_no_flag, true]
+      - [*private_item_1, false]
+      - [*private_item_2, false]
+
+  - name: User with empty collections claim
+    context:
+      req:
+        path: /search
+        method: POST
+        query_params: {}
+        path_params: {}
+        headers:
+          authorization: Bearer token
+      payload:
+        sub: user-no-collections
+        collections: []  # Empty collections list
+        superuser: "false"
+    tests:
+      # Should only see public items
+      - [*public_item_1, true]
+      - [*public_item_no_flag, true]
+      - [*private_item_1, false]
+      - [*private_item_2, false]
+      - [*allowed_collection_item, false]
+      - [*another_allowed_item, false]
+
+  - name: Edge case - Item with missing collection field
+    context: *authenticated_user_context
+    tests:
+      - id: no-collection-item
+        type: Feature
+        properties: {}
+        geometry: null
+      - false  # Should not match any filter that checks collection

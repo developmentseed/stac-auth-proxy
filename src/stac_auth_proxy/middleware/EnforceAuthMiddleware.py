@@ -127,18 +127,19 @@ class EnforceAuthMiddleware:
         if not auth_header:
             if auto_error:
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
+                    status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Not authenticated",
+                    headers={"WWW-Authenticate": "Bearer"},
                 )
             return None
 
         # Extract token from header
         token_parts = auth_header.split(" ")
         if len(token_parts) != 2 or token_parts[0].lower() != "bearer":
-            logger.error("Invalid token: %r", auth_header)
+            logger.error("Invalid Authorization header format")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
+                detail="Invalid Authorization header format",
                 headers={"WWW-Authenticate": "Bearer"},
             )
         [_, token] = token_parts
@@ -154,10 +155,10 @@ class EnforceAuthMiddleware:
                 audience=self.allowed_jwt_audiences,
             )
         except jwt.InvalidAudienceError as e:
-            logger.error("InvalidAudienceError: %r", e)
+            logger.error("Token audience validation failed: %s", str(e))
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate Audience",
+                detail="Invalid token audience",
                 headers={"WWW-Authenticate": "Bearer"},
             )
         except (
@@ -165,21 +166,32 @@ class EnforceAuthMiddleware:
             jwt.exceptions.DecodeError,
             jwt.exceptions.PyJWKClientError,
         ) as e:
-            logger.error("InvalidTokenError: %r", e)
+            logger.error("Token validation failed: %s", type(e).__name__)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
+                detail="Invalid or expired token",
                 headers={"WWW-Authenticate": "Bearer"},
             ) from e
 
+        # Check authorization (scopes)
         if required_scopes:
-            for scope in required_scopes:
-                if scope not in payload["scope"].split(" "):
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Not enough permissions",
-                        headers={"WWW-Authenticate": f'Bearer scope="{scope}"'},
-                    )
+            token_scopes = set(payload.get("scope", "").split())
+            missing_scopes = set(required_scopes) - token_scopes
+            if missing_scopes:
+                logger.warning(
+                    "Insufficient scopes for user %s. Required: %s, Has: %s",
+                    payload.get("sub"),
+                    required_scopes,
+                    token_scopes,
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Insufficient permissions. Required scopes: {', '.join(missing_scopes)}",
+                    headers={
+                        "WWW-Authenticate": f'Bearer scope="{" ".join(required_scopes)}"'
+                    },
+                )
+
         return payload
 
     @property

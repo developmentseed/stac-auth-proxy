@@ -107,7 +107,7 @@ PRIVATE_ENDPOINTS='{
 - Users must be authenticated AND have the required scope(s)
 - Different HTTP methods can require different scopes
 - Scopes are checked against the user's JWT scope claim
-- Unauthorized requests receive a 403 Forbidden response
+- Unauthorized requests receive a 401 Unauthorized response
 
 > [!TIP]
 >

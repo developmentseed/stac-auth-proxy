@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.11.0](https://github.com/developmentseed/stac-auth-proxy/compare/v0.10.0...v0.11.0) (2025-12-03)
+## [0.10.1](https://github.com/developmentseed/stac-auth-proxy/compare/v0.10.0...v0.10.1) (2025-12-03)
 
 
 ### Features

@@ -58,26 +58,24 @@ The [`ITEMS_FILTER_CLS`](configuration.md#items_filter_cls) applies filters to t
 
 ## Filter Contract
 
-A filter generator implements the following contract:
+A filter factory implements the following contract:
 
 - A class or function that may take initialization arguments
-- Once initialized, the generator is a callable with the following behavior:
+- Once initialized, the factory is a callable with the following behavior:
   - **Input**: A context dictionary containing request and user information
   - **Output**: A valid CQL2 expression (as a string or dict) that filters the data
 
 In Python typing syntax, it conforms to:
 
 ```py
-FilterGenerator = Callable[..., Callable[[dict[str, Any]], Awaitable[str | dict[str, Any]]]]
+FilterFactory = Callable[..., Callable[[dict[str, Any]], Awaitable[str | dict[str, Any]]]]
 ```
 
-### Example Filter Generator
+### Example Filter Factory
 
 ```py
 import dataclasses
 from typing import Any
-
-from cql2 import Expr
 
 
 @dataclasses.dataclass
@@ -87,7 +85,7 @@ class ExampleFilter:
 ```
 
 > [!TIP]
-> Despite being referred to as a _class_, a filter generator could be written as a function.
+> Despite being referred to as a _class_ in the settings, a filter factory could be written as a function.
 >
 >   <details>
 >
@@ -96,12 +94,10 @@ class ExampleFilter:
 > ```py
 > from typing import Any
 >
-> from cql2 import Expr
->
 >
 > def example_filter():
 >     async def example_filter(context: dict[str, Any]) -> str | dict[str, Any]:
->         return Expr("true")
+>         return "true"
 >     return example_filter
 > ```
 >
@@ -134,11 +130,11 @@ Configure filters using environment variables:
 
 ```bash
 # Basic configuration
-ITEMS_FILTER_CLS=stac_auth_proxy.filters.Template
+ITEMS_FILTER_CLS=stac_auth_proxy.filters:Template
 ITEMS_FILTER_ARGS='["collection IN ('public')"]'
 
 # With keyword arguments
-ITEMS_FILTER_CLS=stac_auth_proxy.filters.Opa
+ITEMS_FILTER_CLS=stac_auth_proxy.filters:Opa
 ITEMS_FILTER_ARGS='["http://opa:8181", "stac/items/allow"]'
 ITEMS_FILTER_KWARGS='{"cache_ttl": 30.0}'
 ```
@@ -149,14 +145,14 @@ ITEMS_FILTER_KWARGS='{"cache_ttl": 30.0}'
 - `{FILTER_TYPE}_FILTER_ARGS`: Positional arguments (comma-separated)
 - `{FILTER_TYPE}_FILTER_KWARGS`: Keyword arguments (comma-separated key=value pairs)
 
-## Built-in Filter Generators
+## Built-in Filter Factorys
 
 ### Template Filter
 
 Generate CQL2 expressions using the [Jinja](https://jinja.palletsprojects.com/en/stable/) templating engine. Given the request context, the Jinja template expression should render a valid CQL2 expression (likely in `cql2-text` format).
 
 ```bash
-ITEMS_FILTER_CLS=stac_auth_proxy.filters.Template
+ITEMS_FILTER_CLS=stac_auth_proxy.filters:Template
 ITEMS_FILTER_ARGS='["{{ \"true\" if payload else \"(preview IS NULL) OR (preview = false)\" }}"]'
 ```
 
@@ -169,7 +165,7 @@ ITEMS_FILTER_ARGS='["{{ \"true\" if payload else \"(preview IS NULL) OR (preview
 Delegate authorization to [Open Policy Agent](https://www.openpolicyagent.org/). For each request, we call out to an OPA decision with the request context, expecting that OPA will return a valid CQL2 expression.
 
 ```bash
-ITEMS_FILTER_CLS=stac_auth_proxy.filters.opa.Opa
+ITEMS_FILTER_CLS=stac_auth_proxy.filters:opa.Opa
 ITEMS_FILTER_ARGS='["http://opa:8181","stac/items_cql2"]'
 ```
 
@@ -195,14 +191,14 @@ items_cql2 := "true" if {
 }
 ```
 
-## Custom Filter Generators
+## Custom Filter Factories
 
 > [!TIP]
 > An example integration can be found in [`examples/custom-integration`](https://github.com/developmentseed/stac-auth-proxy/blob/main/examples/custom-integration).
 
-### Complex Filter Generator
+### Complex Filter Factory
 
-An example of a more complex filter generator where the filter is generated based on the response of an external API:
+An example of a more complex filter factory where the filter is generated based on the response of an external API:
 
 ```py
 import dataclasses

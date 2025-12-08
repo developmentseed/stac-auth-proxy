@@ -1,5 +1,72 @@
 # Changelog
 
+## [0.10.1](https://github.com/developmentseed/stac-auth-proxy/compare/v0.10.0...v0.10.1) (2025-12-03)
+
+
+### Features
+
+* **helm:** Add support for initContainers. ([#104](https://github.com/developmentseed/stac-auth-proxy/issues/104)) ([a7ca408](https://github.com/developmentseed/stac-auth-proxy/commit/a7ca408b73379cd75980f005a5e2fac2d815b700))
+
+
+### Bug Fixes
+
+* **lifespan:** allow endpoints that don't support trailing slashes ([2e6e24b](https://github.com/developmentseed/stac-auth-proxy/commit/2e6e24b9b39ce9bf06b6416ea639b0f610754682))
+
+
+### Documentation
+
+* Remove unused import of 'Expr' from record-level-auth ([4f86e7b](https://github.com/developmentseed/stac-auth-proxy/commit/4f86e7bb5a9306ba90584c86efb3017a96bb57fc))
+
+## [0.10.0](https://github.com/developmentseed/stac-auth-proxy/compare/v0.9.2...v0.10.0) (2025-10-14)
+
+
+### Features
+
+* skip json middleware based on response data type ([#103](https://github.com/developmentseed/stac-auth-proxy/issues/103)) ([16b05c3](https://github.com/developmentseed/stac-auth-proxy/commit/16b05c3c201e04b2027c6a7ef632477febdbecfb))
+* support customizing port when running as a module ([9a18c49](https://github.com/developmentseed/stac-auth-proxy/commit/9a18c49f74695dfdde516f6554a6bb6f6244937c))
+
+
+### Documentation
+
+* **config:** add admonitions for more details ([40444cf](https://github.com/developmentseed/stac-auth-proxy/commit/40444cf2cfdd6cb8e660ecd35ce5f03055ca3f7e))
+* **config:** cleanup formatting ([8a82d3d](https://github.com/developmentseed/stac-auth-proxy/commit/8a82d3d99156cf046d35e04278e78b33fe861899))
+* update tips to describe non-upstream URL ([ebadd52](https://github.com/developmentseed/stac-auth-proxy/commit/ebadd52fd050543906f3a6c61b110900de62b330))
+
+## [0.9.2](https://github.com/developmentseed/stac-auth-proxy/compare/v0.9.1...v0.9.2) (2025-09-08)
+
+
+### Bug Fixes
+
+* improve link processing ([#95](https://github.com/developmentseed/stac-auth-proxy/issues/95)) ([e52b5a9](https://github.com/developmentseed/stac-auth-proxy/commit/e52b5a972539232da4fc0a74b3a8abad7579f41e))
+* properly return error on invalid CQL2 filters ([5c5c856](https://github.com/developmentseed/stac-auth-proxy/commit/5c5c8562dc32994c6748f53f80ed101725962f9d))
+
+
+### Documentation
+
+* enhance middleware stack documentation with detailed descriptions and execution order ([06b51cb](https://github.com/developmentseed/stac-auth-proxy/commit/06b51cb8a48801d71f01aa1c433516e4832bcfcc))
+* update filter class path syntax ([a7f5b1b](https://github.com/developmentseed/stac-auth-proxy/commit/a7f5b1b81606ae33e67cb6a98627367600d1e0db))
+
+## [0.9.1](https://github.com/developmentseed/stac-auth-proxy/compare/v0.9.0...v0.9.1) (2025-09-04)
+
+
+### Bug Fixes
+
+* **openapi:** remove upstream servers ([#90](https://github.com/developmentseed/stac-auth-proxy/issues/90)) ([b54059b](https://github.com/developmentseed/stac-auth-proxy/commit/b54059bbdebd32078e9272701fa753e4a7e0f4ed)), closes [#74](https://github.com/developmentseed/stac-auth-proxy/issues/74)
+
+## [0.9.0](https://github.com/developmentseed/stac-auth-proxy/compare/v0.8.0...v0.9.0) (2025-09-03)
+
+
+### Features
+
+* make use of Server-Timing header ([c894026](https://github.com/developmentseed/stac-auth-proxy/commit/c8940260cbe69bdc7868f16f5c8a76f9ae29b9d6)), closes [#69](https://github.com/developmentseed/stac-auth-proxy/issues/69)
+* remove applied filters on response links ([#67](https://github.com/developmentseed/stac-auth-proxy/issues/67)) ([2b2b224](https://github.com/developmentseed/stac-auth-proxy/commit/2b2b22459c0e577b5a1d5d1e04c7de406d074a99)), closes [#64](https://github.com/developmentseed/stac-auth-proxy/issues/64)
+
+
+### Bug Fixes
+
+* **middleware:** enhance JSON parsing error handling ([#73](https://github.com/developmentseed/stac-auth-proxy/issues/73)) ([daf5d09](https://github.com/developmentseed/stac-auth-proxy/commit/daf5d095660ebe2401200fed1399168afe23e717)), closes [#72](https://github.com/developmentseed/stac-auth-proxy/issues/72)
+* retain proxy headers when behind proxy ([#88](https://github.com/developmentseed/stac-auth-proxy/issues/88)) ([74780f0](https://github.com/developmentseed/stac-auth-proxy/commit/74780f02e47963eb04be01a285895049a0cb1da3))
+
 ## [0.8.0](https://github.com/developmentseed/stac-auth-proxy/compare/v0.7.1...v0.8.0) (2025-08-16)
 
 

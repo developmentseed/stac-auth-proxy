@@ -92,13 +92,13 @@ properties:
       # Filtering
       ITEMS_FILTER_CLS:
         type: ["string", "null"]
-        description: "CQL2 expression generator for item-level filtering"
+        description: "CQL2 expression factor for item-level filtering"
       ITEMS_FILTER_ARGS:
         type: ["array", "string"]
-        description: "Positional arguments for CQL2 expression generator"
+        description: "Positional arguments for CQL2 expression factor"
       ITEMS_FILTER_KWARGS:
         type: ["object", "string"]
-        description: "Keyword arguments for CQL2 expression generator"
+        description: "Keyword arguments for CQL2 expression factor"
     required:
       - UPSTREAM_URL
       - OIDC_DISCOVERY_URL
@@ -228,6 +228,13 @@ properties:
     type: object
     additionalProperties: true
     description: "Pod affinity rules"
+
+  initContainers:
+    type: array
+    items:
+      type: object
+      additionalProperties: true
+    description: "Init containers to run before the main container starts"
 
   serviceAccount:
     type: object

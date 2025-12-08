@@ -36,13 +36,13 @@ app_factory = AppFactory(
     ],
 )
 def test_default_public_false(source_api_server, path, method, token_builder):
-    """Private endpoints permit access with a valid token."""
+    """Private endpoints require authentication and return 401 when not authenticated."""
     test_app = app_factory(upstream_url=source_api_server)
     valid_auth_token = token_builder({})
 
     client = TestClient(test_app)
     response = client.request(method=method, url=path, headers={})
-    assert response.status_code == 403
+    assert response.status_code == 401  # Not authenticated -> 401
 
     response = client.request(
         method=method, url=path, headers={"Authorization": f"Bearer {valid_auth_token}"}
@@ -88,7 +88,7 @@ def test_default_public_false(source_api_server, path, method, token_builder):
 def test_default_public_false_with_scopes(
     source_api_server, rules, token, permitted, token_builder
 ):
-    """Private endpoints permit access with a valid token."""
+    """Private endpoints permit access with valid token AND required scopes."""
     test_app = app_factory(
         upstream_url=source_api_server,
         default_public=False,
@@ -102,7 +102,8 @@ def test_default_public_false_with_scopes(
         url="/collections",
         headers={"Authorization": f"Bearer {valid_auth_token}"},
     )
-    assert response.status_code == (200 if permitted else 401)
+    # Authenticated but lacking scopes -> 403, not 401
+    assert response.status_code == (200 if permitted else 403)
 
 
 @pytest.mark.parametrize(
@@ -151,7 +152,7 @@ def test_scopes(
     method,
     expected_permitted,
 ):
-    """Private endpoints permit access with a valid token."""
+    """Private endpoints require valid token AND required scopes."""
     test_app = app_factory(
         upstream_url=source_api_server,
         default_public=True,
@@ -165,7 +166,8 @@ def test_scopes(
         url=path,
         headers={"Authorization": f"Bearer {valid_auth_token}"},
     )
-    expected_status_code = 200 if expected_permitted else 401
+    # User is authenticated, so insufficient scopes -> 403, not 401
+    expected_status_code = 200 if expected_permitted else 403
     assert response.status_code == expected_status_code
 
 
@@ -201,10 +203,10 @@ def test_options_bypass_auth(
 @pytest.mark.parametrize(
     "path,method,default_public,private_endpoints,expected_status",
     [
-        # Test that non-OPTIONS requests still require auth when endpoints are private
-        ("/collections", "GET", False, {}, 403),
-        ("/collections", "POST", False, {}, 403),
-        ("/search", "GET", False, {}, 403),
+        # Test that non-OPTIONS requests return 401 when not authenticated
+        ("/collections", "GET", False, {}, 401),
+        ("/collections", "POST", False, {}, 401),
+        ("/search", "GET", False, {}, 401),
         # Test that OPTIONS requests bypass auth even when endpoints are private
         ("/collections", "OPTIONS", False, {}, 200),
         ("/search", "OPTIONS", False, {}, 200),
@@ -214,7 +216,7 @@ def test_options_bypass_auth(
             "POST",
             True,
             {r"^/collections$": [("POST", "collection:create")]},
-            403,
+            401,
         ),
         (
             "/collections",
@@ -300,7 +302,7 @@ def test_options_vs_other_methods_with_valid_auth(
         ),
         ("InvalidFormat", 401),
         ("Bearer", 401),
-        ("", 403),  # No auth header returns 403, not 401
+        ("", 401),  # No auth header returns 401 (not authenticated)
     ],
 )
 def test_with_invalid_tokens_fails(invalid_token, expected_status, source_api_server):
@@ -312,14 +314,14 @@ def test_with_invalid_tokens_fails(invalid_token, expected_status, source_api_se
     )
     client = TestClient(test_app)
     response = client.get("/collections", headers={"Authorization": invalid_token})
-    assert (
-        response.status_code == expected_status
-    ), f"GET request should fail with token: {invalid_token}"
+    assert response.status_code == expected_status, (
+        f"GET request should fail with token: {invalid_token}"
+    )
 
     response = client.options("/collections", headers={"Authorization": invalid_token})
-    assert (
-        response.status_code == 200
-    ), f"OPTIONS request should succeed with token: {invalid_token}"
+    assert response.status_code == 200, (
+        f"OPTIONS request should succeed with token: {invalid_token}"
+    )
 
 
 def test_options_requests_with_cors_headers(source_api_server):
@@ -339,9 +341,9 @@ def test_options_requests_with_cors_headers(source_api_server):
     }
 
     response = client.options("/collections", headers=cors_headers)
-    assert (
-        response.status_code == 200
-    ), "OPTIONS request with CORS headers should succeed"
+    assert response.status_code == 200, (
+        "OPTIONS request with CORS headers should succeed"
+    )
 
 
 @pytest.mark.parametrize(
@@ -401,9 +403,19 @@ def test_jwt_audience_validation(
 @pytest.mark.parametrize(
     "aud_value,scope,expected_status,description",
     [
-        (["stac-api"], "openid", 401, "Valid audience but missing scope"),
+        (
+            ["stac-api"],
+            "openid",
+            403,
+            "Valid audience but missing scope (authenticated but not authorized)",
+        ),
         (["stac-api"], "collection:create", 200, "Valid audience and valid scope"),
-        (["wrong-api"], "collection:create", 401, "Invalid audience but valid scope"),
+        (
+            ["wrong-api"],
+            "collection:create",
+            401,
+            "Invalid audience but valid scope (authentication failed)",
+        ),
     ],
 )
 def test_audience_validation_with_scopes(

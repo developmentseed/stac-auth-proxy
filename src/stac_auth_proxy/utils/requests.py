@@ -1,12 +1,17 @@
 """Utility functions for working with HTTP requests."""
 
 import json
+import logging
 import re
 from dataclasses import dataclass, field
-from typing import Sequence
+from typing import Dict, Optional, Sequence
 from urllib.parse import urlparse
 
+from starlette.requests import Request
+
 from ..config import EndpointMethods
+
+logger = logging.getLogger(__name__)
 
 
 def extract_variables(url: str) -> dict:
@@ -80,3 +85,120 @@ class MatchResult:
 
     is_private: bool
     required_scopes: Sequence[str] = field(default_factory=list)
+
+
+def build_server_timing_header(
+    current_value: Optional[str] = None, *, name: str, desc: str, dur: float
+):
+    """Append a timing header to headers."""
+    metric = f'{name};desc="{desc}";dur={dur:.3f}'
+    if current_value:
+        return f"{current_value}, {metric}"
+    return metric
+
+
+def parse_forwarded_header(forwarded_header: str) -> Dict[str, str]:
+    """
+    Parse the Forwarded header according to RFC 7239.
+
+    Args:
+        forwarded_header: The Forwarded header value
+
+    Returns:
+        Dictionary containing parsed forwarded information (proto, host, for, by, etc.)
+
+    Example:
+        >>> parse_forwarded_header("for=192.0.2.43; by=203.0.113.60; proto=https; host=api.example.com")
+        {'for': '192.0.2.43', 'by': '203.0.113.60', 'proto': 'https', 'host': 'api.example.com'}
+
+    """
+    # Forwarded header format: "for=192.0.2.43, for=198.51.100.17; by=203.0.113.60; proto=https; host=example.com"
+    # The format is: for=value1, for=value2; by=value; proto=value; host=value
+    # We need to parse all the key=value pairs, taking the first 'for' value
+    forwarded_info = {}
+
+    try:
+        # Parse all key=value pairs separated by semicolons
+        for pair in forwarded_header.split(";"):
+            pair = pair.strip()
+            if "=" in pair:
+                key, value = pair.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip('"')
+
+                # For 'for' field, only take the first value if there are multiple
+                if key == "for" and key not in forwarded_info:
+                    # Extract the first for value (before comma if present)
+                    first_for_value = value.split(",")[0].strip()
+                    forwarded_info[key] = first_for_value
+                elif key != "for":
+                    # For other fields, just use the value as-is
+                    forwarded_info[key] = value
+    except Exception as e:
+        logger.warning(f"Failed to parse Forwarded header '{forwarded_header}': {e}")
+        return {}
+
+    return forwarded_info
+
+
+def get_base_url(request: Request) -> str:
+    """
+    Get the request's base URL, accounting for forwarded headers from load balancers/proxies.
+
+    This function handles both the standard Forwarded header (RFC 7239) and legacy
+    X-Forwarded-* headers to reconstruct the original client URL when the service
+    is deployed behind load balancers or reverse proxies.
+
+    Args:
+        request: The Starlette request object
+
+    Returns:
+        The reconstructed client base URL
+
+    Example:
+        >>> # With Forwarded header
+        >>> request.headers = {"Forwarded": "for=192.0.2.43; proto=https; host=api.example.com"}
+        >>> get_base_url(request)
+        "https://api.example.com/"
+
+        >>> # With X-Forwarded-* headers
+        >>> request.headers = {"X-Forwarded-Host": "api.example.com", "X-Forwarded-Proto": "https"}
+        >>> get_base_url(request)
+        "https://api.example.com/"
+
+    """
+    # Check for standard Forwarded header first (RFC 7239)
+    forwarded_header = request.headers.get("Forwarded")
+    if forwarded_header:
+        try:
+            forwarded_info = parse_forwarded_header(forwarded_header)
+            # Only use Forwarded header if we successfully parsed it and got useful info
+            if forwarded_info and (
+                "proto" in forwarded_info or "host" in forwarded_info
+            ):
+                scheme = forwarded_info.get("proto", request.url.scheme)
+                host = forwarded_info.get("host", request.url.netloc)
+                # Note: Forwarded header doesn't include path, so we use request.base_url.path
+                path = request.base_url.path
+                return f"{scheme}://{host}{path}"
+        except Exception as e:
+            logger.warning(f"Failed to parse Forwarded header: {e}")
+
+    # Fall back to legacy X-Forwarded-* headers
+    forwarded_host = request.headers.get("X-Forwarded-Host")
+    forwarded_proto = request.headers.get("X-Forwarded-Proto")
+    forwarded_path = request.headers.get("X-Forwarded-Path")
+
+    if forwarded_host:
+        # Use forwarded headers to reconstruct the original client URL
+        scheme = forwarded_proto or request.url.scheme
+        netloc = forwarded_host
+        # Use forwarded path if available, otherwise use request base URL path
+        path = forwarded_path or request.base_url.path
+    else:
+        # Fall back to the request's base URL if no forwarded headers
+        scheme = request.url.scheme
+        netloc = request.url.netloc
+        path = request.base_url.path
+
+    return f"{scheme}://{netloc}{path}"

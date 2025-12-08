@@ -1,18 +1,26 @@
 """Utilities for middleware response handling."""
 
 import json
+import logging
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
+from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+logger = logging.getLogger(__name__)
 
 
 class JsonResponseMiddleware(ABC):
     """Base class for middleware that transforms JSON response bodies."""
 
     app: ASGIApp
+
+    # Expected data type for JSON responses. Only responses matching this type will be transformed.
+    # If None, all JSON responses will be transformed regardless of type.
+    expected_data_type: Optional[type] = dict
 
     @abstractmethod
     def should_transform_response(
@@ -25,6 +33,7 @@ class JsonResponseMiddleware(ABC):
         Returns
         -------
             bool: True if the response should be transformed
+
         """
         ...
 
@@ -35,10 +44,12 @@ class JsonResponseMiddleware(ABC):
 
         Args:
             data: The parsed JSON data
+            request: The HTTP request object
 
-        Returns
+        Returns:
         -------
             The transformed JSON data
+
         """
         ...
 
@@ -78,9 +89,33 @@ class JsonResponseMiddleware(ABC):
 
             # Transform the JSON body
             if body:
-                data = json.loads(body)
-                transformed = self.transform_json(data, request=request)
-                body = json.dumps(transformed).encode()
+                try:
+                    data = json.loads(body)
+                except json.JSONDecodeError as e:
+                    logger.error("Error parsing JSON: %s", e)
+                    logger.error("Body: %s", body)
+                    logger.error("Response scope: %s", scope)
+                    response = JSONResponse(
+                        {"error": "Received invalid JSON from upstream server"},
+                        status_code=502,
+                    )
+                    await response(scope, receive, send)
+                    return
+
+                if self.expected_data_type is None or isinstance(
+                    data, self.expected_data_type
+                ):
+                    transformed = self.transform_json(data, request=request)
+                    body = json.dumps(transformed).encode()
+                else:
+                    logger.warning(
+                        "Received JSON response with unexpected data type %r from upstream server (%r %r), "
+                        "skipping transformation (expected: %r)",
+                        type(data).__name__,
+                        request.method,
+                        request.url,
+                        self.expected_data_type.__name__,
+                    )
 
             # Update content-length header
             headers["content-length"] = str(len(body))

@@ -1,9 +1,10 @@
 # https://github.com/astral-sh/uv-docker-example/blob/c16a61fb3e6ab568ac58d94b73a7d79594a5d570/Dockerfile
-FROM python:3.13-slim
+
+# Build stage
+FROM python:3.13-slim AS builder
 
 WORKDIR /app
 
-ENV PATH="/app/.venv/bin:$PATH"
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 ENV UV_PROJECT_ENVIRONMENT=/usr/local
@@ -21,5 +22,19 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 ADD . /app
 RUN --mount=type=cache,target=/root/.cache/uv \
   uv sync --frozen --no-dev
+
+# Runtime stage
+FROM python:3.13-slim
+
+WORKDIR /app
+
+# Copy installed packages from builder
+COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copy only the source code directory needed at runtime
+COPY --from=builder /app/src/stac_auth_proxy /app/src/stac_auth_proxy
+
+ENV PYTHONPATH=/app/src
 
 CMD ["python", "-m", "stac_auth_proxy"]

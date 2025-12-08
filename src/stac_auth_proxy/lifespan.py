@@ -40,12 +40,10 @@ async def check_server_health(
     if isinstance(url, HttpUrl):
         url = str(url)
 
-    async with httpx.AsyncClient(
-        base_url=url, timeout=timeout, follow_redirects=True
-    ) as client:
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
         for attempt in range(max_retries):
             try:
-                response = await client.get("/")
+                response = await client.get(url)
                 response.raise_for_status()
                 logger.info(f"Upstream API {url!r} is healthy")
                 return
@@ -72,7 +70,6 @@ async def check_conformance(
     """Check if the upstream API supports a given conformance class."""
     required_conformances: dict[str, list[str]] = {}
     for middleware in middleware_classes:
-
         for conformance in getattr(middleware.cls, attr_name, []):
             required_conformances.setdefault(conformance, []).append(
                 middleware.cls.__name__
@@ -127,6 +124,7 @@ def build_lifespan(settings: Settings | None = None, **settings_kwargs: Any):
     -------
     Callable[[FastAPI], AsyncContextManager[Any]]
         A callable suitable for the ``lifespan`` parameter of ``FastAPI``.
+
     """
     if settings is None:
         settings = Settings(**settings_kwargs)

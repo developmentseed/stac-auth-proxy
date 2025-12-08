@@ -1,4 +1,4 @@
-"""CQL2 filter generators."""
+"""CQL2 filter factories."""
 
 from .opa import Opa
 from .template import Template

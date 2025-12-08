@@ -20,6 +20,7 @@ from .middleware import (
     Cql2ApplyFilterBodyMiddleware,
     Cql2ApplyFilterQueryStringMiddleware,
     Cql2BuildFilterMiddleware,
+    Cql2RewriteLinksFilterMiddleware,
     Cql2ValidateResponseBodyMiddleware,
     EnforceAuthMiddleware,
     OpenApiMiddleware,
@@ -48,6 +49,7 @@ def configure_app(
     **settings_kwargs : Any
         Keyword arguments used to configure the health and conformance checks if
         ``settings`` is not provided.
+
     """
     settings = settings or Settings(**settings_kwargs)
 
@@ -110,6 +112,7 @@ def configure_app(
         app.add_middleware(Cql2ValidateResponseBodyMiddleware)
         app.add_middleware(Cql2ApplyFilterBodyMiddleware)
         app.add_middleware(Cql2ApplyFilterQueryStringMiddleware)
+        app.add_middleware(Cql2RewriteLinksFilterMiddleware)
         app.add_middleware(
             Cql2BuildFilterMiddleware,
             items_filter=settings.items_filter() if settings.items_filter else None,

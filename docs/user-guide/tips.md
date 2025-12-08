@@ -41,31 +41,30 @@ OPENAPI_AUTH_SCHEME_OVERRIDE='{
 
 ## Non-proxy Configuration
 
-While the project is designed to work out-of-the-box as an application, it might not address every projects needs. When the need for customization arises, the codebase can instead be treated as a library of components that can be used to augment a FastAPI server. This may look something like the following:
+While the STAC Auth Proxy is designed to work out-of-the-box as an application, it might not address every projects needs. When the need for customization arises, the codebase can instead be treated as a library of components that can be used to augment a FastAPI server.
+
+This may look something like the following:
 
 ```py
 from fastapi import FastAPI
 from stac_fastapi.api.app import StacApi
-from stac_auth_proxy import build_lifespan, configure_app, Settings as StacAuthSettings
+from stac_auth_proxy import configure_app, Settings as StacAuthSettings
 
 # Create Auth Settings
 auth_settings = StacAuthSettings(
-  upstream_url='https://stac-server',
+  upstream_url='https://stac-server',  # Dummy value, we don't make use of this value in non-proxy mode
   oidc_discovery_url='https://auth-server/.well-known/openid-configuration',
 )
 
 # Setup App
-app = FastAPI(
-  ...
-  lifespan=build_lifespan(auth_settings),
-)
+app = FastAPI( ... )
 
 # Apply STAC Auth Proxy middleware
 configure_app(app, auth_settings)
 
 # Setup STAC API
-api = StacApi(
-  app,
-  ...
-)
+api = StacApi( app, ... )
 ```
+
+> [!IMPORTANT]
+> Avoid using `build_lifespan()` when operating in non-proxy mode, as we are unable to check for the non-existent upstream API.

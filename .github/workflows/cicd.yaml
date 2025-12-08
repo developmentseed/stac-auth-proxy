@@ -11,6 +11,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v3
+        with:
+          python-version: '3.13'
       - uses: astral-sh/setup-uv@v4
         with:
           enable-cache: true
@@ -26,7 +28,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v3
+        with:
+          python-version: '3.13'
       - uses: astral-sh/setup-uv@v4
         with:
           enable-cache: true
-      - run: uv run pytest -n auto
+      - name: Run tests with coverage
+        run: |
+          uv run pytest -n auto --cov=src/stac_auth_proxy --cov-report=xml --cov-report=html --cov-report=term-missing --cov-fail-under=85
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          fail_ci_if_error: false
+      - name: Archive coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-reports
+          path: |
+            htmlcov/
+            coverage.xml

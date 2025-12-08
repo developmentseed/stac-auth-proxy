@@ -8,7 +8,7 @@ classifiers = [
 dependencies = [
   "boto3>=1.37.16",
   "brotli>=1.1.0",
-  "cql2>=0.3.6",
+  "cql2>=0.4.2",
   "cryptography>=44.0.1",
   "fastapi>=0.115.5",
   "httpx[http2]>=0.28.0",
@@ -23,7 +23,7 @@ keywords = ["STAC", "FastAPI", "Authentication", "Proxy"]
 license = {file = "LICENSE"}
 name = "stac-auth-proxy"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 version = "0.10.1"
 
 [project.optional-dependencies]

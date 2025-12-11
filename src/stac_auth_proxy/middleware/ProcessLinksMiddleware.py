@@ -17,6 +17,43 @@ from ..utils.stac import get_links
 logger = logging.getLogger(__name__)
 
 
+def _extract_hostname(netloc: str) -> str:
+    """
+    Extract hostname from netloc, ignoring port number.
+
+    Args:
+        netloc: Network location string (e.g., "localhost:8080" or "example.com")
+
+    Returns:
+        Hostname without port (e.g., "localhost" or "example.com")
+
+    """
+    if ":" in netloc:
+        if netloc.startswith("["):
+            # IPv6 with port: [::1]:8080
+            end_bracket = netloc.rfind("]")
+            if end_bracket != -1:
+                return netloc[: end_bracket + 1]
+        # Regular hostname with port: localhost:8080
+        return netloc.split(":", 1)[0]
+    return netloc
+
+
+def _hostnames_match(hostname1: str, hostname2: str) -> bool:
+    """
+    Check if two hostnames match, ignoring case and port.
+
+    Args:
+        hostname1: First hostname (may include port)
+        hostname2: Second hostname (may include port)
+
+    Returns:
+        True if hostnames match (case-insensitive, ignoring port)
+
+    """
+    return _extract_hostname(hostname1).lower() == _extract_hostname(hostname2).lower()
+
+
 @dataclass
 class ProcessLinksMiddleware(JsonResponseMiddleware):
     """
@@ -70,10 +107,14 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
 
         parsed_link = urlparse(link["href"])
 
-        if parsed_link.netloc not in [
-            request_url.netloc,
-            upstream_url.netloc,
-        ]:
+        link_hostname = _extract_hostname(parsed_link.netloc)
+        request_hostname = _extract_hostname(request_url.netloc)
+        upstream_hostname = _extract_hostname(upstream_url.netloc)
+
+        if not (
+            _hostnames_match(link_hostname, request_hostname)
+            or _hostnames_match(link_hostname, upstream_hostname)
+        ):
             logger.debug(
                 "Ignoring link %s because it is not for an endpoint behind this proxy (%s or %s)",
                 link["href"],
@@ -94,10 +135,14 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
             return
 
         # Replace the upstream host with the client's host
-        if parsed_link.netloc == upstream_url.netloc:
-            parsed_link = parsed_link._replace(netloc=request_url.netloc)._replace(
-                scheme=request_url.scheme
-            )
+        link_matches_upstream = _hostnames_match(
+            parsed_link.netloc, upstream_url.netloc
+        )
+        parsed_link = parsed_link._replace(netloc=request_url.netloc)
+        if link_matches_upstream:
+            # Link hostname matches upstream: also replace scheme with request URL's scheme
+            parsed_link = parsed_link._replace(scheme=request_url.scheme)
+        # If link matches request hostname, scheme is preserved (handles https://localhost:443 -> http://localhost)
 
         # Remove the upstream prefix from the link path
         if upstream_url.path != "/" and parsed_link.path.startswith(upstream_url.path):

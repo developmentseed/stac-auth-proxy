@@ -597,3 +597,180 @@ def test_transform_with_forwarded_headers(headers, expected_base_url):
     # but not include the forwarded path in the response URLs
     assert transformed["links"][0]["href"] == f"{expected_base_url}/proxy/collections"
     assert transformed["links"][1]["href"] == f"{expected_base_url}/proxy"
+
+
+@pytest.mark.parametrize(
+    "upstream_url,root_path,request_host,input_links,expected_links",
+    [
+        # Basic localhost:PORT rewriting (common port 8080)
+        (
+            "http://eoapi-stac:8080",
+            "/stac",
+            "localhost",
+            [
+                {"rel": "data", "href": "http://localhost:8080/collections"},
+            ],
+            [
+                "http://localhost/stac/collections",
+            ],
+        ),
+        # Standard HTTP port
+        (
+            "http://eoapi-stac:8080",
+            "/stac",
+            "localhost",
+            [
+                {"rel": "self", "href": "http://localhost:80/collections"},
+            ],
+            [
+                "http://localhost/stac/collections",
+            ],
+        ),
+        # HTTPS port
+        (
+            "http://eoapi-stac:8080",
+            "/stac",
+            "localhost",
+            [
+                {"rel": "self", "href": "https://localhost:443/collections"},
+            ],
+            [
+                "https://localhost/stac/collections",
+            ],
+        ),
+        # Arbitrary port
+        (
+            "http://eoapi-stac:8080",
+            "/stac",
+            "localhost",
+            [
+                {"rel": "self", "href": "http://localhost:3000/collections"},
+            ],
+            [
+                "http://localhost/stac/collections",
+            ],
+        ),
+        # Multiple links with different ports
+        (
+            "http://eoapi-stac:8080",
+            "/stac",
+            "localhost",
+            [
+                {"rel": "self", "href": "http://localhost:8080/collections"},
+                {"rel": "root", "href": "http://localhost:80/"},
+                {
+                    "rel": "items",
+                    "href": "https://localhost:443/collections/test/items",
+                },
+            ],
+            [
+                "http://localhost/stac/collections",
+                "http://localhost/stac/",
+                "https://localhost/stac/collections/test/items",
+            ],
+        ),
+        # localhost:PORT with upstream path
+        (
+            "http://eoapi-stac:8080/api",
+            "/stac",
+            "localhost",
+            [
+                {"rel": "self", "href": "http://localhost:8080/api/collections"},
+            ],
+            [
+                "http://localhost/stac/collections",
+            ],
+        ),
+        # Request host with port should still work (port removed in rewrite)
+        (
+            "http://eoapi-stac:8080",
+            "/stac",
+            "localhost:80",
+            [
+                {"rel": "self", "href": "http://localhost:8080/collections"},
+            ],
+            [
+                "http://localhost:80/stac/collections",
+            ],
+        ),
+    ],
+)
+def test_transform_localhost_with_port(
+    upstream_url, root_path, request_host, input_links, expected_links
+):
+    """Test transforming links with localhost:PORT (any port number)."""
+    middleware = ProcessLinksMiddleware(
+        app=None, upstream_url=upstream_url, root_path=root_path
+    )
+    request_scope = {
+        "type": "http",
+        "path": "/test",
+        "headers": [
+            (b"host", request_host.encode()),
+            (b"content-type", b"application/json"),
+        ],
+    }
+
+    data = {"links": input_links}
+    transformed = middleware.transform_json(data, Request(request_scope))
+
+    for i, expected in enumerate(expected_links):
+        assert transformed["links"][i]["href"] == expected
+
+
+def test_localhost_with_port_preserves_other_hostnames():
+    """Test that links with other hostnames are not transformed."""
+    middleware = ProcessLinksMiddleware(
+        app=None,
+        upstream_url="http://eoapi-stac:8080",
+        root_path="/stac",
+    )
+    request_scope = {
+        "type": "http",
+        "path": "/test",
+        "headers": [
+            (b"host", b"localhost"),
+            (b"content-type", b"application/json"),
+        ],
+    }
+
+    data = {
+        "links": [
+            {"rel": "external", "href": "http://example.com:8080/collections"},
+            {"rel": "other", "href": "http://other-host:3000/collections"},
+        ]
+    }
+
+    transformed = middleware.transform_json(data, Request(request_scope))
+
+    # External hostnames should remain unchanged
+    assert transformed["links"][0]["href"] == "http://example.com:8080/collections"
+    assert transformed["links"][1]["href"] == "http://other-host:3000/collections"
+
+
+def test_localhost_with_port_upstream_service_name_still_works():
+    """Test that upstream service name matching still works."""
+    middleware = ProcessLinksMiddleware(
+        app=None,
+        upstream_url="http://eoapi-stac:8080",
+        root_path="/stac",
+    )
+    request_scope = {
+        "type": "http",
+        "path": "/test",
+        "headers": [
+            (b"host", b"localhost"),
+            (b"content-type", b"application/json"),
+        ],
+    }
+
+    data = {
+        "links": [
+            {"rel": "self", "href": "http://eoapi-stac:8080/collections"},
+        ]
+    }
+
+    transformed = middleware.transform_json(data, Request(request_scope))
+
+    # Upstream service name should be rewritten to request hostname
+    assert transformed["links"][0]["href"] == "http://localhost/stac/collections"

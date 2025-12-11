@@ -18,40 +18,42 @@ logger = logging.getLogger(__name__)
 
 
 def _extract_hostname(netloc: str) -> str:
-    """
-    Extract hostname from netloc, ignoring port number.
-
-    Args:
-        netloc: Network location string (e.g., "localhost:8080" or "example.com")
-
-    Returns:
-        Hostname without port (e.g., "localhost" or "example.com")
-
-    """
+    """Extract hostname from netloc."""
     if ":" in netloc:
         if netloc.startswith("["):
             # IPv6 with port: [::1]:8080
             end_bracket = netloc.rfind("]")
             if end_bracket != -1:
                 return netloc[: end_bracket + 1]
-        # Regular hostname with port: localhost:8080
         return netloc.split(":", 1)[0]
     return netloc
 
 
-def _hostnames_match(hostname1: str, hostname2: str) -> bool:
+def _netlocs_match(netloc1: str, scheme1: str, netloc2: str, scheme2: str) -> bool:
     """
-    Check if two hostnames match, ignoring case and port.
-
-    Args:
-        hostname1: First hostname (may include port)
-        hostname2: Second hostname (may include port)
-
-    Returns:
-        True if hostnames match (case-insensitive, ignoring port)
-
+    Check if two netlocs match. Ports must match exactly, but missing ports
+    are assumed to be standard ports (80 for http, 443 for https).
     """
-    return _extract_hostname(hostname1).lower() == _extract_hostname(hostname2).lower()
+    if _extract_hostname(netloc1).lower() != _extract_hostname(netloc2).lower():
+        return False
+
+    def _get_port(netloc: str, scheme: str) -> int:
+        if ":" in netloc:
+            if netloc.startswith("["):
+                end_bracket = netloc.rfind("]")
+                if end_bracket != -1 and end_bracket + 1 < len(netloc):
+                    try:
+                        return int(netloc[end_bracket + 2 :])
+                    except ValueError:
+                        pass
+            else:
+                try:
+                    return int(netloc.split(":", 1)[1])
+                except ValueError:
+                    pass
+        return 443 if scheme == "https" else 80
+
+    return _get_port(netloc1, scheme1) == _get_port(netloc2, scheme2)
 
 
 @dataclass
@@ -107,13 +109,19 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
 
         parsed_link = urlparse(link["href"])
 
-        link_hostname = _extract_hostname(parsed_link.netloc)
-        request_hostname = _extract_hostname(request_url.netloc)
-        upstream_hostname = _extract_hostname(upstream_url.netloc)
-
         if not (
-            _hostnames_match(link_hostname, request_hostname)
-            or _hostnames_match(link_hostname, upstream_hostname)
+            _netlocs_match(
+                parsed_link.netloc,
+                parsed_link.scheme,
+                request_url.netloc,
+                request_url.scheme,
+            )
+            or _netlocs_match(
+                parsed_link.netloc,
+                parsed_link.scheme,
+                upstream_url.netloc,
+                upstream_url.scheme,
+            )
         ):
             logger.debug(
                 "Ignoring link %s because it is not for an endpoint behind this proxy (%s or %s)",
@@ -135,8 +143,11 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
             return
 
         # Replace the upstream host with the client's host
-        link_matches_upstream = _hostnames_match(
-            parsed_link.netloc, upstream_url.netloc
+        link_matches_upstream = _netlocs_match(
+            parsed_link.netloc,
+            parsed_link.scheme,
+            upstream_url.netloc,
+            upstream_url.scheme,
         )
         parsed_link = parsed_link._replace(netloc=request_url.netloc)
         if link_matches_upstream:

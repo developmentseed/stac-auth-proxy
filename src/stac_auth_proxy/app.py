@@ -136,12 +136,11 @@ def configure_app(
         allowed_jwt_audiences=settings.allowed_jwt_audiences,
     )
 
-    if settings.root_path or settings.upstream_url.path != "/":
-        app.add_middleware(
-            ProcessLinksMiddleware,
-            upstream_url=str(settings.upstream_url),
-            root_path=settings.root_path,
-        )
+    app.add_middleware(
+        ProcessLinksMiddleware,
+        upstream_url=str(settings.upstream_url),
+        root_path=settings.root_path,
+    )
 
     if settings.root_path:
         app.add_middleware(

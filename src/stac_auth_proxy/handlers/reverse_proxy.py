@@ -45,6 +45,8 @@ class ReverseProxyHandler:
         proxy_proto = headers.get("X-Forwarded-Proto", request.url.scheme)
         proxy_host = headers.get("X-Forwarded-Host", request.url.netloc)
         proxy_path = headers.get("X-Forwarded-Path", request.base_url.path)
+        proxy_port = headers.get("X-Forwarded-Port")
+
         headers.setdefault(
             "Forwarded",
             f"for={proxy_client};host={proxy_host};proto={proxy_proto};path={proxy_path}",
@@ -56,6 +58,9 @@ class ReverseProxyHandler:
             headers.setdefault("X-Forwarded-Host", proxy_host)
             headers.setdefault("X-Forwarded-Path", proxy_path)
             headers.setdefault("X-Forwarded-Proto", proxy_proto)
+
+        if proxy_port:
+            headers["X-Forwarded-Port"] = proxy_port
 
         # Set host to the upstream host
         if self.override_host:

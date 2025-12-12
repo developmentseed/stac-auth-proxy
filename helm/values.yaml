@@ -46,6 +46,23 @@ nodeSelector: {}
 tolerations: []
 affinity: {}
 
+# Additional volumes to mount
+extraVolumes: []
+# Example:
+# extraVolumes:
+#   - name: filters
+#     configMap:
+#       name: stac-auth-proxy-filters
+
+# Additional volume mounts for the container
+extraVolumeMounts: []
+# Example:
+# extraVolumeMounts:
+#   - name: filters
+#     mountPath: /app/src/stac_auth_proxy/custom_filters.py
+#     subPath: custom_filters.py
+#     readOnly: true
+
 # Init containers to run before the main container starts
 # initContainers: []
 # Example:

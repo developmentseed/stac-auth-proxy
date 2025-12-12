@@ -88,6 +88,8 @@ class Cql2BuildFilterMiddleware:
                 **scope["state"],
             }
         )
+        if filter_expr is None:
+            return await self.app(scope, receive, send)
         cql2_filter = Expr(filter_expr)
         try:
             cql2_filter.validate()

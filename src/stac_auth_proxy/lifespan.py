@@ -30,9 +30,9 @@ async def check_server_healths(*urls: str | HttpUrl) -> None:
 
 async def check_server_health(
     url: str | HttpUrl,
-    max_retries: int = 10,
-    retry_delay: float = 1.0,
-    retry_delay_max: float = 5.0,
+    max_retries: int = 60,
+    retry_delay: float = 5.0,
+    retry_delay_max: float = 10.0,
     timeout: float = 5.0,
 ) -> None:
     """Wait for upstream API to become available."""

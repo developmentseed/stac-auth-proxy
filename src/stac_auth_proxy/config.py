@@ -91,7 +91,7 @@ class Settings(BaseSettings):
 
     # Filters
     items_filter: Optional[_ClassInput] = None
-    items_filter_path: str = r"^(/collections/([^/]+)/items(/[^/]+)?$|/search$)"
+    items_filter_path: str = r"^(/collections/([^/]+)/items(/[^/]+)?$|/search$|/aggregate$)"
     collections_filter: Optional[_ClassInput] = None
     collections_filter_path: str = r"^/collections(/[^/]+)?$"
 

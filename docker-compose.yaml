@@ -29,7 +29,7 @@ services:
   stac-os:
     profiles: ["os"]
     container_name: stac-fastapi-os
-    image: ghcr.io/stac-utils/stac-fastapi-os:v6.1.0
+    image: ghcr.io/stac-utils/stac-fastapi-os:v6.7.6
     environment:
       STAC_FASTAPI_TITLE: stac-fastapi-opensearch + stac-auth-proxy
       STAC_FASTAPI_DESCRIPTION: A STAC FastAPI with an Opensearch backend, protected with STAC Auth Proxy
@@ -94,6 +94,15 @@ services:
       UPSTREAM_URL: ${UPSTREAM_URL:-http://stac:8001}
       OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL:-http://localhost:8888/.well-known/openid-configuration}
       OIDC_DISCOVERY_INTERNAL_URL: ${OIDC_DISCOVERY_INTERNAL_URL:-http://oidc:8888/.well-known/openid-configuration}
+      ITEMS_FILTER_CLS: stac_auth_proxy.filters.scope_based_item_filter:scope_based_filter
+      ITEMS_FILTER_ARGS: '["superuser"]'
+      OPENAPI_AUTH_SCHEME_NAME: jwtAuth
+      OPENAPI_AUTH_SCHEME_OVERRIDE: '{
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Paste your raw JWT here. This API uses Bearer token authorization."
+        }'
     env_file:
       - path: .env
         required: false

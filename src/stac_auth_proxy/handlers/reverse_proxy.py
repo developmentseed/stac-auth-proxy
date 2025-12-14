@@ -35,7 +35,13 @@ class ReverseProxyHandler:
         )
 
     def _prepare_headers(self, request: Request) -> MutableHeaders:
-        """Prepare headers for the proxied request."""
+        """
+        Prepare headers for the proxied request. Construct a Forwarded header to inform
+        the upstream API about the original request context, which will allow it to
+        properly construct URLs in responses (namely, in the Links). If there are
+        existing X-Forwarded-*/Forwarded headers (typically, in situations where the
+        STAC Auth Proxy is behind a proxy like Traefik or NGINX), we use those values.
+        """
         headers = MutableHeaders(request.headers)
         headers.setdefault("Via", f"1.1 {self.proxy_name}")
 
@@ -44,21 +50,29 @@ class ReverseProxyHandler:
         )
         proxy_proto = headers.get("X-Forwarded-Proto", request.url.scheme)
         proxy_host = headers.get("X-Forwarded-Host", request.url.netloc)
-        proxy_port = headers.get("X-Forwarded-Port", request.url.port)
+        proxy_port = str(headers.get("X-Forwarded-Port", request.url.port))
         proxy_path = headers.get("X-Forwarded-Path", request.base_url.path)
+
+        # NOTE: If we don't include a port, it's possible that the upstream server may
+        # mistakenly use the port from the Host header (which may be the internal port
+        # of the upstream server) when constructing URLs.
+        forwarded_host = proxy_host
+        if proxy_port:
+            forwarded_host = f"{forwarded_host}:{proxy_port}"
 
         headers.setdefault(
             "Forwarded",
-            f"for={proxy_client};host={proxy_host}:{proxy_port};proto={proxy_proto};path={proxy_path}",
+            f"for={proxy_client};host={forwarded_host};proto={proxy_proto};path={proxy_path}",
         )
 
         # NOTE: This is useful if the upstream API does not support the Forwarded header
+        # and there were no existing X-Forwarded-* headers on the incoming request.
         if self.legacy_forwarded_headers:
             headers.setdefault("X-Forwarded-For", proxy_client)
             headers.setdefault("X-Forwarded-Host", proxy_host)
             headers.setdefault("X-Forwarded-Path", proxy_path)
             headers.setdefault("X-Forwarded-Proto", proxy_proto)
-            headers.setdefault("X-Forwarded-Port", str(proxy_port))
+            headers.setdefault("X-Forwarded-Port", proxy_port)
 
         # Set host to the upstream host
         if self.override_host:

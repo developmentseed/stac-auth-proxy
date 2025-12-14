@@ -282,3 +282,31 @@ async def test_nginx_headers_behavior(scope_overrides, headers, expected_forward
         assert f"{key}={expected_value}" in forwarded, (
             f"Expected {key}={expected_value} in {forwarded}"
         )
+
+
+@pytest.mark.parametrize("legacy_headers", [False, True])
+@pytest.mark.asyncio
+async def test_x_forwarded_port_in_forwarded_header(legacy_headers):
+    """Test that x-forwarded-port is included in the Forwarded header."""
+    headers = [
+        (b"host", b"localhost:8000"),
+        (b"user-agent", b"test-agent"),
+        (b"x-forwarded-port", b"443"),
+        (b"x-forwarded-proto", b"https"),
+        (b"x-forwarded-host", b"api.example.com"),
+    ]
+    request = create_request(headers=headers)
+    handler = ReverseProxyHandler(
+        upstream="http://upstream-api.com", legacy_forwarded_headers=legacy_headers
+    )
+    result_headers = handler._prepare_headers(request)
+
+    # Check that the Forwarded header includes the port
+    forwarded = result_headers["Forwarded"]
+    assert "host=api.example.com:443" in forwarded, (
+        f"Expected host=api.example.com:443 in {forwarded}"
+    )
+    assert "proto=https" in forwarded
+
+    # Check that the x-forwarded-port header is preserved
+    assert result_headers["X-Forwarded-Port"] == "443"

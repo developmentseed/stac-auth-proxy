@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.11.0](https://github.com/developmentseed/stac-auth-proxy/compare/v0.10.1...v0.11.0) (2025-12-15)
+
+
+### Bug Fixes
+
+* **auth:** Authentication failures now return 401 instead of 403
+* **auth:** correct HTTP status codes for authentication and authorization failures ([#108](https://github.com/developmentseed/stac-auth-proxy/issues/108)) ([17227e4](https://github.com/developmentseed/stac-auth-proxy/commit/17227e447c188d73426ed1771cc45d95b141a4e9))
+* Ensure x-forwarded-port header is used in Forwarded header ([#115](https://github.com/developmentseed/stac-auth-proxy/issues/115)) ([78525b1](https://github.com/developmentseed/stac-auth-proxy/commit/78525b131b259748e00df1e38c54fb152414da4d))
+
 ## [0.10.1](https://github.com/developmentseed/stac-auth-proxy/compare/v0.10.0...v0.10.1) (2025-12-03)
 
 

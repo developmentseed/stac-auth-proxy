@@ -35,6 +35,12 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy only the source code directory needed at runtime
 COPY --from=builder /app/src/stac_auth_proxy /app/src/stac_auth_proxy
 
+
+RUN useradd -m -u 1001 -s /bin/bash user && \
+    chown -R user:user /app
+
+USER user
+
 ENV PYTHONPATH=/app/src
 
 CMD ["python", "-m", "stac_auth_proxy"]

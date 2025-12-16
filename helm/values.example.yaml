@@ -1,0 +1,183 @@
+# Example values demonstrating authorization features for STAC Auth Proxy
+# Copy this file and customize for your deployment
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/developmentseed/stac-auth-proxy
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  host: "stac-proxy.example.com"
+  tls:
+    enabled: true
+    secretName: ""
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+# ============================================================================
+# AUTHORIZATION EXAMPLES
+# ============================================================================
+
+# Example 1: Default mode (public catalog, protected writes)
+# This is the recommended mode for most deployments
+authorization:
+  route:
+    mode: "default"  # Sets DEFAULT_PUBLIC=true
+  record:
+    mode: "disabled"
+
+# Example 2: Custom route authorization with specific endpoints
+# authorization:
+#   route:
+#     mode: "custom"
+#     defaultPublic: false
+#     publicEndpoints:
+#       "^/collections$": ["GET"]
+#       "^/collections/([^/]+)$": ["GET"]
+#       "^/collections/([^/]+)/items$": ["GET"]
+#       "^/collections/([^/]+)/items/([^/]+)$": ["GET"]
+#       "^/search$": ["GET", "POST"]
+#       "^/api.html$": ["GET"]
+#       "^/api$": ["GET"]
+#       "^/docs/oauth2-redirect": ["GET"]
+#       "^/healthz": ["GET"]
+#     privateEndpoints:
+#       "^/collections$": [["POST", "collection:create"]]
+#       "^/collections/([^/]+)$": [["PUT", "collection:update"], ["PATCH", "collection:update"], ["DELETE", "collection:delete"]]
+#       "^/collections/([^/]+)/items$": [["POST", "item:create"]]
+#       "^/collections/([^/]+)/items/([^/]+)$": [["PUT", "item:update"], ["PATCH", "item:update"], ["DELETE", "item:delete"]]
+#       "^/collections/([^/]+)/bulk_items$": [["POST", "item:create"]]
+#   record:
+#     mode: "disabled"
+
+# Example 3: OPA-based record filtering
+# authorization:
+#   route:
+#     mode: "default"
+#   record:
+#     mode: "opa"
+#     opa:
+#       url: "http://opa-service:8181"
+#       policy: "stac/items/allow"
+
+# Example 4: Custom Python filters for record-level authorization
+# authorization:
+#   route:
+#     mode: "default"
+#   record:
+#     mode: "custom"
+#     custom:
+#       filtersFile: "data/custom_filters.py"
+
+# Example 5: No authorization (all endpoints public, no filtering)
+# authorization:
+#   route:
+#     mode: "disabled"
+#   record:
+#     mode: "disabled"
+
+# Example 6: Full custom setup with both route and record authorization
+# authorization:
+#   route:
+#     mode: "custom"
+#     defaultPublic: true
+#     publicEndpoints:
+#       "^/search$": ["GET", "POST"]
+#     privateEndpoints:
+#       "^/collections$": [["POST", "collection:create"]]
+#   record:
+#     mode: "opa"
+#     opa:
+#       url: "http://opa:8181"
+#       policy: "stac/items/allow"
+
+# ============================================================================
+# ENVIRONMENT VARIABLES
+# ============================================================================
+
+env:
+  # Required configuration
+  UPSTREAM_URL: "https://stac-api.example.com"
+  OIDC_DISCOVERY_URL: "https://auth.example.com/.well-known/openid-configuration"
+
+  # Optional configuration
+  WAIT_FOR_UPSTREAM: true
+  HEALTHZ_PREFIX: "/healthz"
+  OIDC_DISCOVERY_INTERNAL_URL: ""
+
+  # Note: DEFAULT_PUBLIC, PUBLIC_ENDPOINTS, PRIVATE_ENDPOINTS are managed via
+  # authorization.route section above. You can override them here if needed:
+  # DEFAULT_PUBLIC: "false"
+  # PUBLIC_ENDPOINTS: '{"^/search$": ["GET"]}'
+  # PRIVATE_ENDPOINTS: '{"^/collections$": [["POST", "collection:create"]]}'
+
+  # Note: Filter settings are managed via authorization.record section above.
+  # You can override them here if needed:
+  # ITEMS_FILTER_CLS: "custom.module:CustomFilter"
+  # ITEMS_FILTER_ARGS: '["arg1", "arg2"]'
+  # COLLECTIONS_FILTER_CLS: "custom.module:CollectionsFilter"
+
+# ============================================================================
+# ADVANCED CONFIGURATION
+# ============================================================================
+
+# Additional volumes (merged with authorization-generated volumes)
+extraVolumes: []
+# Example:
+# extraVolumes:
+#   - name: extra-config
+#     configMap:
+#       name: my-config
+
+# Additional volume mounts (merged with authorization-generated mounts)
+extraVolumeMounts: []
+# Example:
+# extraVolumeMounts:
+#   - name: extra-config
+#     mountPath: /etc/config
+#     readOnly: true
+
+# Init containers (e.g., wait for dependencies)
+# initContainers: []
+# Example:
+# initContainers:
+#   - name: wait-for-oidc
+#     image: busybox:1.35
+#     command: ['sh', '-c', 'until nc -z auth-server 8080; do sleep 2; done']
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+  imagePullSecrets: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

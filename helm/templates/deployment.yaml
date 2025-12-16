@@ -34,19 +34,22 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
+            {{- include "stac-auth-proxy.authorizationEnv" . | nindent 12 }}
             {{- range $key, $value := .Values.env }}
             - name: {{ $key }}
               value: {{ include "stac-auth-proxy.envValue" $value }}
             {{- end }}
-          {{- with .Values.extraVolumeMounts }}
           volumeMounts:
+            {{- include "stac-auth-proxy.authorizationVolumeMounts" . | nindent 12 }}
+            {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
-          {{- end }}
-
-      {{- with .Values.extraVolumes }}
+            {{- end }}
       volumes:
+        {{- include "stac-auth-proxy.authorizationVolumes" . | nindent 8 }}
+        {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
+
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

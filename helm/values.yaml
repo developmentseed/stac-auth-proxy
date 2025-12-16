@@ -21,6 +21,38 @@ ingress:
     enabled: true
     secretName: ""  # If empty, will be auto-generated as "{host}-tls"
 
+# Authorization configuration
+authorization:
+  # Route-level authorization
+  route:
+    # Mode: "default" (public catalog, protected writes), "custom" (use custom endpoints), "disabled" (no auth)
+    mode: "default"
+
+    # Custom endpoint configurations (only used when mode: "custom")
+    defaultPublic: false
+    publicEndpoints: {}
+      # Example:
+      # "^/collections$": ["GET"]
+      # "^/search$": ["GET", "POST"]
+    privateEndpoints: {}
+      # Example:
+      # "^/collections$": [["POST", "collection:create"]]
+      # "^/collections/([^/]+)/items$": [["POST", "item:create"]]
+
+  # Record-level authorization
+  record:
+    # Mode: "disabled" (no filtering), "custom" (Python filters), "opa" (Open Policy Agent)
+    mode: "disabled"
+
+    # Custom filters configuration (only used when mode: "custom")
+    custom:
+      filtersFile: ""  # Path to custom filters Python file (e.g., "data/custom_filters.py")
+
+    # OPA configuration (only used when mode: "opa")
+    opa:
+      url: "http://opa:8181"
+      policy: "stac/items/allow"
+
 resources:
   limits:
     cpu: 500m
@@ -81,22 +113,28 @@ env:
   WAIT_FOR_UPSTREAM: true
   HEALTHZ_PREFIX: "/healthz"
   OIDC_DISCOVERY_INTERNAL_URL: ""
-  DEFAULT_PUBLIC: false
-  PRIVATE_ENDPOINTS: |
-    {
-      "^/collections$": ["POST"],
-      "^/collections/([^/]+)$": ["PUT", "PATCH", "DELETE"],
-      "^/collections/([^/]+)/items$": ["POST"],
-      "^/collections/([^/]+)/items/([^/]+)$": ["PUT", "PATCH", "DELETE"],
-      "^/collections/([^/]+)/bulk_items$": ["POST"]
-    }
-  PUBLIC_ENDPOINTS: |
-    {
-      "^/api.html$": ["GET"],
-      "^/api$": ["GET"],
-      "^/docs/oauth2-redirect": ["GET"],
-      "^/healthz": ["GET"]
-    }
+
+  # Note: DEFAULT_PUBLIC, PUBLIC_ENDPOINTS, PRIVATE_ENDPOINTS are now managed
+  # via authorization.route section. Authorization settings from
+  # authorization.route and authorization.record sections will be
+  # automatically merged with these env vars. Manually specified env vars
+  # take precedence. You can still override them here if needed
+  # DEFAULT_PUBLIC: false
+  # PRIVATE_ENDPOINTS: |
+  #   {
+  #     "^/collections$": ["POST"],
+  #     "^/collections/([^/]+)$": ["PUT", "PATCH", "DELETE"],
+  #     "^/collections/([^/]+)/items$": ["POST"],
+  #     "^/collections/([^/]+)/items/([^/]+)$": ["PUT", "PATCH", "DELETE"],
+  #     "^/collections/([^/]+)/bulk_items$": ["POST"]
+  #   }
+  # PUBLIC_ENDPOINTS: |
+  #   {
+  #     "^/api.html$": ["GET"],
+  #     "^/api$": ["GET"],
+  #     "^/docs/oauth2-redirect": ["GET"],
+  #     "^/healthz": ["GET"]
+  #   }
 
 
 
@@ -110,4 +148,4 @@ serviceAccount:
   name: ""
   # Image pull secrets to add to the service account
   imagePullSecrets: []
-  # - name: my-registry-secret 
+  # - name: my-registry-secret

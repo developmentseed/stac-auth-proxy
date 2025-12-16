@@ -1,0 +1,220 @@
+suite: test authorization configuration
+templates:
+  - deployment.yaml
+tests:
+  # Route Authorization tests
+  - it: should set DEFAULT_PUBLIC=true when route mode is default
+    set:
+      authorization.route.mode: "default"
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DEFAULT_PUBLIC
+            value: "true"
+
+  - it: should not set authorization env vars when route mode is disabled
+    set:
+      authorization.route.mode: "disabled"
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DEFAULT_PUBLIC
+
+  - it: should set custom route authorization when mode is custom
+    set:
+      authorization.route.mode: "custom"
+      authorization.route.publicEndpoints:
+        "^/collections$": ["GET"]
+        "^/search$": ["GET", "POST"]
+      authorization.route.privateEndpoints:
+        "^/collections$": [["POST", "collection:create"]]
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DEFAULT_PUBLIC
+            value: "false"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PUBLIC_ENDPOINTS
+            value: '{"^/collections$":["GET"],"^/search$":["GET","POST"]}'
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PRIVATE_ENDPOINTS
+            value: '{"^/collections$":[["POST","collection:create"]]}'
+
+  - it: should allow env vars to override route authorization
+    set:
+      authorization.route.mode: "default"
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+      env.DEFAULT_PUBLIC: "false"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DEFAULT_PUBLIC
+            value: "false"
+
+  # Record Authorization tests
+  - it: should not set filter env vars when record mode is disabled
+    set:
+      authorization.record.mode: "disabled"
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ITEMS_FILTER_CLS
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: COLLECTIONS_FILTER_CLS
+
+  - it: should set custom filter env vars when record mode is custom
+    set:
+      authorization.record.mode: "custom"
+      authorization.record.custom.filtersFile: "data/custom_filters.py"
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: COLLECTIONS_FILTER_CLS
+            value: "stac_auth_proxy.custom_filters:CollectionsFilter"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ITEMS_FILTER_CLS
+            value: "stac_auth_proxy.custom_filters:ItemsFilter"
+
+  - it: should create volume mount when record mode is custom
+    set:
+      authorization.record.mode: "custom"
+      authorization.record.custom.filtersFile: "data/custom_filters.py"
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: custom-filters
+            mountPath: /app/src/stac_auth_proxy/custom_filters.py
+            subPath: custom_filters.py
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: custom-filters
+            configMap:
+              name: RELEASE-NAME-stac-auth-proxy-filters
+
+  - it: should set OPA filter env vars when record mode is opa
+    set:
+      authorization.record.mode: "opa"
+      authorization.record.opa.url: "http://opa-service:8181"
+      authorization.record.opa.policy: "stac/items/allow"
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ITEMS_FILTER_CLS
+            value: "stac_auth_proxy.filters:opa.Opa"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ITEMS_FILTER_ARGS
+            value: '["http://opa-service:8181","stac/items/allow"]'
+
+  - it: should allow env vars to override record authorization
+    set:
+      authorization.record.mode: "opa"
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+      env.ITEMS_FILTER_CLS: "custom.module:CustomFilter"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ITEMS_FILTER_CLS
+            value: "custom.module:CustomFilter"
+
+  # Raw configuration tests
+  - it: should preserve extraVolumes and extraVolumeMounts
+    set:
+      authorization.record.mode: "custom"
+      authorization.record.custom.filtersFile: "data/custom_filters.py"
+      extraVolumes:
+        - name: extra-volume
+          emptyDir: {}
+      extraVolumeMounts:
+        - name: extra-volume
+          mountPath: /extra
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: custom-filters
+            configMap:
+              name: RELEASE-NAME-stac-auth-proxy-filters
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: extra-volume
+            emptyDir: {}
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: custom-filters
+            mountPath: /app/src/stac_auth_proxy/custom_filters.py
+            subPath: custom_filters.py
+            readOnly: true
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: extra-volume
+            mountPath: /extra
+
+  # Combined configuration test
+  - it: should handle both route and record authorization together
+    set:
+      authorization.route.mode: "custom"
+      authorization.route.publicEndpoints:
+        "^/search$": ["GET"]
+      authorization.record.mode: "opa"
+      authorization.record.opa.url: "http://opa:8181"
+      authorization.record.opa.policy: "stac/allow"
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DEFAULT_PUBLIC
+            value: "false"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PUBLIC_ENDPOINTS
+            value: '{"^/search$":["GET"]}'
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ITEMS_FILTER_CLS
+            value: "stac_auth_proxy.filters:opa.Opa"

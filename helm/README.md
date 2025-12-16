@@ -75,6 +75,20 @@ helm upgrade stac-auth-proxy ./stac-auth-proxy -f custom-values.yaml
 helm uninstall stac-auth-proxy
 ```
 
+## Testing
+
+Run unit tests to validate chart templates:
+
+```bash
+helm unittest helm/
+```
+
+Requires the [helm-unittest](https://github.com/helm-unittest/helm-unittest) plugin:
+
+```bash
+helm plugin install https://github.com/helm-unittest/helm-unittest
+```
+
 ## Documentation
 
 For more information about STAC Auth Proxy features and configuration:

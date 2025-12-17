@@ -94,6 +94,7 @@ services:
       UPSTREAM_URL: ${UPSTREAM_URL:-http://stac:8001}
       OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL:-http://localhost:8888/.well-known/openid-configuration}
       OIDC_DISCOVERY_INTERNAL_URL: ${OIDC_DISCOVERY_INTERNAL_URL:-http://oidc:8888/.well-known/openid-configuration}
+      DEBUG: 1
     env_file:
       - path: .env
         required: false
@@ -101,6 +102,13 @@ services:
       - "8000:8000"
     volumes:
       - ./src:/app/src
+    labels:
+      # Traefik labels for the double-proxy profile
+      - "traefik.enable=true"
+      - "traefik.http.routers.stac-auth-proxy.rule=PathPrefix(`/stac`)"
+      - "traefik.http.routers.stac-auth-proxy.entrypoints=web"
+      - "traefik.http.services.stac-auth-proxy.loadbalancer.server.port=8000"
+      # # Strip the /stac prefix before forwarding to the auth proxy
 
   oidc:
     image: ghcr.io/alukach/mock-oidc-server:latest
@@ -125,3 +133,30 @@ services:
             "client_id": "stac-browser"
           }
         }
+
+  traefik:
+    profiles: ["double-proxy"]
+    image: traefik:v3.2
+    container_name: traefik
+    command:
+      # Enable the API and dashboard (accessible at http://localhost:8081)
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      # Configure the Docker provider
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      # Define the entrypoint
+      - "--entrypoints.web.address=:80"
+      # Enable access logs for debugging
+      - "--accesslog=true"
+      - "--log.level=DEBUG"
+    ports:
+      # Main HTTP entrypoint - this is where clients connect
+      - "80:80"
+      # Traefik dashboard
+      - "8081:8080"
+    volumes:
+      # Mount the Docker socket so Traefik can discover services
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - proxy

@@ -18,6 +18,7 @@ services:
       DB_MIN_CONN_SIZE: 1
       DB_MAX_CONN_SIZE: 1
       USE_API_HYDRATE: ${USE_API_HYDRATE:-false}
+      ENABLE_TRANSACTIONS_EXTENSIONS: 1
     hostname: stac
     ports:
       - "8001:8001"

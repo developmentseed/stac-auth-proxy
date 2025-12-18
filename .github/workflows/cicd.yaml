@@ -50,3 +50,19 @@ jobs:
           path: |
             htmlcov/
             coverage.xml
+
+  helm-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Helm install
+        uses: azure/setup-helm@v4
+        with:
+          version: latest
+      - run: helm lint helm
+      - name: Helm unit tests
+        uses: d3adb5/helm-unittest-action@v2
+        with:
+          helm-version: latest
+          charts: helm/

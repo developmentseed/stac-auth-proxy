@@ -1,0 +1,36 @@
+suite: test service
+templates:
+  - service.yaml
+tests:
+  - it: should create service with correct name
+    set:
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - isKind:
+          of: Service
+      - matchRegex:
+          path: metadata.name
+          pattern: ^RELEASE-NAME-stac-auth-proxy$
+
+  - it: should use ClusterIP by default
+    set:
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - equal:
+          path: spec.type
+          value: ClusterIP
+
+  - it: should expose correct port
+    set:
+      service.port: 8000
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - equal:
+          path: spec.ports[0].port
+          value: 8000
+      - equal:
+          path: spec.ports[0].targetPort
+          value: http

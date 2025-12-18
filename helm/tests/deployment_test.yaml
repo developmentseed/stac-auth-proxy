@@ -1,0 +1,51 @@
+suite: test deployment
+templates:
+  - deployment.yaml
+tests:
+  - it: should create deployment with correct name
+    set:
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - isKind:
+          of: Deployment
+      - matchRegex:
+          path: metadata.name
+          pattern: ^RELEASE-NAME-stac-auth-proxy$
+
+  - it: should set replica count
+    set:
+      replicaCount: 3
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3
+
+  - it: should set required environment variables
+    set:
+      env.UPSTREAM_URL: "https://stac-api.example.com"
+      env.OIDC_DISCOVERY_URL: "https://auth.example.com/.well-known/openid-configuration"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: UPSTREAM_URL
+            value: "https://stac-api.example.com"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OIDC_DISCOVERY_URL
+            value: "https://auth.example.com/.well-known/openid-configuration"
+
+  - it: should use correct image
+    set:
+      image.repository: "custom/repo"
+      image.tag: "v1.2.3"
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: "custom/repo:v1.2.3"

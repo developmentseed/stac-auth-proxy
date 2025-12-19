@@ -13,7 +13,7 @@ from starlette.types import ASGIApp, Scope
 from ..config import EndpointMethods
 from ..utils.middleware import JsonResponseMiddleware
 from ..utils.requests import find_match
-from ..utils.stac import get_links
+from ..utils.stac import ensure_type, get_links
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
 
     def transform_json(self, data: dict[str, Any], request: Request) -> dict[str, Any]:
         """Augment the STAC Item with auth information."""
-        extensions = data.setdefault("stac_extensions", [])
+        extensions = ensure_type(data, "stac_extensions", list)
         if self.extension_url not in extensions:
             extensions.append(self.extension_url)
 
@@ -75,7 +75,7 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
         # - Item Properties
 
         scheme_loc = data["properties"] if "properties" in data else data
-        schemes = scheme_loc.setdefault("auth:schemes", {})
+        schemes = ensure_type(scheme_loc, "auth:schemes", dict)
         schemes[self.auth_scheme_name] = {
             "type": "openIdConnect",
             "openIdConnectUrl": self.oidc_discovery_url,
@@ -96,6 +96,7 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
                 default_public=self.default_public,
             )
             if match.is_private:
-                link.setdefault("auth:refs", []).append(self.auth_scheme_name)
+                auth_refs = ensure_type(link, "auth:refs", list)
+                auth_refs.append(self.auth_scheme_name)
 
         return data

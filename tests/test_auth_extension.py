@@ -195,3 +195,57 @@ def test_transform_json_missing_oidc_metadata(middleware, request_scope):
     transformed = middleware.transform_json(catalog, request)
     # Should return unchanged when OIDC metadata is missing
     assert transformed == catalog
+
+
+def test_transform_json_with_null_stac_extensions(
+    middleware, request_scope, oidc_discovery_url
+):
+    """Test transforming when stac_extensions is None."""
+    request = Request(request_scope)
+
+    catalog = {
+        "stac_version": "1.0.0",
+        "id": "test-catalog",
+        "description": "Test catalog",
+        "stac_extensions": None,
+    }
+
+    transformed = middleware.transform_json(catalog, request)
+
+    assert "stac_extensions" in transformed
+    assert middleware.extension_url in transformed["stac_extensions"]
+    assert "auth:schemes" in transformed
+    assert "test_auth" in transformed["auth:schemes"]
+
+
+@pytest.mark.parametrize(
+    "invalid_value",
+    [
+        "not-a-list",
+        42,
+        {"key": "value"},
+        3.14,
+        True,
+    ],
+)
+def test_transform_json_with_invalid_stac_extensions_types(
+    middleware, request_scope, oidc_discovery_url, invalid_value
+):
+    """Test transforming when stac_extensions is an invalid type (string, int, dict, etc)."""
+    request = Request(request_scope)
+
+    catalog = {
+        "stac_version": "1.0.0",
+        "id": "test-catalog",
+        "description": "Test catalog",
+        "stac_extensions": invalid_value,
+    }
+
+    transformed = middleware.transform_json(catalog, request)
+
+    # Should replace invalid value with a proper list
+    assert "stac_extensions" in transformed
+    assert isinstance(transformed["stac_extensions"], list)
+    assert middleware.extension_url in transformed["stac_extensions"]
+    assert "auth:schemes" in transformed
+    assert "test_auth" in transformed["auth:schemes"]

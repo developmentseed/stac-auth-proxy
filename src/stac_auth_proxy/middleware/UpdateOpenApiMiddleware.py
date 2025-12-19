@@ -11,6 +11,7 @@ from starlette.types import ASGIApp, Scope
 from ..config import EndpointMethods
 from ..utils.middleware import JsonResponseMiddleware
 from ..utils.requests import find_match
+from ..utils.stac import ensure_type
 
 
 @dataclass(frozen=True)
@@ -57,8 +58,8 @@ class OpenApiMiddleware(JsonResponseMiddleware):
             data["servers"] = [{"url": self.root_path}]
 
         # Add security scheme
-        components = data.setdefault("components", {})
-        securitySchemes = components.setdefault("securitySchemes", {})
+        components = ensure_type(data, "components", dict)
+        securitySchemes = ensure_type(components, "securitySchemes", dict)
         securitySchemes[self.auth_scheme_name] = self.auth_scheme_override or {
             "type": "openIdConnect",
             "openIdConnectUrl": self.oidc_discovery_url,
@@ -78,7 +79,6 @@ class OpenApiMiddleware(JsonResponseMiddleware):
                     self.default_public,
                 )
                 if match.is_private:
-                    config.setdefault("security", []).append(
-                        {self.auth_scheme_name: match.required_scopes}
-                    )
+                    security = ensure_type(config, "security", list)
+                    security.append({self.auth_scheme_name: match.required_scopes})
         return data

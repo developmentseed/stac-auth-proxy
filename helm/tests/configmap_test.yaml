@@ -1,0 +1,51 @@
+suite: test configmap
+templates:
+  - configmap.yaml
+tests:
+  - it: should create configmap when record mode is custom with filtersFile
+    set:
+      authorization.record.mode: "custom"
+      authorization.record.custom.filtersFile: "data/custom_filters.py"
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-stac-auth-proxy-filters
+      - isNotEmpty:
+          path: data
+
+  - it: should not create configmap when record mode is disabled
+    set:
+      authorization.record.mode: "disabled"
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not create configmap when record mode is opa
+    set:
+      authorization.record.mode: "opa"
+      authorization.record.opa.url: "http://opa:8181"
+      authorization.record.opa.policy: "stac/items/allow"
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not create configmap when filtersFile is empty
+    set:
+      authorization.record.mode: "custom"
+      authorization.record.custom.filtersFile: ""
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should include proper labels
+    set:
+      authorization.record.mode: "custom"
+      authorization.record.custom.filtersFile: "data/custom_filters.py"
+    asserts:
+      - isSubset:
+          path: metadata.labels
+          content:
+            app.kubernetes.io/name: stac-auth-proxy
+            app.kubernetes.io/instance: RELEASE-NAME

@@ -236,6 +236,36 @@ properties:
       additionalProperties: true
     description: "Init containers to run before the main container starts"
 
+  extraVolumes:
+    type: array
+    items:
+      type: object
+      additionalProperties: true
+    description: "Additional volumes to mount (e.g., ConfigMaps for custom filter files)"
+    default: []
+
+  extraVolumeMounts:
+    type: array
+    items:
+      type: object
+      required: ["name", "mountPath"]
+      properties:
+        name:
+          type: string
+          description: "Name of the volume to mount"
+        mountPath:
+          type: string
+          description: "Path within the container at which the volume should be mounted"
+        subPath:
+          type: string
+          description: "Path within the volume from which the container's volume should be mounted"
+        readOnly:
+          type: boolean
+          description: "Mounted read-only if true, read-write otherwise"
+      additionalProperties: true
+    description: "Additional volume mounts for the container"
+    default: []
+
   serviceAccount:
     type: object
     properties:

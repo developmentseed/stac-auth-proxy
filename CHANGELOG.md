@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/developmentseed/stac-auth-proxy/compare/v0.11.0...v0.11.1) (2025-12-19)
+
+
+### Bug Fixes
+
+* Make docker image to run as non-root. ([#116](https://github.com/developmentseed/stac-auth-proxy/issues/116)) ([35e06f3](https://github.com/developmentseed/stac-auth-proxy/commit/35e06f3c4fe518c02ab269724ae5c41f3f60ae04))
+
 ## [0.11.0](https://github.com/developmentseed/stac-auth-proxy/compare/v0.10.1...v0.11.0) (2025-12-15)
 
 

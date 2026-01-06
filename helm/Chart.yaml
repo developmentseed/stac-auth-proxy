@@ -3,4 +3,4 @@ name: stac-auth-proxy
 description: A Helm chart for stac-auth-proxy
 type: application
 version: 0.1.2
-appVersion: "1.0.0"
+appVersion: "0.11.0"

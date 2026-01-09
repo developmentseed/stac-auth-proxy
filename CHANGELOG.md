@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.12.0](https://github.com/developmentseed/stac-auth-proxy/compare/v0.11.0...v0.12.0) (2026-01-09)
+
+
+### Features
+
+* Add helm README.md and unit tests ([#117](https://github.com/developmentseed/stac-auth-proxy/issues/117)) ([74a1bc8](https://github.com/developmentseed/stac-auth-proxy/commit/74a1bc8e361cbc85bb48dff4fc4019b2ad8d196d))
+
+
+### Bug Fixes
+
+* Enhance type safety in middleware and utility functions ([#122](https://github.com/developmentseed/stac-auth-proxy/issues/122)) ([52cdd0e](https://github.com/developmentseed/stac-auth-proxy/commit/52cdd0eaf8eb0c98cdb4c18d54c2d23979e5d72a))
+* Helm chart and app version mismatch. ([#120](https://github.com/developmentseed/stac-auth-proxy/issues/120)) ([7998675](https://github.com/developmentseed/stac-auth-proxy/commit/79986751390ae243dee565b2b273d8d67aab5ba5))
+* Make docker image to run as non-root. ([#116](https://github.com/developmentseed/stac-auth-proxy/issues/116)) ([35e06f3](https://github.com/developmentseed/stac-auth-proxy/commit/35e06f3c4fe518c02ab269724ae5c41f3f60ae04))
+
 ## [0.11.0](https://github.com/developmentseed/stac-auth-proxy/compare/v0.10.1...v0.11.0) (2025-12-15)
 
 

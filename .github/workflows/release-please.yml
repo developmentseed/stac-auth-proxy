@@ -24,5 +24,4 @@ jobs:
       - uses: googleapis/release-please-action@v4
         id: release
         with:
-          release-type: python
           token: ${{ steps.app-token.outputs.token }}

@@ -5,5 +5,13 @@
     "auto"
   ],
   "python.testing.unittestEnabled": false,
-  "python.testing.pytestEnabled": true
+  "python.testing.pytestEnabled": true,
+  "json.schemas": [
+    {
+      "fileMatch": [
+        "release-please-config.json"
+      ],
+      "url": "https://raw.githubusercontent.com/googleapis/release-please/refs/heads/main/schemas/config.json"
+    }
+  ]
 }

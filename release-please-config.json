@@ -1,0 +1,24 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "python",
+      "extra-files": [
+        {
+          "type": "yaml",
+          "path": "helm/Chart.yaml",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "yaml",
+          "path": "helm/Chart.yaml",
+          "jsonpath": "$.appVersion"
+        },
+        {
+          "path": "uv.lock",
+          "type": "toml",
+          "jsonpath": "$.package[?(@.name.value=='stac-auth-proxy')].version"
+        }
+      ]
+    }
+  }
+}

@@ -62,7 +62,7 @@ plugins:
             - https://docs.python.org/3/objects.inv
             - https://docs.pydantic.dev/latest/objects.inv
             - https://fastapi.tiangolo.com/objects.inv
-            - https://www.starlette.io/objects.inv
+            # - https://www.starlette.io/objects.inv  # Temporarily disabled due to Starlette issue, see https://github.com/Kludex/starlette/discussions/3099#discussioncomment-15488379
 
 theme:
   name: material

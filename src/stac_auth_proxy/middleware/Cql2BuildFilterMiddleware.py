@@ -72,6 +72,10 @@ class Cql2BuildFilterMiddleware:
 
         request = Request(scope)
 
+        if request.method.upper() == "OPTIONS":
+            logger.debug("Skipping CQL2 filter build for OPTIONS request")
+            return await self.app(scope, receive, send)
+
         filter_builder = self._get_filter(request.url.path)
         if not filter_builder:
             return await self.app(scope, receive, send)

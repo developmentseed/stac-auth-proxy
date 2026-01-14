@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.11.1](https://github.com/developmentseed/stac-auth-proxy/compare/v0.11.0...v0.11.1) (2026-01-13)
+
+
+### Features
+
+* Add helm chart auth options. ([#118](https://github.com/developmentseed/stac-auth-proxy/issues/118)) ([cfae34b](https://github.com/developmentseed/stac-auth-proxy/commit/cfae34b5a3a50596dc2ba13bd51cc96144e78d80))
+* Add helm README.md and unit tests ([#117](https://github.com/developmentseed/stac-auth-proxy/issues/117)) ([74a1bc8](https://github.com/developmentseed/stac-auth-proxy/commit/74a1bc8e361cbc85bb48dff4fc4019b2ad8d196d))
+
+
+### Bug Fixes
+
+* Enhance type safety in middleware and utility functions ([#122](https://github.com/developmentseed/stac-auth-proxy/issues/122)) ([52cdd0e](https://github.com/developmentseed/stac-auth-proxy/commit/52cdd0eaf8eb0c98cdb4c18d54c2d23979e5d72a))
+* Helm chart and app version mismatch. ([#120](https://github.com/developmentseed/stac-auth-proxy/issues/120)) ([7998675](https://github.com/developmentseed/stac-auth-proxy/commit/79986751390ae243dee565b2b273d8d67aab5ba5))
+* Make docker image to run as non-root. ([#116](https://github.com/developmentseed/stac-auth-proxy/issues/116)) ([35e06f3](https://github.com/developmentseed/stac-auth-proxy/commit/35e06f3c4fe518c02ab269724ae5c41f3f60ae04))
+* Skip CQL2 filter build for OPTIONS requests ([#123](https://github.com/developmentseed/stac-auth-proxy/issues/123)) ([6ee043e](https://github.com/developmentseed/stac-auth-proxy/commit/6ee043e5742d876df4fc34e63e538ae83997f8a1)), closes [#110](https://github.com/developmentseed/stac-auth-proxy/issues/110)
+
+
+### Documentation
+
+* temporarily disable starlette docstrings ([c4fd9e0](https://github.com/developmentseed/stac-auth-proxy/commit/c4fd9e07d3a03b0b77bdf1621f0402241a0c5ac2))
+
+
+### Miscellaneous Chores
+
+* release 0.11.1 ([976dfab](https://github.com/developmentseed/stac-auth-proxy/commit/976dfaba7bf01287045298e4834388f9fa6b1f45))
+
 ## [0.11.0](https://github.com/developmentseed/stac-auth-proxy/compare/v0.10.1...v0.11.0) (2025-12-15)
 
 

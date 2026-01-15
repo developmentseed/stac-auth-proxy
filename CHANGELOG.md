@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.2](https://github.com/developmentseed/stac-auth-proxy/compare/v0.11.1...v0.11.2) (2026-01-15)
+
+
+### Bug Fixes
+
+* remove helm chart auth options. ([#126](https://github.com/developmentseed/stac-auth-proxy/issues/126)) ([42015b3](https://github.com/developmentseed/stac-auth-proxy/commit/42015b399938fc92589e8b377352420da9bc217c))
+
 ## [0.11.1](https://github.com/developmentseed/stac-auth-proxy/compare/v0.11.0...v0.11.1) (2026-01-13)
 
 

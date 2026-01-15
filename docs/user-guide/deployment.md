@@ -61,4 +61,47 @@ docker pull ghcr.io/developmentseed/stac-auth-proxy:v0.7.1
 
 ## Kubernetes
 
-See [Kubernetes deployment](kubernetes.md) for detailed instructions on deploying to Kubernetes using Helm.
+The STAC Auth Proxy can be deployed to Kubernetes via the [Helm Chart available on the GitHub Container Registry (GHCR)](https://github.com/developmentseed/stac-auth-proxy/pkgs/container/stac-auth-proxy%2Fcharts%2Fstac-auth-proxy).
+
+### Prerequisites
+
+- Kubernetes 1.19+
+- Helm 3.2.0+
+
+### Installation
+
+```bash
+# Add the Helm repository
+helm registry login ghcr.io
+
+# Install with minimal configuration
+helm install stac-auth-proxy oci://ghcr.io/developmentseed/stac-auth-proxy/charts/stac-auth-proxy \
+  --set env.UPSTREAM_URL=https://your-stac-api.com/stac \
+  --set env.OIDC_DISCOVERY_URL=https://your-auth-server/.well-known/openid-configuration \
+  --set ingress.host=stac-proxy.your-domain.com
+```
+
+### Configuration
+
+| Parameter                | Description                                   | Required | Default |
+| ------------------------ | --------------------------------------------- | -------- | ------- |
+| `env.UPSTREAM_URL`       | URL of the STAC API to proxy                  | Yes      | -       |
+| `env.OIDC_DISCOVERY_URL` | OpenID Connect discovery document URL         | Yes      | -       |
+| `env`                    | Environment variables passed to the container | No       | `{}`    |
+| `ingress.enabled`        | Enable ingress                                | No       | `true`  |
+| `ingress.className`      | Ingress class name                            | No       | `nginx` |
+| `ingress.host`           | Hostname for the ingress                      | No       | `""`    |
+| `ingress.tls.enabled`    | Enable TLS for ingress                        | No       | `true`  |
+| `replicaCount`           | Number of replicas                            | No       | `1`     |
+
+For a complete list of values, see the [values.yaml](https://github.com/developmentseed/stac-auth-proxy/blob/main/helm/values.yaml) file.
+
+### Management
+
+```bash
+# Upgrade
+helm upgrade stac-auth-proxy oci://ghcr.io/developmentseed/stac-auth-proxy/charts/stac-auth-proxy
+
+# Uninstall
+helm uninstall stac-auth-proxy
+```

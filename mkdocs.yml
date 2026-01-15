@@ -35,7 +35,6 @@ nav:
       - Route-Level Auth: user-guide/route-level-auth.md
       - Record-Level Auth: user-guide/record-level-auth.md
       - Deployment: user-guide/deployment.md
-      - Kubernetes: user-guide/kubernetes.md
       - Tips: user-guide/tips.md
   - Architecture:
       - Middleware Stack: architecture/middleware-stack.md

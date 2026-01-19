@@ -134,7 +134,9 @@ The application is configurable via environment variables.
       "^/api$": ["GET"],
       "^/conformance$": ["GET"],
       "^/docs/oauth2-redirect": ["GET"],
-      "^/healthz": ["GET"]
+      "^/healthz": ["GET"],
+      "^/_mgmt/ping": ["GET"],
+      "^/_mgmt/health": ["GET"]
     }
     ```
 

@@ -95,7 +95,9 @@ env:
       "^/api.html$": ["GET"],
       "^/api$": ["GET"],
       "^/docs/oauth2-redirect": ["GET"],
-      "^/healthz": ["GET"]
+      "^/healthz": ["GET"],
+      "^/_mgmt/ping": ["GET"],
+      "^/_mgmt/health": ["GET"]
     }
 
 
@@ -110,4 +112,4 @@ serviceAccount:
   name: ""
   # Image pull secrets to add to the service account
   imagePullSecrets: []
-  # - name: my-registry-secret 
+  # - name: my-registry-secret

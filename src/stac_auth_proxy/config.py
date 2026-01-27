@@ -77,6 +77,8 @@ class Settings(BaseSettings):
         r"^/conformance$": ["GET"],
         r"^/docs/oauth2-redirect": ["GET"],
         r"^/healthz": ["GET"],
+        r"^/_mgmt/ping": ["GET"],
+        r"^/_mgmt/health": ["GET"],
     }
     private_endpoints: EndpointMethodsWithScope = {
         # https://github.com/stac-api-extensions/collection-transaction/blob/v1.0.0-beta.1/README.md#methods

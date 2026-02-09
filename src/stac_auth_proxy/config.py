@@ -15,6 +15,8 @@ EndpointMethodsWithScope: TypeAlias = dict[
 
 _PREFIX_PATTERN = r"^/.*$"
 
+ALLOWED_MODULE_PREFIXES: tuple[str, ...] = ("stac_auth_proxy.",)
+
 
 def str2list(x: Optional[str] = None) -> Optional[Sequence[str]]:
     """Convert string to list based on , delimiter."""
@@ -33,11 +35,31 @@ class _ClassInput(BaseModel):
 
     def __call__(self):
         """Dynamically load a class and instantiate it with args & kwargs."""
-        assert self.cls.count(":")
+        if ":" not in self.cls:
+            raise ValueError(
+                f"Invalid class path '{self.cls}': expected 'module.path:ClassName' format"
+            )
         module_path, class_name = self.cls.rsplit(":", 1)
+
+        if not any(
+            module_path.startswith(prefix) for prefix in ALLOWED_MODULE_PREFIXES
+        ):
+            raise ValueError(
+                f"Module '{module_path}' is not in the allowed namespaces: "
+                f"{ALLOWED_MODULE_PREFIXES}"
+            )
+
+        if ".." in module_path or class_name.startswith("_"):
+            raise ValueError(
+                f"Invalid class path '{self.cls}': path traversal or private "
+                f"access is not permitted"
+            )
+
         module = importlib.import_module(module_path)
         cls = getattr(module, class_name)
-        return cls(*self.args, **self.kwargs)
+
+        if not callable(cls):
+            raise TypeError(f"'{self.cls}' resolved to a non-callable object")
 
 
 class Settings(BaseSettings):

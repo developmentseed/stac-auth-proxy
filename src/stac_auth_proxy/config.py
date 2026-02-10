@@ -61,6 +61,8 @@ class _ClassInput(BaseModel):
         if not callable(cls):
             raise TypeError(f"'{self.cls}' resolved to a non-callable object")
 
+        return cls(*self.args, **self.kwargs)
+
 
 class Settings(BaseSettings):
     """Configuration settings for the STAC Auth Proxy."""

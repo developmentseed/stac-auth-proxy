@@ -7,7 +7,7 @@ classifiers = [
 ]
 dependencies = [
   "brotli>=1.1.0",
-  "cql2>=0.4.2",
+  "cql2==0.5.3",
   "cryptography>=44.0.1",
   "fastapi>=0.115.5",
   "httpx[http2]>=0.28.0",

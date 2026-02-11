@@ -22,6 +22,7 @@ from .middleware import (
     Cql2BuildFilterMiddleware,
     Cql2RewriteLinksFilterMiddleware,
     Cql2ValidateResponseBodyMiddleware,
+    Cql2ValidateTransactionMiddleware,
     EnforceAuthMiddleware,
     OpenApiMiddleware,
     ProcessLinksMiddleware,
@@ -110,6 +111,10 @@ def configure_app(
 
     if settings.items_filter or settings.collections_filter:
         app.add_middleware(Cql2ValidateResponseBodyMiddleware)
+        app.add_middleware(
+            Cql2ValidateTransactionMiddleware,
+            upstream_url=str(settings.upstream_url),
+        )
         app.add_middleware(Cql2ApplyFilterBodyMiddleware)
         app.add_middleware(Cql2ApplyFilterQueryStringMiddleware)
         app.add_middleware(Cql2RewriteLinksFilterMiddleware)

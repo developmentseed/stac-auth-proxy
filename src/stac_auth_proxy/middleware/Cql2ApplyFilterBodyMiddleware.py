@@ -1,6 +1,7 @@
-"""Middleware to augment the request body with a CQL2 filter for POST/PUT/PATCH requests."""
+"""Middleware to augment the request body with a CQL2 filter for search requests."""
 
 import json
+import re
 from dataclasses import dataclass
 from logging import getLogger
 from typing import Optional
@@ -22,10 +23,14 @@ logger = getLogger(__name__)
 )
 @dataclass(frozen=True)
 class Cql2ApplyFilterBodyMiddleware:
-    """Middleware to augment the request body with a CQL2 filter for POST/PUT/PATCH requests."""
+    """Middleware to augment the request body with a CQL2 filter for search requests."""
 
     app: ASGIApp
     state_key: str = "cql2_filter"
+
+    search_body_endpoints = [
+        r"^/search$",
+    ]
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """Apply the CQL2 filter to the request body."""
@@ -38,6 +43,11 @@ class Cql2ApplyFilterBodyMiddleware:
             return await self.app(scope, receive, send)
 
         if request.method not in ["POST", "PUT", "PATCH"]:
+            return await self.app(scope, receive, send)
+
+        if not any(
+            re.match(expr, request.url.path) for expr in self.search_body_endpoints
+        ):
             return await self.app(scope, receive, send)
 
         body = b""

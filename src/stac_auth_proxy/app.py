@@ -11,7 +11,7 @@ from typing import Any, Optional
 from fastapi import FastAPI
 from starlette_cramjam.middleware import CompressionMiddleware
 
-from .config import Settings
+from .config import CoreSettings, Settings
 from .handlers import HealthzHandler, ReverseProxyHandler, SwaggerUI
 from .lifespan import build_lifespan
 from .middleware import (
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 def configure_app(
     app: FastAPI,
-    settings: Optional[Settings] = None,
+    settings: Optional[CoreSettings] = None,
     **settings_kwargs: Any,
 ) -> FastAPI:
     """
@@ -51,7 +51,7 @@ def configure_app(
         ``settings`` is not provided.
 
     """
-    settings = settings or Settings(**settings_kwargs)
+    settings = settings or CoreSettings(**settings_kwargs)
 
     #
     # Route Handlers

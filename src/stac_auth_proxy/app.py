@@ -9,6 +9,7 @@ import logging
 from typing import Any, Optional
 
 from fastapi import FastAPI
+from starlette.middleware.cors import CORSMiddleware
 from starlette_cramjam.middleware import CompressionMiddleware
 
 from .config import Settings
@@ -155,8 +156,6 @@ def configure_app(
         )
 
     if not settings.proxy_options:
-        from starlette.middleware.cors import CORSMiddleware
-
         # When credentials are enabled and origins are wildcarded, use
         # allow_origin_regex to force Starlette to reflect the request's
         # Origin header instead of sending "Access-Control-Allow-Origin: *".
@@ -215,7 +214,14 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             upstream=str(settings.upstream_url),
             override_host=settings.override_host,
         ).proxy_request,
-        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        methods=[
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            *(["OPTIONS"] if settings.proxy_options else []),
+        ],
     )
 
     return app

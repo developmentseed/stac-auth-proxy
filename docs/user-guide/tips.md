@@ -2,9 +2,27 @@
 
 ## CORS
 
-The STAC Auth Proxy does not modify the [CORS response headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS#the_http_response_headers) from the upstream STAC API. All CORS configuration must be handled by the upstream API.
+By default, the STAC Auth Proxy handles [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS) locally. OPTIONS preflight requests are answered directly by the proxy, and CORS headers are included on all responses — including `401` and `403` errors — so that browser clients can read error details. This behavior is configured with the `CORS_*` environment variables (see [Configuration](configuration.md#cors)).
 
-Because the STAC Auth Proxy introduces authentication, the upstream API’s CORS settings may need adjustment to support credentials. In most cases, this means:
+The defaults are designed to work out of the box for browser-based clients that send `Authorization` headers:
+
+- `CORS_ALLOW_ORIGINS=*` — all origins are accepted
+- `CORS_ALLOW_CREDENTIALS=true` — required because frontends will send `Authorization` headers
+- `CORS_ALLOW_METHODS=*` and `CORS_ALLOW_HEADERS=*` — all methods and headers are accepted
+
+Because the [CORS specification](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS/Errors/CORSNotSupportingCredentials) forbids `Access-Control-Allow-Origin: *` when credentials are enabled, the proxy automatically reflects the request's `Origin` header back in the response instead of sending a literal `*`.[^CORSNotSupportingCredentials]
+
+To restrict access to specific origins:
+
+```sh
+CORS_ALLOW_ORIGINS=https://my-app.example.com,https://staging.example.com
+```
+
+### Upstream CORS handling
+
+If you prefer the upstream API to handle CORS instead, set `PROXY_OPTIONS=true`. In this mode, OPTIONS requests are forwarded to the upstream API and the proxy does not add CORS headers.
+
+Because the STAC Auth Proxy introduces authentication, the upstream API's CORS settings may need adjustment to support credentials. In most cases, this means:
 
 - [`Access-Control-Allow-Credentials`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Access-Control-Allow-Credentials) must be `true`
 - [`Access-Control-Allow-Origin`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Access-Control-Allow-Origin) must _not_ be `*`[^CORSNotSupportingCredentials]

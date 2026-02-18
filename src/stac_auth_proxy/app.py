@@ -154,6 +154,44 @@ def configure_app(
             CompressionMiddleware,
         )
 
+    if not settings.proxy_options:
+        from starlette.middleware.cors import CORSMiddleware
+
+        # When credentials are enabled and origins are wildcarded, use
+        # allow_origin_regex to force Starlette to reflect the request's
+        # Origin header instead of sending "Access-Control-Allow-Origin: *".
+        # The CORS spec forbids "*" when credentials are allowed, and while
+        # Starlette handles this correctly for preflight requests, its
+        # simple-response path does not — using a regex avoids the issue.
+        origins = list(settings.cors.allow_origins)
+        origin_regex = None
+        if settings.cors.allow_credentials and origins == ["*"]:
+            origins = []
+            origin_regex = ".*"
+            logger.debug(
+                "CORS: credentials enabled with wildcard origins, using origin reflection"
+            )
+
+        logger.info(
+            "CORS: handling locally (allow_origins=%s, allow_methods=%s, allow_credentials=%s)",
+            settings.cors.allow_origins,
+            settings.cors.allow_methods,
+            settings.cors.allow_credentials,
+        )
+
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=origins,
+            allow_origin_regex=origin_regex,
+            allow_methods=list(settings.cors.allow_methods),
+            allow_headers=list(settings.cors.allow_headers),
+            allow_credentials=settings.cors.allow_credentials,
+            expose_headers=list(settings.cors.expose_headers),
+            max_age=settings.cors.max_age,
+        )
+    else:
+        logger.info("CORS: proxying OPTIONS to upstream")
+
     return app
 
 

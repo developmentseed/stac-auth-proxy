@@ -40,6 +40,31 @@ class _ClassInput(BaseModel):
         return cls(*self.args, **self.kwargs)
 
 
+class CorsSettings(BaseModel):
+    """CORS configuration settings."""
+
+    allow_origins: Sequence[str] = ["*"]
+    allow_methods: Sequence[str] = ["*"]
+    allow_headers: Sequence[str] = ["*"]
+    allow_credentials: bool = True
+    expose_headers: Sequence[str] = []
+    max_age: int = 600
+
+    @field_validator(
+        "allow_origins",
+        "allow_methods",
+        "allow_headers",
+        "expose_headers",
+        mode="before",
+    )
+    @classmethod
+    def parse_list(cls, v):
+        """Parse a comma-separated string into a list."""
+        if isinstance(v, str):
+            return [s.strip() for s in v.split(",") if s.strip()]
+        return v
+
+
 class Settings(BaseSettings):
     """Configuration settings for the STAC Auth Proxy."""
 
@@ -55,6 +80,8 @@ class Settings(BaseSettings):
     wait_for_upstream: bool = True
     check_conformance: bool = True
     enable_compression: bool = True
+    proxy_options: bool = False
+    cors: CorsSettings = Field(default_factory=CorsSettings)
 
     # OpenAPI / Swagger UI
     openapi_spec_endpoint: Optional[str] = Field(

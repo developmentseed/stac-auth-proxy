@@ -101,10 +101,13 @@ async def check_conformance(
                 ]
             )
         )
-    logger.info(
-        "Upstream catalog conforms to the following required conformance classes: \n%s",
-        "\n".join([conformance_str(c) for c in required_conformances]),
-    )
+    if required_conformances:
+        logger.info(
+            "Upstream catalog conforms to the following required conformance classes: \n%s",
+            "\n".join([conformance_str(c) for c in required_conformances]),
+        )
+    else:
+        logger.info("No required conformance classes specified by middleware")
 
 
 def build_lifespan(settings: Settings | None = None, **settings_kwargs: Any):

@@ -71,10 +71,10 @@ extraVolumeMounts: []
 #     image: busybox:1.35
 #     command: ['sh', '-c', 'until nc -z oidc-server 8080; do sleep 2; done']
 
-# Sidecar containers to run alongside the main container
-sidecars: []
+# extraContainer containers to run alongside the main container
+extraContainers: []
 # Example:
-# sidecars:
+# extraContainers:
 #   - name: oauth2-proxy
 #     image: quay.io/oauth2-proxy/oauth2-proxy:latest
 #     ports:

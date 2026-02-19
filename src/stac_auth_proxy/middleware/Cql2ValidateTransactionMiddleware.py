@@ -115,14 +115,11 @@ class Cql2ValidateTransactionMiddleware:
 
     async def _fetch_existing(self, path: str) -> Optional[dict]:
         """Fetch the existing record from upstream."""
-        try:
-            response = await self._client.get(path)
-            if response.status_code == 200:
-                return response.json()
+        response = await self._client.get(path)
+        if response.status_code == 404:
             return None
-        except Exception:
-            logger.exception("Failed to fetch existing record from upstream")
-            return None
+        response.raise_for_status()
+        return response.json()
 
     async def _handle_create(
         self,
@@ -185,11 +182,22 @@ class Cql2ValidateTransactionMiddleware:
             return await response(scope, receive, send)
 
         # Fetch existing record
-        existing = await self._fetch_existing(path)
+        try:
+            existing = await self._fetch_existing(path)
+        except httpx.HTTPError:
+            response = JSONResponse(
+                {
+                    "code": "UpstreamError",
+                    "description": "Failed to fetch record from upstream.",
+                },
+                status_code=502,
+            )
+            return await response(scope, receive, send)
+
         if existing is None:
             response = JSONResponse(
                 {"code": "NotFoundError", "description": "Record not found."},
-                status_code=502,
+                status_code=404,
             )
             return await response(scope, receive, send)
 
@@ -231,11 +239,22 @@ class Cql2ValidateTransactionMiddleware:
         path: str,
     ) -> None:
         """Validate delete requests."""
-        existing = await self._fetch_existing(path)
+        try:
+            existing = await self._fetch_existing(path)
+        except httpx.HTTPError:
+            response = JSONResponse(
+                {
+                    "code": "UpstreamError",
+                    "description": "Failed to fetch record from upstream.",
+                },
+                status_code=502,
+            )
+            return await response(scope, receive, send)
+
         if existing is None:
             response = JSONResponse(
                 {"code": "NotFoundError", "description": "Record not found."},
-                status_code=502,
+                status_code=404,
             )
             return await response(scope, receive, send)
 

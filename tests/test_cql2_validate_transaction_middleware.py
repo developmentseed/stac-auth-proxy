@@ -3,6 +3,7 @@
 import json
 from unittest.mock import AsyncMock, patch
 
+import httpx
 import pytest
 from cql2 import Expr
 from fastapi import FastAPI, Request
@@ -417,7 +418,36 @@ class TestUpstreamFetchFailure:
     def test_upstream_unreachable(
         self, app_with_middleware, cql2_filter, method, path, kwargs
     ):
-        """Returns 502 when upstream fetch returns None."""
+        """Returns 502 when upstream fetch raises UpstreamError."""
+        app = app_with_middleware()
+        _set_cql2_filter(app, cql2_filter)
+        client = TestClient(app)
+        with patch.object(
+            Cql2ValidateTransactionMiddleware,
+            "_fetch_existing",
+            new_callable=AsyncMock,
+            side_effect=httpx.ConnectError("Connection refused"),
+        ):
+            response = getattr(client, method)(path, **kwargs)
+        assert response.status_code == 502
+        assert response.json()["code"] == "UpstreamError"
+
+    @pytest.mark.parametrize(
+        "method,path,kwargs",
+        [
+            pytest.param(
+                "put",
+                "/collections/allowed/items/item1",
+                {"json": {"id": "item1", "collection": "allowed"}},
+                id="put",
+            ),
+            pytest.param("delete", "/collections/allowed/items/item1", {}, id="delete"),
+        ],
+    )
+    def test_record_not_found(
+        self, app_with_middleware, cql2_filter, method, path, kwargs
+    ):
+        """Returns 404 when upstream record does not exist."""
         app = app_with_middleware()
         _set_cql2_filter(app, cql2_filter)
         client = TestClient(app)
@@ -428,4 +458,5 @@ class TestUpstreamFetchFailure:
             return_value=None,
         ):
             response = getattr(client, method)(path, **kwargs)
-        assert response.status_code == 502
+        assert response.status_code == 404
+        assert response.json()["code"] == "NotFoundError"

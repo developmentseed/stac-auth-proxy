@@ -236,6 +236,13 @@ properties:
       additionalProperties: true
     description: "Init containers to run before the main container starts"
 
+  extraContainers:
+    type: array
+    items:
+      type: object
+      additionalProperties: true
+    description: "extraContainer containers to run alongside the main container"
+
   extraVolumes:
     type: array
     items:

@@ -71,6 +71,15 @@ extraVolumeMounts: []
 #     image: busybox:1.35
 #     command: ['sh', '-c', 'until nc -z oidc-server 8080; do sleep 2; done']
 
+# extraContainer containers to run alongside the main container
+extraContainers: []
+# Example:
+# extraContainers:
+#   - name: oauth2-proxy
+#     image: quay.io/oauth2-proxy/oauth2-proxy:latest
+#     ports:
+#       - containerPort: 4180
+
 # Environment variables for the application
 env:
   # Required configuration

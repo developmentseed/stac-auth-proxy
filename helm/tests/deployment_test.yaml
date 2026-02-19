@@ -49,3 +49,50 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].image
           value: "custom/repo:v1.2.3"
+
+  - it: should add extraContainer containers
+    set:
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+      extraContainers:
+        - name: oauth2-proxy
+          image: quay.io/oauth2-proxy/oauth2-proxy:latest
+          ports:
+            - containerPort: 4180
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[1].name
+          value: oauth2-proxy
+      - equal:
+          path: spec.template.spec.containers[1].image
+          value: quay.io/oauth2-proxy/oauth2-proxy:latest
+
+  - it: should add multiple extraContainer containers
+    set:
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+      extraContainers:
+        - name: extraContainer-one
+          image: busybox:latest
+        - name: extraContainer-two
+          image: alpine:latest
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.containers
+          count: 3
+      - equal:
+          path: spec.template.spec.containers[1].name
+          value: extraContainer-one
+      - equal:
+          path: spec.template.spec.containers[2].name
+          value: extraContainer-two
+
+  - it: should not add extraContainer containers when extraContainers is empty
+    set:
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+      extraContainers: []
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.containers
+          count: 1

@@ -37,7 +37,13 @@ jobs:
 
       - name: Package Helm Chart
         run: |
-          helm package helm/
+          VERSION_ARGS=""
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#v}"
+            VERSION_ARGS="--version $VERSION --app-version $VERSION"
+          fi
+          helm package helm/ $VERSION_ARGS
 
       - name: Push Helm Chart
         run: |

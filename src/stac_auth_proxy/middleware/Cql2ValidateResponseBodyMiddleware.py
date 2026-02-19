@@ -42,6 +42,9 @@ class Cql2ValidateResponseBodyMiddleware:
         if not cql2_filter:
             return await self.app(scope, receive, send)
 
+        if request.method != "GET":
+            return await self.app(scope, receive, send)
+
         if not any(
             re.match(expr, request.url.path) for expr in self.single_record_endpoints
         ):

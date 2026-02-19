@@ -8,14 +8,15 @@ Record-level authorization (also known as _row-level_ authorization) provides fi
 
 ## How It Works
 
-Record-level authorization is implemented through **data filtering**—a strategy that generates CQL2 filters based on request context and applies them to outgoing requests before they reach the upstream STAC API. This approach ensures that:
+Record-level authorization is implemented through **data filtering**—a strategy that generates CQL2 filters based on request context and applies them to requests. This approach ensures that:
 
 - Users only see records they're authorized to access
 - Unauthorized records are completely hidden from search results
+- Users can only create, update, or delete records that match their access filter
 - Authorization decisions are made at the database level for optimal performance
 - Access control is enforced consistently across all endpoints
 
-For endpoints where the filter extension doesn't apply (such as single-item endpoints), the filters are used to validate response data from the upstream STAC API before the user receives the data, ensuring complete authorization coverage.
+For **read** operations on list endpoints, the CQL2 filter is appended to the outgoing request so filtering happens at the database level. For single-resource read endpoints, the filter validates the upstream response before the user receives it. For **write** operations (create, update, delete), the filter validates the request body and/or existing record to ensure the user is authorized to modify the resource.
 
 > [!NOTE]
 >
@@ -27,33 +28,28 @@ For endpoints where the filter extension doesn't apply (such as single-item endp
 
 The [`COLLECTIONS_FILTER_CLS`](configuration.md#collections_filter_cls) applies filters to the following operations:
 
-**Currently Supported:**
-
 - `GET /collections` - Append query params with generated CQL2 query
 - `GET /collections/{collection_id}` - Validate response against CQL2 query
-
-**Future Support:**
-
-- `POST /collections/` - Validate body with generated CQL2 query[^22]
-- `PUT /collections/{collection_id}` - Fetch and validate collection with CQL2 query[^22]
-- `DELETE /collections/{collection_id}` - Fetch and validate collection with CQL2 query[^22]
+- `POST /collections` - Validate request body against CQL2 query
+- `PUT /collections/{collection_id}` - Fetch existing collection, validate both existing and new body against CQL2 query
+- `PATCH /collections/{collection_id}` - Fetch existing collection, validate both existing and merged result against CQL2 query
+- `DELETE /collections/{collection_id}` - Fetch existing collection, validate against CQL2 query
 
 ### Item-Level Filtering
 
 The [`ITEMS_FILTER_CLS`](configuration.md#items_filter_cls) applies filters to the following operations:
 
-**Currently Supported:**
-
 - `GET /search` - Append query params with generated CQL2 query
 - `POST /search` - Append body with generated CQL2 query
 - `GET /collections/{collection_id}/items` - Append query params with generated CQL2 query
 - `GET /collections/{collection_id}/items/{item_id}` - Validate response against CQL2 query
+- `POST /collections/{collection_id}/items` - Validate request body against CQL2 query
+- `PUT /collections/{collection_id}/items/{item_id}` - Fetch existing item, validate both existing and new body against CQL2 query
+- `PATCH /collections/{collection_id}/items/{item_id}` - Fetch existing item, validate both existing and merged result against CQL2 query
+- `DELETE /collections/{collection_id}/items/{item_id}` - Fetch existing item, validate against CQL2 query
 
 **Future Support:**
 
-- `POST /collections/{collection_id}/items` - Validate body with generated CQL2 query[^21]
-- `PUT /collections/{collection_id}/items/{item_id}` - Fetch and validate item with CQL2 query[^21]
-- `DELETE /collections/{collection_id}/items/{item_id}` - Fetch and validate item with CQL2 query[^21]
 - `POST /collections/{collection_id}/bulk_items` - Validate items in body with generated CQL2 query[^21]
 
 ## Filter Contract
@@ -131,12 +127,12 @@ Configure filters using environment variables:
 ```bash
 # Basic configuration
 ITEMS_FILTER_CLS=stac_auth_proxy.filters:Template
-ITEMS_FILTER_ARGS='["collection IN ('public')"]'
+ITEMS_FILTER_ARGS=["collection IN ('public')"]
 
 # With keyword arguments
 ITEMS_FILTER_CLS=stac_auth_proxy.filters:Opa
-ITEMS_FILTER_ARGS='["http://opa:8181", "stac/items/allow"]'
-ITEMS_FILTER_KWARGS='{"cache_ttl": 30.0}'
+ITEMS_FILTER_ARGS=["http://opa:8181", "stac/items/allow"]
+ITEMS_FILTER_KWARGS={"cache_ttl": 30.0}
 ```
 
 **Environment Variables:**
@@ -256,4 +252,3 @@ class ApprovedCollectionsFilter:
 > Filter generation runs for every relevant request. Consider memoizing external API calls to improve performance.
 
 [^21]: https://github.com/developmentseed/stac-auth-proxy/issues/21
-[^22]: https://github.com/developmentseed/stac-auth-proxy/issues/22

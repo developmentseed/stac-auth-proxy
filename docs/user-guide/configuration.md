@@ -36,6 +36,19 @@ The application is configurable via environment variables.
     - **Required:** No, defaults to `true`
     - **Example:** `false`, `1`, `True`
 
+### `PROXY_OPTIONS`
+
+: Proxy OPTIONS requests to the upstream API instead of handling CORS locally
+
+    - **Type:** boolean
+    - **Required:** No, defaults to `false`
+    - **Example:** `false`, `1`, `True`
+
+    > [!TIP]
+    > **Default (`false`):** The proxy handles CORS preflight requests locally using Starlette's `CORSMiddleware`. OPTIONS requests are answered directly by the proxy with appropriate CORS headers, and CORS headers are included on all responses (including `401`/`403` errors) so that browser clients can read error details. Configure the CORS behavior with the `CORS_*` settings below.
+    >
+    > **Enable (`true`):** OPTIONS requests are forwarded to the upstream API, which is then responsible for CORS handling.
+
 ### `HEALTHZ_PREFIX`
 
 : Path prefix for health check endpoints
@@ -197,6 +210,61 @@ The application is configurable via environment variables.
     - **Type:** JSON object
     - **Required:** No, defaults to `null` (disabled)
     - **Example:** `{"clientId": "stac-auth-proxy", "usePkceWithAuthorizationCodeGrant": true}`
+
+## CORS
+
+These settings configure the CORS behavior when `PROXY_OPTIONS` is `false` (the default). They are ignored when `PROXY_OPTIONS` is `true`. See [Tips: CORS](tips.md#cors) for more details.
+
+### `CORS_ALLOW_ORIGINS`
+
+: Allowed origins for CORS requests
+
+    - **Type:** comma-separated string
+    - **Required:** No, defaults to `*`
+    - **Example:** `http://localhost:3000,https://example.com`
+
+### `CORS_ALLOW_METHODS`
+
+: Allowed HTTP methods for CORS requests
+
+    - **Type:** comma-separated string
+    - **Required:** No, defaults to `*`
+    - **Example:** `GET,POST,PUT,DELETE`
+
+### `CORS_ALLOW_HEADERS`
+
+: Allowed headers for CORS requests
+
+    - **Type:** comma-separated string
+    - **Required:** No, defaults to `*`
+    - **Example:** `Content-Type,Authorization`
+
+### `CORS_ALLOW_CREDENTIALS`
+
+: Allow credentials (cookies, authorization headers) in CORS requests
+
+    - **Type:** boolean
+    - **Required:** No, defaults to `true`
+    - **Example:** `false`, `1`, `True`
+
+    > [!NOTE]
+    > Defaults to `true` because the proxy's primary purpose is to enforce authentication, so frontends will be sending `Authorization` headers. When credentials are enabled with `CORS_ALLOW_ORIGINS=*`, the proxy automatically reflects the request's `Origin` header instead of sending a literal `*`, which is required by the [CORS specification](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS/Errors/CORSNotSupportingCredentials).
+
+### `CORS_EXPOSE_HEADERS`
+
+: Response headers exposed to the browser beyond the default CORS-safelisted headers
+
+    - **Type:** comma-separated string
+    - **Required:** No, defaults to `''` (none)
+    - **Example:** `X-Custom-Header,Content-Range`
+
+### `CORS_MAX_AGE`
+
+: Maximum time (in seconds) the browser may cache preflight response results
+
+    - **Type:** integer
+    - **Required:** No, defaults to `600`
+    - **Example:** `3600`
 
 ## Filtering
 

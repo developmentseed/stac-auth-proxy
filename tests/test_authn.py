@@ -194,6 +194,7 @@ def test_options_bypass_auth(
         upstream_url=source_api_server,
         default_public=default_public,
         private_endpoints=private_endpoints,
+        proxy_options=True,
     )
     client = TestClient(test_app)
     response = client.options(path)
@@ -235,6 +236,7 @@ def test_options_vs_other_methods_auth_behavior(
         upstream_url=source_api_server,
         default_public=default_public,
         private_endpoints=private_endpoints,
+        proxy_options=True,
     )
     client = TestClient(test_app)
     response = client.request(method=method, url=path, headers={})
@@ -281,6 +283,7 @@ def test_options_vs_other_methods_with_valid_auth(
         upstream_url=source_api_server,
         default_public=default_public,
         private_endpoints=private_endpoints,
+        proxy_options=True,
     )
     valid_auth_token = token_builder({"scope": "collection:create"})
     client = TestClient(test_app)
@@ -311,6 +314,7 @@ def test_with_invalid_tokens_fails(invalid_token, expected_status, source_api_se
         upstream_url=source_api_server,
         default_public=False,  # All endpoints private
         private_endpoints={},
+        proxy_options=True,
     )
     client = TestClient(test_app)
     response = client.get("/collections", headers={"Authorization": invalid_token})

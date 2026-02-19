@@ -1528,6 +1528,7 @@ dependencies = [
     { name = "jinja2" },
     { name = "pydantic-settings" },
     { name = "pyjwt" },
+    { name = "pyyaml" },
     { name = "starlette-cramjam" },
     { name = "uvicorn" },
 ]
@@ -1558,6 +1559,7 @@ dev = [
     { name = "ruff" },
     { name = "starlette-cramjam" },
     { name = "types-attrs" },
+    { name = "types-pyyaml" },
     { name = "types-simplejson" },
 ]
 
@@ -1579,6 +1581,7 @@ requires-dist = [
     { name = "mkdocstrings", extras = ["python"], marker = "extra == 'docs'", specifier = ">=0.30.0" },
     { name = "pydantic-settings", specifier = ">=2.6.1" },
     { name = "pyjwt", specifier = ">=2.10.1" },
+    { name = "pyyaml", specifier = ">=6.0" },
     { name = "starlette-cramjam", specifier = ">=0.4.0" },
     { name = "uvicorn", specifier = ">=0.32.1" },
 ]
@@ -1596,6 +1599,7 @@ dev = [
     { name = "ruff", specifier = ">=0.0.238" },
     { name = "starlette-cramjam", specifier = ">=0.4.0" },
     { name = "types-attrs" },
+    { name = "types-pyyaml" },
     { name = "types-simplejson" },
 ]
 
@@ -1681,6 +1685,15 @@ version = "19.1.0"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fc/c9/1ac000a4eeee5f9dcca7f97f5792d4866e3f08489b88c2dbc5f19e855358/types_attrs-19.1.0-py2.py3-none-any.whl", hash = "sha256:d11acf7a2531a7c52a740c30fa3eb8d01d3066c10d34c01ff5e59502caac5352", size = 6079, upload-time = "2021-06-06T15:28:56.12Z" },
+]
+
+[[package]]
+name = "types-pyyaml"
+version = "6.0.12.20250915"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/7e/69/3c51b36d04da19b92f9e815be12753125bd8bc247ba0470a982e6979e71c/types_pyyaml-6.0.12.20250915.tar.gz", hash = "sha256:0f8b54a528c303f0e6f7165687dd33fafa81c807fcac23f632b63aa624ced1d3", size = 17522, upload-time = "2025-09-15T03:01:00.728Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bd/e0/1eed384f02555dde685fff1a1ac805c1c7dcb6dd019c916fe659b1c1f9ec/types_pyyaml-6.0.12.20250915-py3-none-any.whl", hash = "sha256:e7d4d9e064e89a3b3cae120b4990cd370874d2bf12fa5f46c97018dd5d3c9ab6", size = 20338, upload-time = "2025-09-15T03:00:59.218Z" },
 ]
 
 [[package]]

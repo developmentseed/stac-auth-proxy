@@ -14,6 +14,7 @@ dependencies = [
   "jinja2>=3.1.4",
   "pydantic-settings>=2.6.1",
   "pyjwt>=2.10.1",
+  "pyyaml>=6.0",
   "starlette-cramjam>=0.4.0",
   "uvicorn>=0.32.1",
 ]
@@ -24,6 +25,9 @@ name = "stac-auth-proxy"
 readme = "README.md"
 requires-python = ">=3.10"
 version = "0.11.1"
+
+[project.scripts]
+stac-auth-tests = "stac_auth_proxy.cli.test_auth_rules:main"
 
 [project.optional-dependencies]
 docs = [
@@ -96,6 +100,7 @@ dev = [
   "pytest>=8.3.3",
   "ruff>=0.0.238",
   "starlette-cramjam>=0.4.0",
+  "types-PyYAML",
   "types-simplejson",
   "types-attrs",
 ]

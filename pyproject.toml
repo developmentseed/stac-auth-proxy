@@ -7,13 +7,14 @@ classifiers = [
 ]
 dependencies = [
   "brotli>=1.1.0",
-  "cql2>=0.4.2",
+  "cql2>=0.5.3",
   "cryptography>=44.0.1",
   "fastapi>=0.115.5",
   "httpx[http2]>=0.28.0",
-  "jinja2>=3.1.4",
+  "jinja2>=3.1.6",
   "pydantic-settings>=2.6.1",
   "pyjwt>=2.10.1",
+  "starlette>=0.49.1",
   "starlette-cramjam>=0.4.0",
   "uvicorn>=0.32.1",
 ]

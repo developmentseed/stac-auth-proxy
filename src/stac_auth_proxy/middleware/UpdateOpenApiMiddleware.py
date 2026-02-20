@@ -27,6 +27,8 @@ class OpenApiMiddleware(JsonResponseMiddleware):
     root_path: str = ""
     auth_scheme_name: str = "oidcAuth"
     auth_scheme_override: Optional[dict] = None
+    items_filter_path: Optional[str] = None
+    collections_filter_path: Optional[str] = None
 
     json_content_type_expr: str = r"application/(vnd\.oai\.openapi\+json?|json)"
 
@@ -65,7 +67,7 @@ class OpenApiMiddleware(JsonResponseMiddleware):
             "openIdConnectUrl": self.oidc_discovery_url,
         }
 
-        # Add security to private endpoints
+        # Add security to private endpoints and filtered endpoints
         for path, method_config in data["paths"].items():
             for method, config in method_config.items():
                 if method == "options":
@@ -78,7 +80,14 @@ class OpenApiMiddleware(JsonResponseMiddleware):
                     self.public_endpoints,
                     self.default_public,
                 )
-                if match.is_private:
+                if match.is_private or self._path_has_filter(path):
                     security = ensure_type(config, "security", list)
                     security.append({self.auth_scheme_name: match.required_scopes})
         return data
+
+    def _path_has_filter(self, path: str) -> bool:
+        """Check if a path matches any configured CQL2 filter path."""
+        for filter_path in (self.items_filter_path, self.collections_filter_path):
+            if filter_path and re.match(filter_path, path):
+                return True
+        return False

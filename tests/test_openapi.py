@@ -468,6 +468,255 @@ def test_empty_servers_list_removed(
     assert len(openapi["servers"]) == 1
 
 
+def test_items_filter_path_adds_security():
+    """When items_filter_path is set, matching endpoints get security markers."""
+    from unittest.mock import Mock
+
+    from stac_auth_proxy.middleware.UpdateOpenApiMiddleware import OpenApiMiddleware
+
+    test_data = {
+        "openapi": "3.0.0",
+        "info": {"title": "Test API", "version": "1.0.0"},
+        "paths": {
+            "/collections/{collection_id}/items": {
+                "get": {"operationId": "getItems"},
+                "post": {"operationId": "postItem"},
+            },
+            "/collections/{collection_id}/items/{item_id}": {
+                "get": {"operationId": "getItem"},
+            },
+            "/search": {
+                "get": {"operationId": "searchGet"},
+                "post": {"operationId": "searchPost"},
+            },
+            "/collections": {
+                "get": {"operationId": "getCollections"},
+            },
+            "/conformance": {
+                "get": {"operationId": "getConformance"},
+            },
+        },
+    }
+
+    middleware = OpenApiMiddleware(
+        app=Mock(),
+        openapi_spec_path="/api",
+        oidc_discovery_url="https://example.com/.well-known/openid-configuration",
+        private_endpoints={},
+        public_endpoints={},
+        default_public=True,
+        items_filter_path=r"^(/collections/([^/]+)/items(/[^/]+)?$|/search$)",
+    )
+
+    result = middleware.transform_json(test_data, Mock())
+
+    # Items/search endpoints should have security
+    assert result["paths"]["/collections/{collection_id}/items"]["get"].get(
+        "security"
+    ) == [{"oidcAuth": []}]
+    assert result["paths"]["/collections/{collection_id}/items"]["post"].get(
+        "security"
+    ) == [{"oidcAuth": []}]
+    assert result["paths"]["/collections/{collection_id}/items/{item_id}"]["get"].get(
+        "security"
+    ) == [{"oidcAuth": []}]
+    assert result["paths"]["/search"]["get"].get("security") == [{"oidcAuth": []}]
+    assert result["paths"]["/search"]["post"].get("security") == [{"oidcAuth": []}]
+
+    # Non-matching endpoints should not have security
+    assert "security" not in result["paths"]["/collections"]["get"]
+    assert "security" not in result["paths"]["/conformance"]["get"]
+
+
+def test_collections_filter_path_adds_security():
+    """When collections_filter_path is set, matching endpoints get security markers."""
+    from unittest.mock import Mock
+
+    from stac_auth_proxy.middleware.UpdateOpenApiMiddleware import OpenApiMiddleware
+
+    test_data = {
+        "openapi": "3.0.0",
+        "info": {"title": "Test API", "version": "1.0.0"},
+        "paths": {
+            "/collections": {
+                "get": {"operationId": "getCollections"},
+                "post": {"operationId": "postCollection"},
+            },
+            "/collections/{collection_id}": {
+                "get": {"operationId": "getCollection"},
+            },
+            "/search": {
+                "get": {"operationId": "searchGet"},
+            },
+            "/conformance": {
+                "get": {"operationId": "getConformance"},
+            },
+        },
+    }
+
+    middleware = OpenApiMiddleware(
+        app=Mock(),
+        openapi_spec_path="/api",
+        oidc_discovery_url="https://example.com/.well-known/openid-configuration",
+        private_endpoints={},
+        public_endpoints={},
+        default_public=True,
+        collections_filter_path=r"^/collections(/[^/]+)?$",
+    )
+
+    result = middleware.transform_json(test_data, Mock())
+
+    # Collection endpoints should have security
+    assert result["paths"]["/collections"]["get"].get("security") == [{"oidcAuth": []}]
+    assert result["paths"]["/collections"]["post"].get("security") == [{"oidcAuth": []}]
+    assert result["paths"]["/collections/{collection_id}"]["get"].get("security") == [
+        {"oidcAuth": []}
+    ]
+
+    # Non-matching endpoints should not have security
+    assert "security" not in result["paths"]["/search"]["get"]
+    assert "security" not in result["paths"]["/conformance"]["get"]
+
+
+def test_filter_path_does_not_duplicate_private_security():
+    """When an endpoint is already private, filter paths don't add duplicate security."""
+    from unittest.mock import Mock
+
+    from stac_auth_proxy.middleware.UpdateOpenApiMiddleware import OpenApiMiddleware
+
+    test_data = {
+        "openapi": "3.0.0",
+        "info": {"title": "Test API", "version": "1.0.0"},
+        "paths": {
+            "/collections": {
+                "get": {"operationId": "getCollections"},
+                "post": {"operationId": "postCollection"},
+            },
+            "/collections/{collection_id}": {
+                "get": {"operationId": "getCollection"},
+            },
+        },
+    }
+
+    middleware = OpenApiMiddleware(
+        app=Mock(),
+        openapi_spec_path="/api",
+        oidc_discovery_url="https://example.com/.well-known/openid-configuration",
+        private_endpoints={r"^/collections$": ["POST"]},
+        public_endpoints={},
+        default_public=True,
+        collections_filter_path=r"^/collections(/[^/]+)?$",
+    )
+
+    result = middleware.transform_json(test_data, Mock())
+
+    # POST /collections is private — should have exactly one security entry (from private match)
+    post_security = result["paths"]["/collections"]["post"].get("security")
+    assert len(post_security) == 1
+    assert {"oidcAuth": []} in post_security
+
+    # GET /collections is not private but matches filter — should have filter security
+    get_security = result["paths"]["/collections"]["get"].get("security")
+    assert get_security == [{"oidcAuth": []}]
+
+    # GET /collections/{collection_id} matches filter — should have filter security
+    get_single_security = result["paths"]["/collections/{collection_id}"]["get"].get(
+        "security"
+    )
+    assert get_single_security == [{"oidcAuth": []}]
+
+
+def test_no_filter_paths_no_extra_security():
+    """When no filter paths are configured, no filter-based security is added."""
+    from unittest.mock import Mock
+
+    from stac_auth_proxy.middleware.UpdateOpenApiMiddleware import OpenApiMiddleware
+
+    test_data = {
+        "openapi": "3.0.0",
+        "info": {"title": "Test API", "version": "1.0.0"},
+        "paths": {
+            "/collections": {
+                "get": {"operationId": "getCollections"},
+            },
+            "/search": {
+                "get": {"operationId": "searchGet"},
+            },
+        },
+    }
+
+    middleware = OpenApiMiddleware(
+        app=Mock(),
+        openapi_spec_path="/api",
+        oidc_discovery_url="https://example.com/.well-known/openid-configuration",
+        private_endpoints={},
+        public_endpoints={},
+        default_public=True,
+        # No filter paths set (defaults to None)
+    )
+
+    result = middleware.transform_json(test_data, Mock())
+
+    # No endpoints should have security
+    assert "security" not in result["paths"]["/collections"]["get"]
+    assert "security" not in result["paths"]["/search"]["get"]
+
+
+def test_both_filter_paths_add_security():
+    """When both items and collections filter paths are set, all matching endpoints get security."""
+    from unittest.mock import Mock
+
+    from stac_auth_proxy.middleware.UpdateOpenApiMiddleware import OpenApiMiddleware
+
+    test_data = {
+        "openapi": "3.0.0",
+        "info": {"title": "Test API", "version": "1.0.0"},
+        "paths": {
+            "/collections": {
+                "get": {"operationId": "getCollections"},
+            },
+            "/collections/{collection_id}": {
+                "get": {"operationId": "getCollection"},
+            },
+            "/collections/{collection_id}/items": {
+                "get": {"operationId": "getItems"},
+            },
+            "/search": {
+                "get": {"operationId": "searchGet"},
+            },
+            "/conformance": {
+                "get": {"operationId": "getConformance"},
+            },
+        },
+    }
+
+    middleware = OpenApiMiddleware(
+        app=Mock(),
+        openapi_spec_path="/api",
+        oidc_discovery_url="https://example.com/.well-known/openid-configuration",
+        private_endpoints={},
+        public_endpoints={},
+        default_public=True,
+        items_filter_path=r"^(/collections/([^/]+)/items(/[^/]+)?$|/search$)",
+        collections_filter_path=r"^/collections(/[^/]+)?$",
+    )
+
+    result = middleware.transform_json(test_data, Mock())
+
+    # All collection and item endpoints should have security
+    assert result["paths"]["/collections"]["get"].get("security") == [{"oidcAuth": []}]
+    assert result["paths"]["/collections/{collection_id}"]["get"].get("security") == [
+        {"oidcAuth": []}
+    ]
+    assert result["paths"]["/collections/{collection_id}/items"]["get"].get(
+        "security"
+    ) == [{"oidcAuth": []}]
+    assert result["paths"]["/search"]["get"].get("security") == [{"oidcAuth": []}]
+
+    # Non-matching endpoints should not have security
+    assert "security" not in result["paths"]["/conformance"]["get"]
+
+
 @pytest.mark.parametrize("root_path", [None, "/api/v1"])
 def test_servers_are_replaced_with_proxy_server(root_path: str):
     """Test that verifies upstream servers are replaced with proxy server."""

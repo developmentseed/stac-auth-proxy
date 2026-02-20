@@ -108,6 +108,14 @@ def configure_app(
             root_path=settings.root_path,
             auth_scheme_name=settings.openapi_auth_scheme_name,
             auth_scheme_override=settings.openapi_auth_scheme_override,
+            items_filter_path=(
+                settings.items_filter_path if settings.items_filter else None
+            ),
+            collections_filter_path=(
+                settings.collections_filter_path
+                if settings.collections_filter
+                else None
+            ),
         )
 
     if settings.items_filter or settings.collections_filter:

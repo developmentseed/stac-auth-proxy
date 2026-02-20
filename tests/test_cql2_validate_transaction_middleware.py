@@ -54,6 +54,11 @@ def app_with_middleware():
         async def delete_item(request: Request):
             return {"deleted": True}
 
+        @app.post("/collections/{collection_id}/bulk_items")
+        async def bulk_create_items(request: Request):
+            body = await request.body()
+            return json.loads(body) if body else {}
+
         @app.post("/collections")
         async def create_collection(request: Request):
             body = await request.body()
@@ -195,6 +200,115 @@ class TestCreate:
             json={"id": "item1", "collection": "anything"},
         )
         assert response.status_code == 200
+
+
+class TestBulkCreate:
+    """Test bulk item creation validation."""
+
+    def test_all_items_allowed(self, app_with_middleware, cql2_filter):
+        """All items match filter, request passes through."""
+        app = app_with_middleware()
+        _set_cql2_filter(app, cql2_filter)
+        client = TestClient(app)
+        response = client.post(
+            "/collections/test/bulk_items",
+            json={
+                "items": {
+                    "item1": {"id": "item1", "collection": "allowed"},
+                    "item2": {"id": "item2", "collection": "allowed"},
+                }
+            },
+        )
+        assert response.status_code == 200
+
+    def test_some_items_denied(self, app_with_middleware, cql2_filter):
+        """Some items fail filter, returns 403 with failed item IDs."""
+        app = app_with_middleware()
+        _set_cql2_filter(app, cql2_filter)
+        client = TestClient(app)
+        response = client.post(
+            "/collections/test/bulk_items",
+            json={
+                "items": {
+                    "item1": {"id": "item1", "collection": "allowed"},
+                    "item2": {"id": "item2", "collection": "denied"},
+                }
+            },
+        )
+        assert response.status_code == 403
+        body = response.json()
+        assert body["code"] == "ForbiddenError"
+        assert "item2" in body["description"]
+
+    def test_all_items_denied(self, app_with_middleware, cql2_filter):
+        """All items fail filter, returns 403."""
+        app = app_with_middleware()
+        _set_cql2_filter(app, cql2_filter)
+        client = TestClient(app)
+        response = client.post(
+            "/collections/test/bulk_items",
+            json={
+                "items": {
+                    "item1": {"id": "item1", "collection": "denied"},
+                    "item2": {"id": "item2", "collection": "denied"},
+                }
+            },
+        )
+        assert response.status_code == 403
+        body = response.json()
+        assert body["code"] == "ForbiddenError"
+        assert "item1" in body["description"]
+        assert "item2" in body["description"]
+
+    def test_no_filter(self, app_with_middleware):
+        """Request passes through when no CQL2 filter is set."""
+        app = app_with_middleware()
+        client = TestClient(app)
+        response = client.post(
+            "/collections/test/bulk_items",
+            json={
+                "items": {
+                    "item1": {"id": "item1", "collection": "anything"},
+                }
+            },
+        )
+        assert response.status_code == 200
+
+    def test_empty_items(self, app_with_middleware, cql2_filter):
+        """Empty items dict passes through."""
+        app = app_with_middleware()
+        _set_cql2_filter(app, cql2_filter)
+        client = TestClient(app)
+        response = client.post(
+            "/collections/test/bulk_items",
+            json={"items": {}},
+        )
+        assert response.status_code == 200
+
+    def test_invalid_json(self, app_with_middleware, cql2_filter):
+        """Invalid JSON returns 400."""
+        app = app_with_middleware()
+        _set_cql2_filter(app, cql2_filter)
+        client = TestClient(app)
+        response = client.post(
+            "/collections/test/bulk_items",
+            content=b"not json",
+            headers={"content-type": "application/json"},
+        )
+        assert response.status_code == 400
+        assert response.json()["code"] == "ParseError"
+
+    def test_items_not_object(self, app_with_middleware, cql2_filter):
+        """Items field that is not a dict returns 400."""
+        app = app_with_middleware()
+        _set_cql2_filter(app, cql2_filter)
+        client = TestClient(app)
+        response = client.post(
+            "/collections/test/bulk_items",
+            json={"items": [{"id": "item1", "collection": "allowed"}]},
+        )
+        assert response.status_code == 400
+        assert response.json()["code"] == "ParseError"
 
 
 class TestUpdate:

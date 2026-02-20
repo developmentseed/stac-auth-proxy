@@ -44,10 +44,8 @@ class Cql2ValidateTransactionMiddleware:
     _client: httpx.AsyncClient = field(init=False)
 
     # Transaction endpoint patterns
-    item_create_pattern = r"^/collections/([^/]+)/items$"
-    item_modify_pattern = r"^/collections/([^/]+)/items/([^/]+)$"
-    collection_create_pattern = r"^/collections$"
-    collection_modify_pattern = r"^/collections/([^/]+)$"
+    items_pattern = r"^/collections/([^/]+)/(items|bulk_items)(?:/([^/]+))?$"
+    collections_pattern = r"^/collections(?:/([^/]+))?$"
 
     def __post_init__(self):
         """Initialize the HTTP client."""
@@ -66,26 +64,35 @@ class Cql2ValidateTransactionMiddleware:
         path = request.url.path
         method = request.method
 
-        # Determine operation type
-        if method == "POST" and (
-            re.match(self.item_create_pattern, path)
-            or re.match(self.collection_create_pattern, path)
-        ):
-            return await self._handle_create(scope, receive, send, cql2_filter)
+        # Match items endpoints: /collections/{id}/items, /collections/{id}/bulk_items, /collections/{id}/items/{id}
+        if re.match(self.items_pattern, path):
+            if method == "POST":
+                if "/bulk_items" in path:
+                    return await self._handle_bulk_create(
+                        scope, receive, send, cql2_filter
+                    )
+                return await self._handle_create(scope, receive, send, cql2_filter)
+            if method in ("PUT", "PATCH"):
+                return await self._handle_update(
+                    scope, receive, send, cql2_filter, path, method
+                )
+            if method == "DELETE":
+                return await self._handle_delete(
+                    scope, receive, send, cql2_filter, path
+                )
 
-        if method in ("PUT", "PATCH") and (
-            re.match(self.item_modify_pattern, path)
-            or re.match(self.collection_modify_pattern, path)
-        ):
-            return await self._handle_update(
-                scope, receive, send, cql2_filter, path, method
-            )
-
-        if method == "DELETE" and (
-            re.match(self.item_modify_pattern, path)
-            or re.match(self.collection_modify_pattern, path)
-        ):
-            return await self._handle_delete(scope, receive, send, cql2_filter, path)
+        # Match collections endpoints: /collections, /collections/{id}
+        if re.match(self.collections_pattern, path):
+            if method == "POST":
+                return await self._handle_create(scope, receive, send, cql2_filter)
+            if method in ("PUT", "PATCH"):
+                return await self._handle_update(
+                    scope, receive, send, cql2_filter, path, method
+                )
+            if method == "DELETE":
+                return await self._handle_delete(
+                    scope, receive, send, cql2_filter, path
+                )
 
         # Not a transaction endpoint, pass through
         return await self.app(scope, receive, send)
@@ -148,6 +155,57 @@ class Cql2ValidateTransactionMiddleware:
                 {
                     "code": "ForbiddenError",
                     "description": "Resource does not match access filter.",
+                },
+                status_code=403,
+            )
+            return await response(scope, receive, send)
+
+        # Reconstruct receive and forward
+        scope = dict(scope)
+        await self.app(scope, self._make_receive(body), send)
+
+    async def _handle_bulk_create(
+        self,
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+        cql2_filter: Expr,
+    ) -> None:
+        """Validate bulk item create requests."""
+        body = await self._read_body(receive)
+
+        try:
+            body_json = json.loads(body) if body else {}
+        except json.JSONDecodeError:
+            response = JSONResponse(
+                {
+                    "code": "ParseError",
+                    "description": "Request body must be valid JSON.",
+                },
+                status_code=400,
+            )
+            return await response(scope, receive, send)
+
+        items = body_json.get("items", {})
+        if not isinstance(items, dict):
+            response = JSONResponse(
+                {
+                    "code": "ParseError",
+                    "description": "Bulk items body must contain an 'items' object.",
+                },
+                status_code=400,
+            )
+            return await response(scope, receive, send)
+
+        failed = [
+            item_id for item_id, item in items.items() if not cql2_filter.matches(item)
+        ]
+
+        if failed:
+            response = JSONResponse(
+                {
+                    "code": "ForbiddenError",
+                    "description": f"Items do not match access filter: {', '.join(failed)}",
                 },
                 status_code=403,
             )

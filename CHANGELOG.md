@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.0.0](https://github.com/developmentseed/stac-auth-proxy/compare/v0.11.1...v1.0.0) (2026-02-19)
+
+
+### Features
+
+* handle CORS by default ([#133](https://github.com/developmentseed/stac-auth-proxy/issues/133)) ([4c49b95](https://github.com/developmentseed/stac-auth-proxy/commit/4c49b955d73276fe5d995f1cd742e6f202834f7a))
+* **helm:** add extraContainers in helm-chart ([#132](https://github.com/developmentseed/stac-auth-proxy/issues/132)) ([e0acecb](https://github.com/developmentseed/stac-auth-proxy/commit/e0acecb56cf4d74e3226d50bd7e3e306ac9d6609))
+* validate transaction requests with CQL2 filters ([#131](https://github.com/developmentseed/stac-auth-proxy/issues/131)) ([254bd82](https://github.com/developmentseed/stac-auth-proxy/commit/254bd82576f09b0dab63f6c75ee8725ab1962879)), closes [#21](https://github.com/developmentseed/stac-auth-proxy/issues/21) [#22](https://github.com/developmentseed/stac-auth-proxy/issues/22)
+
+
+### Bug Fixes
+
+* **jinja2:** use sandboxed environment ([504074f](https://github.com/developmentseed/stac-auth-proxy/commit/504074f9bf5cb17129ad38261d5bb499daced8b4))
+* remove helm chart auth options. ([#126](https://github.com/developmentseed/stac-auth-proxy/issues/126)) ([42015b3](https://github.com/developmentseed/stac-auth-proxy/commit/42015b399938fc92589e8b377352420da9bc217c))
+* stac-fastapi health checks. ([#128](https://github.com/developmentseed/stac-auth-proxy/issues/128)) ([42db5ef](https://github.com/developmentseed/stac-auth-proxy/commit/42db5efdb8d50c7a699640176673412371bc8d82))
+
 ## [0.11.1](https://github.com/developmentseed/stac-auth-proxy/compare/v0.11.0...v0.11.1) (2026-01-13)
 
 

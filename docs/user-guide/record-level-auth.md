@@ -44,13 +44,10 @@ The [`ITEMS_FILTER_CLS`](configuration.md#items_filter_cls) applies filters to t
 - `GET /collections/{collection_id}/items` - Append query params with generated CQL2 query
 - `GET /collections/{collection_id}/items/{item_id}` - Validate response against CQL2 query
 - `POST /collections/{collection_id}/items` - Validate request body against CQL2 query
+- `POST /collections/{collection_id}/bulk_items` - Validate items in body with generated CQL2 query
 - `PUT /collections/{collection_id}/items/{item_id}` - Fetch existing item, validate both existing and new body against CQL2 query
 - `PATCH /collections/{collection_id}/items/{item_id}` - Fetch existing item, validate both existing and merged result against CQL2 query
 - `DELETE /collections/{collection_id}/items/{item_id}` - Fetch existing item, validate against CQL2 query
-
-**Future Support:**
-
-- `POST /collections/{collection_id}/bulk_items` - Validate items in body with generated CQL2 query[^21]
 
 ## Filter Contract
 
@@ -189,10 +186,139 @@ items_cql2 := "true" if {
 
 ## Custom Filter Factories
 
-> [!TIP]
-> An example integration can be found in [`examples/custom-integration`](https://github.com/developmentseed/stac-auth-proxy/blob/main/examples/custom-integration).
+### Creating Filter Factories
+
+A single filter factory (e.g., `ITEMS_FILTER_CLS`) is called across many different endpoints and HTTP methods. The same filter is used for read operations (`GET /search`, `GET /collections/{cid}/items`), single-resource reads (`GET /collections/{cid}/items/{iid}`), and write operations (`POST`, `PUT`, `PATCH`, `DELETE`). This means your filter factory may need to return different CQL2 expressions depending on the request.
+
+For example, you might want to allow all authenticated users to _read_ items but restrict _writes_ to items belonging to their organization:
+
+```py
+import dataclasses
+from typing import Any
+
+
+@dataclasses.dataclass
+class ItemsFilter:
+    async def __call__(self, context: dict[str, Any]) -> dict[str, Any] | str:
+        method = context["req"]["method"]
+        path = context["req"]["path"]
+
+        # Read operations: GET requests and POST /search
+        if method == "GET" or path.endswith("/search"):
+            return "1=1"
+
+        # Write operations: restrict to user's organization
+        org = context["payload"].get("org", "")
+        return {
+            "op": "=",
+            "args": [{"property": "organization"}, org],
+        }
+```
+
+The `context["req"]` dict gives you access to `path`, `method`, `query_params`, `path_params`, and `headers`, so you can tailor the filter to the specific operation. See [Context Structure](record-level-auth.md#context-structure) for the full structure.
+
+### Security
+
+When building CQL2 filters from user-controlled values (JWT claims, query parameters, headers), avoid string interpolation. A malicious claim value could break out of the intended expression, similar to SQL injection. For example, this is **unsafe**:
+
+```py
+# UNSAFE: vulnerable to CQL2 injection
+org = context["payload"].get("org", "")
+return f"organization = '{org}'"
+```
+
+A payload like `{"org": "' OR 1=1"}` would produce a CQL2 expression of `organization = '' OR 1=1` which reduces to `true`, thereby giving the user full access to possibly-sensitive data.
+
+Instead, return CQL2-JSON (a dict). Values are passed as data rather than embedded in a parsed expression, which eliminates injection risk:
+
+```py
+# Safe: values are data, not part of a parsed expression
+org = context["payload"].get("org", "")
+return {
+    "op": "=",
+    "args": [{"property": "organization"}, org],
+}
+```
+
+> [!NOTE]
+> The `Cql2BuildFilterMiddleware` accepts both CQL2-text (string) and CQL2-JSON (dict) from filter factories. Both formats are parsed via `cql2.Expr()` and validated with `expr.validate()`. Downstream middleware then automatically converts the expression to the appropriate format based on the request type: **GET requests** receive CQL2-text (via `Expr.to_text()`), while **POST requests** receive CQL2-JSON (via `Expr.to_json()`). This means returning CQL2-JSON from your filter factory gives you injection safety with no loss of compatibility.
+
+If you must return a CQL2-text string, validate and sanitize the value first:
+
+```py
+import re
+
+org = context["payload"].get("org", "")
+if not re.match(r"^[a-zA-Z0-9_-]+$", org):
+    raise ValueError(f"Invalid organization: {org}")
+return f"organization = '{org}'"
+```
+
+### Testing Filter Factories
+
+You can test filter factories with [pytest](https://docs.pytest.org/) and the [`cql2`](https://pypi.org/project/cql2/) library's [`Expr.matches()` method](https://developmentseed.org/cql2-rs/latest/python/#cql2.Expr.matches). `Expr.matches()` evaluates a CQL2 expression against a record dict, which lets you verify that your filter allows and denies the correct records without needing a running STAC API.
+
+```py
+import pytest
+from cql2 import Expr
+
+from my_filters import ItemsFilter
+
+
+@pytest.fixture
+def items_filter():
+    return ItemsFilter()
+
+
+@pytest.mark.asyncio
+async def test_read_allows_all_items(items_filter):
+    """GET requests should return a permissive filter."""
+    cql2 = await items_filter({
+        "req": {
+            "method": "GET",
+            "path": "/search",
+            "query_params": {},
+            "path_params": {},
+            "headers": {},
+        },
+        "payload": {},
+    })
+    expr = Expr(cql2)
+    expr.validate()
+
+    assert expr.matches({"organization": "org-a"})
+    assert expr.matches({"organization": "org-b"})
+
+
+@pytest.mark.asyncio
+async def test_write_restricts_to_org(items_filter):
+    """Write requests should only allow items matching the user's org."""
+    cql2 = await items_filter({
+        "req": {
+            "method": "POST",
+            "path": "/collections/test/items",
+            "query_params": {},
+            "path_params": {},
+            "headers": {},
+        },
+        "payload": {"org": "org-a"},
+    })
+    expr = Expr(cql2)
+    expr.validate()
+
+    assert expr.matches({"organization": "org-a"})
+    assert not expr.matches({"organization": "org-b"})
+```
+
+This pattern lets you verify two things independently:
+
+1. **Filter generation** — does your factory produce the right CQL2 expression for a given context?
+2. **Filter correctness** — does that CQL2 expression match (and reject) the expected records?
 
 ### Complex Filter Factory
+
+> [!TIP]
+> An example integration can be found in [`examples/custom-integration`](https://github.com/developmentseed/stac-auth-proxy/blob/main/examples/custom-integration).
 
 An example of a more complex filter factory where the filter is generated based on the response of an external API:
 
@@ -251,4 +377,3 @@ class ApprovedCollectionsFilter:
 > [!TIP]
 > Filter generation runs for every relevant request. Consider memoizing external API calls to improve performance.
 
-[^21]: https://github.com/developmentseed/stac-auth-proxy/issues/21

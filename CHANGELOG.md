@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.0.1](https://github.com/developmentseed/stac-auth-proxy/compare/v1.0.0...v1.0.1) (2026-02-21)
+
+
+### Bug Fixes
+
+* ensure openapi spec demonstrates auth when cql2 filters apply ([#135](https://github.com/developmentseed/stac-auth-proxy/issues/135)) ([7310cee](https://github.com/developmentseed/stac-auth-proxy/commit/7310ceef462afadbc0a361211011549505aace94))
+* support filtering bulk item creation ([2c4a791](https://github.com/developmentseed/stac-auth-proxy/commit/2c4a791b9dc6d21a99722da73af8c4623a6470c5))
+
+
+### Documentation
+
+* **record-level-auth:** add filter factory guidance ([47c4e68](https://github.com/developmentseed/stac-auth-proxy/commit/47c4e6820501992ea1dc96dc7c8575a786dfd58e))
+
 ## [1.0.0](https://github.com/developmentseed/stac-auth-proxy/compare/v0.11.1...v1.0.0) (2026-02-19)
 
 

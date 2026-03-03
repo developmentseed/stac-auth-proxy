@@ -106,7 +106,10 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
             )
 
         # Add the root_path to the link if it exists
-        if self.root_path:
+        if self.root_path and not (
+            parsed_link.path.startswith(f"{self.root_path}/")
+            or parsed_link.path == self.root_path
+        ):
             parsed_link = parsed_link._replace(
                 path=f"{self.root_path}{parsed_link.path}"
             )

@@ -79,6 +79,19 @@ def test_should_transform_response_content_types(content_type, should_transform)
                 "http://proxy.example.com",
             ],
         ),
+        # Proxy links already containing root_path (upstream honored forwarded headers)
+        (
+            "http://upstream.example.com",
+            "/stac",
+            [
+                {"rel": "self", "href": "http://proxy.example.com/stac/collections"},
+                {"rel": "root", "href": "http://proxy.example.com/stac"},
+            ],
+            [
+                "http://proxy.example.com/stac/collections",
+                "http://proxy.example.com/stac",
+            ],
+        ),
     ],
 )
 def test_transform_proxy_links(upstream_url, root_path, input_links, expected_links):
@@ -147,6 +160,30 @@ def test_transform_proxy_links(upstream_url, root_path, input_links, expected_li
             [
                 "http://proxy.example.com/collections",
                 "http://proxy.example.com",
+            ],
+        ),
+        # Upstream links with root path (upstream honored forwarded headers)
+        (
+            "http://upstream.example.com",
+            "/api",
+            [
+                {"rel": "self", "href": "http://upstream.example.com/api/collections"},
+                {"rel": "root", "href": "http://upstream.example.com/api"},
+            ],
+            [
+                "http://proxy.example.com/api/collections",
+                "http://proxy.example.com/api",
+            ],
+        ),
+        # root_path="/api" must not match "/api-docs" (path-boundary check)
+        (
+            "http://upstream.example.com",
+            "/api",
+            [
+                {"rel": "self", "href": "http://upstream.example.com/api-docs"},
+            ],
+            [
+                "http://proxy.example.com/api/api-docs",
             ],
         ),
     ],

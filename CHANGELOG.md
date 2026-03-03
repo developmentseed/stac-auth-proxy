@@ -22,6 +22,9 @@
 * **helm:** add extraContainers in helm-chart ([#132](https://github.com/developmentseed/stac-auth-proxy/issues/132)) ([e0acecb](https://github.com/developmentseed/stac-auth-proxy/commit/e0acecb56cf4d74e3226d50bd7e3e306ac9d6609))
 * validate transaction requests with CQL2 filters ([#131](https://github.com/developmentseed/stac-auth-proxy/issues/131)) ([254bd82](https://github.com/developmentseed/stac-auth-proxy/commit/254bd82576f09b0dab63f6c75ee8725ab1962879)), closes [#21](https://github.com/developmentseed/stac-auth-proxy/issues/21) [#22](https://github.com/developmentseed/stac-auth-proxy/issues/22)
 
+> [!IMPORTANT]
+> Previously, filters only applied to _read_ requests but they now also apply to _create/update/delete_ requests. If upgrading from v0.* and using record-level auth, ensure that your CQL2 filter factories are built to support both read and edit requests.
+
 
 ### Bug Fixes
 

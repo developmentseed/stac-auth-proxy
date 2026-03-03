@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/developmentseed/stac-auth-proxy/compare/v1.0.1...v1.0.2) (2026-03-03)
+
+
+### Bug Fixes
+
+* update link transformation logic to prevent duplicate root_path in responses ([a71bd8e](https://github.com/developmentseed/stac-auth-proxy/commit/a71bd8e68c047d3a8feb51805cd2dde6775d45d5))
+
 ## [1.0.1](https://github.com/developmentseed/stac-auth-proxy/compare/v1.0.0...v1.0.1) (2026-02-21)
 
 

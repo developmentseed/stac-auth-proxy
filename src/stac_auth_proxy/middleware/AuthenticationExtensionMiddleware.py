@@ -90,7 +90,7 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
                 continue
             match = find_match(
                 path=urlparse(link["href"]).path,
-                method="GET",
+                method=link.get("method", "GET").upper(),
                 private_endpoints=self.private_endpoints,
                 public_endpoints=self.public_endpoints,
                 default_public=self.default_public,

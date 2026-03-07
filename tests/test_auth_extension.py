@@ -249,3 +249,38 @@ def test_transform_json_with_invalid_stac_extensions_types(
     assert middleware.extension_url in transformed["stac_extensions"]
     assert "auth:schemes" in transformed
     assert "test_auth" in transformed["auth:schemes"]
+
+    def test_link_method_used_for_matching(self, oidc_discovery_url, request_scope):
+        """Link's method property is used when matching against private endpoints."""
+        middleware = AuthenticationExtensionMiddleware(
+            app=None,
+            default_public=True,
+            private_endpoints={r"^/collections/[^/]+/items$": ["POST"]},
+            public_endpoints=EndpointMethods(),
+            oidc_discovery_url=oidc_discovery_url,
+            auth_scheme_name="test_auth",
+        )
+        request = Request(request_scope)
+        data = {
+            "stac_version": "1.0.0",
+            "type": "Collection",
+            "id": "test",
+            "description": "Test",
+            "links": [
+                {"rel": "items", "href": "/collections/test/items"},
+                {"rel": "create", "href": "/collections/test/items", "method": "POST"},
+            ],
+        }
+
+        transformed = middleware.transform_json(data, request)
+
+        # GET link should NOT have auth:refs (default_public=True, POST is private not GET)
+        get_link = next(link for link in transformed["links"] if link["rel"] == "items")
+        assert "auth:refs" not in get_link
+
+        # POST link SHOULD have auth:refs
+        post_link = next(
+            link for link in transformed["links"] if link["rel"] == "create"
+        )
+        assert "auth:refs" in post_link
+        assert "test_auth" in post_link["auth:refs"]

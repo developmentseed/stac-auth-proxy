@@ -19,6 +19,6 @@ uvicorn.run(
             },
         },
     },
-    reload=True,
+    reload=os.getenv("RELOAD", "").lower() in ("true", "1", "yes"),
     factory=True,
 )

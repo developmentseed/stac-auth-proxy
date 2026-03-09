@@ -47,14 +47,18 @@ async def check_server_health(
                 response.raise_for_status()
                 logger.info(f"Upstream API {url!r} is healthy")
                 return
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code not in {502, 503, 504}:
+                    raise
+                logger.warning(f"Upstream health check for {url!r} failed: {e}")
             except httpx.ConnectError as e:
                 logger.warning(f"Upstream health check for {url!r} failed: {e}")
-                retry_in = min(retry_delay * (2**attempt), retry_delay_max)
-                logger.warning(
-                    f"Upstream API {url!r} not healthy, retrying in {retry_in:.1f}s "
-                    f"(attempt {attempt + 1}/{max_retries})"
-                )
-                await asyncio.sleep(retry_in)
+            retry_in = min(retry_delay * (2**attempt), retry_delay_max)
+            logger.warning(
+                f"Upstream API {url!r} not healthy, retrying in {retry_in:.1f}s "
+                f"(attempt {attempt + 1}/{max_retries})"
+            )
+            await asyncio.sleep(retry_in)
 
     raise RuntimeError(
         f"Upstream API {url!r} failed to respond after {max_retries} attempts"

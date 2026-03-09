@@ -42,6 +42,65 @@ async def test_check_server_health_failure():
     assert mock_sleep.call_args_list[-1][0][0] == 5.0
 
 
+@pytest.mark.parametrize("status_code", [502, 503, 504])
+async def test_check_server_health_retries_on_retryable_status(status_code):
+    """Test that retryable HTTP status codes (502, 503, 504) trigger retries."""
+    import httpx
+
+    def handler(request):
+        return httpx.Response(status_code)
+
+    with patch("asyncio.sleep") as mock_sleep:
+        with patch(
+            "httpx.AsyncClient",
+            return_value=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        ):
+            with pytest.raises(RuntimeError) as exc_info:
+                await check_server_health("http://example.com", max_retries=3)
+    assert "failed to respond after 3 attempts" in str(exc_info.value)
+    assert mock_sleep.call_count == 3
+
+
+async def test_check_server_health_does_not_retry_on_non_retryable_status():
+    """Test that non-retryable HTTP status codes (e.g. 404) are raised immediately."""
+    import httpx
+
+    def handler(request):
+        return httpx.Response(404)
+
+    with patch("asyncio.sleep") as mock_sleep:
+        with patch(
+            "httpx.AsyncClient",
+            return_value=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        ):
+            with pytest.raises(httpx.HTTPStatusError) as exc_info:
+                await check_server_health("http://example.com", max_retries=3)
+    assert exc_info.value.response.status_code == 404
+    assert mock_sleep.call_count == 0
+
+
+async def test_check_server_health_recovers_from_retryable_status():
+    """Test that a retryable status followed by success completes without error."""
+    import httpx
+
+    call_count = 0
+
+    def handler(request):
+        nonlocal call_count
+        call_count += 1
+        if call_count < 3:
+            return httpx.Response(503)
+        return httpx.Response(200)
+
+    with patch("asyncio.sleep"):
+        with patch(
+            "httpx.AsyncClient",
+            return_value=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        ):
+            await check_server_health("http://example.com", max_retries=5)
+    assert call_count == 3
+
+
 async def test_check_conformance_success(source_api_server, source_api_responses):
     """Test successful conformance check."""
     middleware = [Middleware(ExampleMiddleware)]

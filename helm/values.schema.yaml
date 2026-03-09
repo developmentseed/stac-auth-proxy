@@ -211,7 +211,7 @@ properties:
     type: integer
     minimum: 0
     description: "Seconds to sleep in preStop hook before SIGTERM, allowing Kubernetes endpoint propagation. Set to 0 to disable."
-    default: 5
+    default: 15
 
   startupProbe:
     type: object

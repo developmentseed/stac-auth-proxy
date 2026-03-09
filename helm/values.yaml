@@ -42,6 +42,37 @@ containerSecurityContext:
     drop:
       - ALL
 
+# Graceful shutdown: delays SIGTERM to allow Kubernetes endpoint propagation.
+# The preStop hook runs BEFORE SIGTERM is sent, giving kube-proxy time to
+# remove the pod from service endpoints so no new traffic arrives during shutdown.
+# terminationGracePeriodSeconds must be > preStopSleepSeconds + app shutdown time.
+terminationGracePeriodSeconds: 30
+preStopSleepSeconds: 5
+
+# Probes
+# startupProbe disables liveness/readiness checks until startup succeeds,
+# giving the app time to wait for upstream services (e.g. during node scaling).
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  periodSeconds: 2
+  failureThreshold: 30  # 60s total for startup
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  periodSeconds: 10
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  periodSeconds: 5
+  failureThreshold: 1
+
 nodeSelector: {}
 tolerations: []
 affinity: {}

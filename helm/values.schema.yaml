@@ -201,6 +201,33 @@ properties:
             description: "List of capabilities to drop"
     description: "Container-level security context"
 
+  terminationGracePeriodSeconds:
+    type: integer
+    minimum: 1
+    description: "Duration in seconds the pod needs to terminate gracefully. Must be greater than preStopSleepSeconds."
+    default: 30
+
+  preStopSleepSeconds:
+    type: integer
+    minimum: 0
+    description: "Seconds to sleep in preStop hook before SIGTERM, allowing Kubernetes endpoint propagation. Set to 0 to disable."
+    default: 5
+
+  startupProbe:
+    type: object
+    additionalProperties: true
+    description: "Startup probe configuration. Disables liveness/readiness probes until startup succeeds."
+
+  livenessProbe:
+    type: object
+    additionalProperties: true
+    description: "Liveness probe configuration. Determines if the container should be restarted."
+
+  readinessProbe:
+    type: object
+    additionalProperties: true
+    description: "Readiness probe configuration. Determines if the container should receive traffic."
+
   nodeSelector:
     type: object
     additionalProperties:

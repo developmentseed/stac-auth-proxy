@@ -19,7 +19,7 @@ __all__ = ["build_lifespan", "check_conformance", "check_server_health"]
 
 async def check_server_healths(*urls: str | HttpUrl) -> None:
     """Wait for upstream APIs to become available."""
-    logger.info("Running upstream server health checks...")
+    logger.debug("Running upstream server health checks...")
     for url in urls:
         await check_server_health(url)
     logger.info(
@@ -45,7 +45,7 @@ async def check_server_health(
             try:
                 response = await client.get(url)
                 response.raise_for_status()
-                logger.info(f"Upstream API {url!r} is healthy")
+                logger.debug(f"Upstream API {url!r} is healthy")
                 return
             except httpx.HTTPStatusError as e:
                 if e.response.status_code not in {502, 503, 504}:

@@ -11,17 +11,12 @@ ENV UV_PROJECT_ENVIRONMENT=/usr/local
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Install the project's dependencies using the lockfile and settings
-RUN --mount=type=cache,target=/root/.cache/uv \
-  --mount=type=bind,source=uv.lock,target=uv.lock \
-  --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-  uv sync --frozen --no-install-project --no-dev
+COPY uv.lock pyproject.toml ./
 
-# Then, add the rest of the project source code and install it
-# Installing separately from its dependencies allows optimal layer caching
+RUN uv sync --frozen --no-install-project --no-dev
+
 ADD . /app
-RUN --mount=type=cache,target=/root/.cache/uv \
-  uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev
 
 # Runtime stage
 FROM python:3.13-slim
@@ -34,7 +29,6 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy only the source code directory needed at runtime
 COPY --from=builder /app/src/stac_auth_proxy /app/src/stac_auth_proxy
-
 
 RUN useradd -m -u 1001 -s /bin/bash user && \
     chown -R user:user /app

@@ -47,7 +47,7 @@ containerSecurityContext:
 # remove the pod from service endpoints so no new traffic arrives during shutdown.
 # terminationGracePeriodSeconds must be > preStopSleepSeconds + app shutdown time.
 terminationGracePeriodSeconds: 30
-preStopSleepSeconds: 5
+preStopSleepSeconds: 15
 
 # Probes
 # startupProbe disables liveness/readiness checks until startup succeeds,

@@ -326,4 +326,4 @@ properties:
               description: "Name of the image pull secret"
 
 required:
-  - service 
+  - service

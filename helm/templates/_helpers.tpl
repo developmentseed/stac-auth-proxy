@@ -69,3 +69,12 @@ Render env var value based on type
   {{- . | toJson | quote -}}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Validate terminationGracePeriodSeconds > preStopSleepSeconds
+*/}}
+{{- define "stac-auth-proxy.validateTerminationGracePeriod" -}}
+{{- if not (gt .Values.terminationGracePeriodSeconds .Values.preStopSleepSeconds) -}}
+{{- fail "terminationGracePeriodSeconds must be greater than preStopSleepSeconds" -}}
+{{- end -}}
+{{- end -}}

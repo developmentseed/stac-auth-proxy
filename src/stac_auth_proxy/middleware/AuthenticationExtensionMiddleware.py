@@ -3,7 +3,7 @@
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 from starlette.datastructures import Headers
@@ -34,6 +34,9 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
     extension_url: str = (
         "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
     )
+
+    items_filter_path: Optional[str] = None
+    collections_filter_path: Optional[str] = None
 
     json_content_type_expr: str = r"application/(geo\+)?json"
 
@@ -94,8 +97,10 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
                 private_endpoints=self.private_endpoints,
                 public_endpoints=self.public_endpoints,
                 default_public=self.default_public,
+                items_filter_path=self.items_filter_path,
+                collections_filter_path=self.collections_filter_path,
             )
-            if match.is_private:
+            if match.uses_auth:
                 auth_refs = ensure_type(link, "auth:refs", list)
                 auth_refs.append(self.auth_scheme_name)
 

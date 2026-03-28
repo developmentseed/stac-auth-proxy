@@ -56,34 +56,41 @@ def find_match(
     private_endpoints: EndpointMethods,
     public_endpoints: EndpointMethods,
     default_public: bool,
+    items_filter_path: Optional[str] = None,
+    collections_filter_path: Optional[str] = None,
 ) -> "MatchResult":
     """Check if the given path and method match any of the regex patterns and methods in the endpoints."""
     primary_endpoints = private_endpoints if default_public else public_endpoints
     matched, required_scopes = _check_endpoint_match(path, method, primary_endpoints)
     if matched:
         return MatchResult(
-            is_private=default_public,
+            uses_auth=default_public,
             required_scopes=required_scopes,
         )
 
+    # If we have filter paths configured, check those as well (these are always considered to use auth if they match, regardless of default_public)
+    for filter_path in [items_filter_path, collections_filter_path]:
+        if filter_path and re.match(filter_path, path):
+            return MatchResult(uses_auth=True)
+
     # If default_public and no match found in private_endpoints, it's public
     if default_public:
-        return MatchResult(is_private=False)
+        return MatchResult(uses_auth=False)
 
     # If not default_public, check private_endpoints for required scopes
     matched, required_scopes = _check_endpoint_match(path, method, private_endpoints)
     if matched:
-        return MatchResult(is_private=True, required_scopes=required_scopes)
+        return MatchResult(uses_auth=True, required_scopes=required_scopes)
 
     # Default case: if not default_public and no explicit match, it's private
-    return MatchResult(is_private=True)
+    return MatchResult(uses_auth=True)
 
 
 @dataclass
 class MatchResult:
     """Result of a match between a path and method and a set of endpoints."""
 
-    is_private: bool
+    uses_auth: bool
     required_scopes: Sequence[str] = field(default_factory=list)
 
 

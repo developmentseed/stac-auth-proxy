@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.0.3](https://github.com/developmentseed/stac-auth-proxy/compare/v1.0.2...v1.0.3) (2026-03-28)
+
+
+### Bug Fixes
+
+* **auth-extension:** consider link method when adding auth:refs ([158f507](https://github.com/developmentseed/stac-auth-proxy/commit/158f50756ffb44086eb872b427c46e8101518c50))
+* disable server reload by default ([c109801](https://github.com/developmentseed/stac-auth-proxy/commit/c1098010e02b301041f05ad5401ab6a514366c85)), closes [#142](https://github.com/developmentseed/stac-auth-proxy/issues/142)
+* **helm:** add liveliness and readiness probes to helm chart ([#143](https://github.com/developmentseed/stac-auth-proxy/issues/143)) ([ba55f64](https://github.com/developmentseed/stac-auth-proxy/commit/ba55f645944af6fda571d22161738baeb81c43a1))
+* **lifespan:** handle gateway errors on server health checks ([4e00c0e](https://github.com/developmentseed/stac-auth-proxy/commit/4e00c0e2952c7c368802cd41ca67c9e3cc4ec5f2)), closes [#141](https://github.com/developmentseed/stac-auth-proxy/issues/141)
+
 ## [1.0.2](https://github.com/developmentseed/stac-auth-proxy/compare/v1.0.1...v1.0.2) (2026-03-03)
 
 

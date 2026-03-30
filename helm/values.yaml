@@ -114,13 +114,13 @@ extraContainers: []
 # Environment variables for the application
 env:
   # Required configuration
-  UPSTREAM_URL: ""  # STAC API URL
-  OIDC_DISCOVERY_URL: ""  # OpenID Connect discovery URL
+  UPSTREAM_URL: "http://localhost:8080"  # STAC API URL
+  OIDC_DISCOVERY_URL: "http://localhost:8081/.well-known/openid-configuration"  # OpenID Connect discovery URL
 
   # Optional configuration
   WAIT_FOR_UPSTREAM: true
   HEALTHZ_PREFIX: "/healthz"
-  OIDC_DISCOVERY_INTERNAL_URL: ""
+  OIDC_DISCOVERY_INTERNAL_URL: "http://localhost:8081/.well-known/openid-configuration"
   DEFAULT_PUBLIC: false
   PRIVATE_ENDPOINTS: |
     {

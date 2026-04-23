@@ -100,7 +100,7 @@ class EnforceAuthMiddleware:
         try:
             payload = self.validate_token(
                 request.headers.get("Authorization"),
-                auto_error=match.is_private,
+                auto_error=match.uses_auth,
                 required_scopes=match.required_scopes,
             )
 

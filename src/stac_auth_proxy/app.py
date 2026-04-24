@@ -103,6 +103,7 @@ def configure_app(
                 else None
             ),
             oidc_discovery_url=str(settings.oidc_discovery_url),
+            root_path=settings.root_path,
         )
 
     if settings.openapi_spec_endpoint:

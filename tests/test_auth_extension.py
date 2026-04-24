@@ -478,3 +478,65 @@ class TestFilterPathAnnotation:
         items_link = transformed["links"][0]
         assert "auth:refs" in items_link
         assert "test_auth" in items_link["auth:refs"]
+
+    def test_filter_path_matches_when_upstream_bakes_root_path(
+        self, oidc_discovery_url, request_scope
+    ):
+        """
+        auth:refs is added even when upstream link hrefs already include root_path.
+
+        Regression: some upstreams (e.g. stac-fastapi-pgstac >=6.2) honor the
+        Forwarded header's `path` component and produce link hrefs with
+        root_path already baked in (e.g. `/stac/collections`). AuthenticationExtensionMiddleware
+        runs before ProcessLinksMiddleware, so it must strip root_path before
+        applying the filter_path regexes.
+        """
+        middleware = AuthenticationExtensionMiddleware(
+            app=None,
+            default_public=True,
+            private_endpoints=EndpointMethods(),
+            public_endpoints=EndpointMethods(),
+            oidc_discovery_url=oidc_discovery_url,
+            auth_scheme_name="test_auth",
+            items_filter_path=r"^(/collections/([^/]+)/items(/[^/]+)?$|/search$)",
+            collections_filter_path=r"^/collections(/[^/]+)?$",
+            root_path="/stac",
+        )
+        request = Request(request_scope)
+        data = {
+            "stac_version": "1.0.0",
+            "id": "test-catalog",
+            "description": "Test catalog",
+            "links": [
+                {"rel": "self", "href": "https://example.com/stac/"},
+                {"rel": "data", "href": "https://example.com/stac/collections"},
+                {
+                    "rel": "search",
+                    "href": "https://example.com/stac/search",
+                    "method": "GET",
+                },
+                {
+                    "rel": "items",
+                    "href": "https://example.com/stac/collections/foo/items",
+                },
+            ],
+        }
+
+        transformed = middleware.transform_json(data, request)
+
+        self_link = next(link for link in transformed["links"] if link["rel"] == "self")
+        assert "auth:refs" not in self_link
+
+        data_link = next(link for link in transformed["links"] if link["rel"] == "data")
+        assert "auth:refs" in data_link
+        assert "test_auth" in data_link["auth:refs"]
+
+        search_link = next(
+            link for link in transformed["links"] if link["rel"] == "search"
+        )
+        assert "auth:refs" in search_link
+
+        items_link = next(
+            link for link in transformed["links"] if link["rel"] == "items"
+        )
+        assert "auth:refs" in items_link

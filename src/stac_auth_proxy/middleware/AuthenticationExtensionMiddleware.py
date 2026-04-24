@@ -37,6 +37,7 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
 
     items_filter_path: Optional[str] = None
     collections_filter_path: Optional[str] = None
+    root_path: str = ""
 
     json_content_type_expr: str = r"application/(geo\+)?json"
 
@@ -91,8 +92,14 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
             if "href" not in link:
                 logger.warning("Link %s has no href", link)
                 continue
+            link_path = urlparse(link["href"]).path
+            # Some upstreams honor the Forwarded header's path component and bake
+            # root_path into link hrefs; strip it so filter_path/endpoint regexes
+            # (which are written relative to the STAC API) match either form.
+            if self.root_path and link_path.startswith(self.root_path):
+                link_path = link_path[len(self.root_path) :] or "/"
             match = find_match(
-                path=urlparse(link["href"]).path,
+                path=link_path,
                 method=link.get("method", "GET").upper(),
                 private_endpoints=self.private_endpoints,
                 public_endpoints=self.public_endpoints,

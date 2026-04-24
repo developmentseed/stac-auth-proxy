@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0](https://github.com/developmentseed/stac-auth-proxy/compare/v1.0.3...v1.1.0) (2026-04-24)
+
+
+### Features
+
+* **auth-extension:** annotate links with auth:refs if ([#138](https://github.com/developmentseed/stac-auth-proxy/issues/138)) ([2109a4b](https://github.com/developmentseed/stac-auth-proxy/commit/2109a4bcff9ff34ef7bb6d1ea40a76eacbe8c71e))
+
+
+### Bug Fixes
+
+* **auth-extension:** support root_paths ([c9dc496](https://github.com/developmentseed/stac-auth-proxy/commit/c9dc49674c91ded8e341fb1b7a6c1a80033c71ae))
+
 ## [1.0.3](https://github.com/developmentseed/stac-auth-proxy/compare/v1.0.2...v1.0.3) (2026-03-28)
 
 

@@ -1,5 +1,6 @@
 """Test Cql2RewriteLinksFilterMiddleware."""
 
+import json
 import re
 
 import pytest
@@ -335,3 +336,204 @@ class TestMiddlewareStackSimulation:
 
         # Other data should be preserved
         assert body["other_data"] == "preserved"
+
+
+class TestPostBodyClientFilterPreservation:
+    """Regression: client filters sent in a POST search body must be preserved
+    in the next-link body. The middleware previously read the original filter
+    only from the query string, which silently dropped POST-body filters.
+    """
+
+    @pytest.mark.parametrize(
+        "system_filter,client_filter,client_filter_lang,expected_filter,expected_filter_lang",
+        [
+            # CQL2-JSON client filter must be echoed back unchanged
+            (
+                "private = false",
+                {"op": "<", "args": [{"property": "cloud_coverage"}, 50]},
+                "cql2-json",
+                {"op": "<", "args": [{"property": "cloud_coverage"}, 50]},
+                "cql2-json",
+            ),
+            # Different client filter
+            (
+                "collection = 'landsat'",
+                {"op": ">", "args": [{"property": "datetime"}, "2023-01-01"]},
+                "cql2-json",
+                {"op": ">", "args": [{"property": "datetime"}, "2023-01-01"]},
+                "cql2-json",
+            ),
+            # CQL2-text client filter must also be preserved verbatim
+            (
+                "private = false",
+                "cloud_coverage < 30",
+                "cql2-text",
+                "cloud_coverage < 30",
+                "cql2-text",
+            ),
+            # No client filter in body — filter/filter-lang stay stripped from next.body
+            (
+                "private = false",
+                None,
+                None,
+                None,
+                None,
+            ),
+        ],
+    )
+    def test_preserves_client_filter_from_post_body(
+        self,
+        system_filter,
+        client_filter,
+        client_filter_lang,
+        expected_filter,
+        expected_filter_lang,
+    ):
+        """POST /search with filter in body keeps that filter in the next link body."""
+        app = FastAPI()
+
+        class MockBuildFilterMiddleware:
+            def __init__(self, app, state_key="cql2_filter"):
+                self.app = app
+                self.state_key = state_key
+
+            async def __call__(self, scope, receive, send):
+                if scope["type"] == "http":
+                    request = Request(scope)
+                    setattr(request.state, self.state_key, Expr(system_filter))
+                await self.app(scope, receive, send)
+
+        app.add_middleware(Cql2RewriteLinksFilterMiddleware)
+        app.add_middleware(MockBuildFilterMiddleware)
+
+        @app.post("/search")
+        async def search_endpoint(request: Request):
+            body_json = await request.json()
+            system_expr = getattr(request.state, "cql2_filter", None)
+            user_filter = body_json.get("filter")
+            user_filter_lang = body_json.get("filter-lang")
+
+            combined = None
+            if system_expr is not None and user_filter is not None:
+                combined = system_expr + Expr(user_filter)
+            elif system_expr is not None:
+                combined = system_expr
+            elif user_filter is not None:
+                combined = Expr(user_filter)
+
+            next_body = {
+                "collections": body_json.get("collections", []),
+                "limit": body_json.get("limit", 10),
+                "token": "next-token",
+            }
+            if combined is not None:
+                lang = user_filter_lang or "cql2-json"
+                next_body["filter-lang"] = lang
+                next_body["filter"] = (
+                    combined.to_text() if lang == "cql2-text" else combined.to_json()
+                )
+
+            return {
+                "type": "FeatureCollection",
+                "links": [
+                    {
+                        "rel": "next",
+                        "method": "POST",
+                        "href": "http://example.com/search",
+                        "body": next_body,
+                    }
+                ],
+            }
+
+        request_body = {"collections": ["col1"], "limit": 10}
+        if client_filter is not None:
+            request_body["filter"] = client_filter
+            request_body["filter-lang"] = client_filter_lang
+
+        client = TestClient(app)
+        response = client.post("/search", json=request_body)
+        assert response.status_code == 200, response.text
+        data = response.json()
+
+        next_link = next(link for link in data["links"] if link.get("rel") == "next")
+        body = next_link["body"]
+
+        # Pagination metadata is always carried through
+        assert body["token"] == "next-token"
+        assert body["collections"] == ["col1"]
+        assert body["limit"] == 10
+
+        if expected_filter is None:
+            assert "filter" not in body
+            assert "filter-lang" not in body
+        else:
+            assert body["filter"] == expected_filter
+            assert body["filter-lang"] == expected_filter_lang
+
+    def test_request_body_is_intact_for_inner_app(self):
+        """Body capture must replay the exact original bytes to the inner app."""
+        app = FastAPI()
+
+        class MockBuildFilterMiddleware:
+            def __init__(self, app, state_key="cql2_filter"):
+                self.app = app
+                self.state_key = state_key
+
+            async def __call__(self, scope, receive, send):
+                if scope["type"] == "http":
+                    request = Request(scope)
+                    setattr(request.state, self.state_key, Expr("private = false"))
+                await self.app(scope, receive, send)
+
+        app.add_middleware(Cql2RewriteLinksFilterMiddleware)
+        app.add_middleware(MockBuildFilterMiddleware)
+
+        @app.post("/search")
+        async def search_endpoint(request: Request):
+            received = await request.body()
+            return {"echo": json.loads(received)}
+
+        request_body = {
+            "collections": ["a", "b"],
+            "filter": {"op": "=", "args": [{"property": "x"}, 1]},
+            "filter-lang": "cql2-json",
+        }
+        client = TestClient(app)
+        response = client.post("/search", json=request_body)
+        assert response.status_code == 200, response.text
+        assert response.json()["echo"] == request_body
+
+    def test_malformed_json_body_does_not_break_middleware(self):
+        """An unparseable body must pass through without the middleware crashing."""
+        app = FastAPI()
+
+        class MockBuildFilterMiddleware:
+            def __init__(self, app, state_key="cql2_filter"):
+                self.app = app
+                self.state_key = state_key
+
+            async def __call__(self, scope, receive, send):
+                if scope["type"] == "http":
+                    request = Request(scope)
+                    setattr(request.state, self.state_key, Expr("private = false"))
+                await self.app(scope, receive, send)
+
+        app.add_middleware(Cql2RewriteLinksFilterMiddleware)
+        app.add_middleware(MockBuildFilterMiddleware)
+
+        @app.post("/search")
+        async def search_endpoint(request: Request):
+            raw = await request.body()
+            return Response(
+                content=raw,
+                media_type="application/octet-stream",
+            )
+
+        client = TestClient(app)
+        response = client.post(
+            "/search",
+            content=b"not json",
+            headers={"content-type": "application/json"},
+        )
+        assert response.status_code == 200
+        assert response.content == b"not json"

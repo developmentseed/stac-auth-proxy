@@ -3,7 +3,7 @@
 import json
 from dataclasses import dataclass
 from logging import getLogger
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from cql2 import Expr
@@ -11,6 +11,8 @@ from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 logger = getLogger(__name__)
+
+_UNSET: Any = object()
 
 
 @dataclass(frozen=True)
@@ -32,6 +34,54 @@ class Cql2RewriteLinksFilterMiddleware:
             # No filter set, just pass through
             return await self.app(scope, receive, send)
 
+        # When the client sends the filter in the request body (POST /search etc.),
+        # query_params won't expose it. Capture it here so we can put it back on
+        # paginated next-link bodies. We use a sentinel to distinguish "client sent
+        # no filter" (drop the field) from "client sent some filter value" (echo it
+        # back verbatim). Mirroring the query-string read above, we attempt this
+        # for any method that can carry a body and let the JSON-decode no-op when
+        # the body is absent or unparseable.
+        original_body_filter: Any = _UNSET
+        original_body_filter_lang: Any = _UNSET
+
+        if request.method in ("POST", "PUT", "PATCH"):
+            buffered_body = b""
+            more_body = True
+            while more_body:
+                message = await receive()
+                if message["type"] == "http.request":
+                    buffered_body += message.get("body", b"")
+                    more_body = message.get("more_body", False)
+                else:
+                    # Disconnect or unexpected message; bail out without capture.
+                    break
+
+            try:
+                body_json = json.loads(buffered_body) if buffered_body else None
+            except json.JSONDecodeError:
+                body_json = None
+
+            if isinstance(body_json, dict):
+                if "filter" in body_json:
+                    original_body_filter = body_json["filter"]
+                if "filter-lang" in body_json:
+                    original_body_filter_lang = body_json["filter-lang"]
+
+            replayed = False
+
+            async def replay_receive() -> Message:
+                nonlocal replayed
+                if not replayed:
+                    replayed = True
+                    return {
+                        "type": "http.request",
+                        "body": buffered_body,
+                        "more_body": False,
+                    }
+                return await receive()
+
+            receive = replay_receive
+
         # Intercept the response
         response_start = None
         body_chunks = []
@@ -46,7 +96,12 @@ class Cql2RewriteLinksFilterMiddleware:
                 more_body = message.get("more_body", False)
                 if not more_body:
                     await self._process_and_send_response(
-                        response_start, body_chunks, send, original_filter
+                        response_start,
+                        body_chunks,
+                        send,
+                        original_filter,
+                        original_body_filter,
+                        original_body_filter_lang,
                     )
             else:
                 await send(message)
@@ -59,6 +114,8 @@ class Cql2RewriteLinksFilterMiddleware:
         body_chunks: list[bytes],
         send: Send,
         original_filter: Optional[str],
+        original_body_filter: Any = _UNSET,
+        original_body_filter_lang: Any = _UNSET,
     ):
         body = b"".join(body_chunks)
         try:
@@ -87,12 +144,25 @@ class Cql2RewriteLinksFilterMiddleware:
 
                 # Handle filter in body (for POST links)
                 if "body" in link and isinstance(link["body"], dict):
-                    if "filter" in link["body"]:
-                        if cql2_filter:
-                            link["body"]["filter"] = cql2_filter.to_json()
-                        else:
-                            link["body"].pop("filter", None)
-                            link["body"].pop("filter-lang", None)
+                    had_filter = "filter" in link["body"]
+
+                    if original_body_filter is not _UNSET:
+                        # Client originally sent a CQL2 filter in the request
+                        # body (POST /search). Echo it back verbatim so
+                        # paginated requests carry the same filter shape and
+                        # serialization.
+                        link["body"]["filter"] = original_body_filter
+                    elif had_filter and cql2_filter:
+                        # Filter came from the query string; emit it in the
+                        # body as JSON so the next-link POST is self-contained.
+                        link["body"]["filter"] = cql2_filter.to_json()
+                    elif had_filter:
+                        link["body"].pop("filter", None)
+
+                    if original_body_filter_lang is not _UNSET:
+                        link["body"]["filter-lang"] = original_body_filter_lang
+                    elif had_filter and not cql2_filter:
+                        link["body"].pop("filter-lang", None)
 
         # Send the modified response
         new_body = json.dumps(data).encode("utf-8")

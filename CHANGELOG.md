@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.0](https://github.com/developmentseed/stac-auth-proxy/compare/v1.0.3...v1.1.0) (2026-05-22)
+
+
+### Features
+
+* **auth-extension:** annotate links with auth:refs if ([#138](https://github.com/developmentseed/stac-auth-proxy/issues/138)) ([2109a4b](https://github.com/developmentseed/stac-auth-proxy/commit/2109a4bcff9ff34ef7bb6d1ea40a76eacbe8c71e))
+* **helm:** add horizontal scaling (hpa) support. ([#163](https://github.com/developmentseed/stac-auth-proxy/issues/163)) ([ce6c245](https://github.com/developmentseed/stac-auth-proxy/commit/ce6c2455366651155f84063f991db069dc8826e6))
+
+
+### Bug Fixes
+
+* **auth-extension:** support root_paths ([c9dc496](https://github.com/developmentseed/stac-auth-proxy/commit/c9dc49674c91ded8e341fb1b7a6c1a80033c71ae))
+* ensure POST request CQL2 filter persists in links ([#164](https://github.com/developmentseed/stac-auth-proxy/issues/164)) ([543534d](https://github.com/developmentseed/stac-auth-proxy/commit/543534d5ad9cc50410d68d5d00a18ca5f1715877))
+
 ## [1.0.3](https://github.com/developmentseed/stac-auth-proxy/compare/v1.0.2...v1.0.3) (2026-03-28)
 
 

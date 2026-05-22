@@ -5,7 +5,7 @@
     "replicaCount": {
       "type": "integer",
       "minimum": 1,
-      "description": "Number of replicas for the deployment"
+      "description": "Number of replicas for the deployment (ignored when autoscaling.enabled is true)"
     },
     "image": {
       "type": "object",
@@ -316,6 +316,49 @@
       "type": "object",
       "additionalProperties": true,
       "description": "Pod affinity rules"
+    },
+    "autoscaling": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable Horizontal Pod Autoscaler",
+          "default": false
+        },
+        "minReplicas": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Minimum number of replicas",
+          "default": 1
+        },
+        "maxReplicas": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum number of replicas (must be >= minReplicas when enabled)",
+          "default": 10
+        },
+        "targetCPUUtilizationPercentage": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Target CPU utilization percentage for autoscaling",
+          "default": 80
+        },
+        "behavior": {
+          "type": "object",
+          "description": "Scaling behavior configuration",
+          "properties": {
+            "scaleDown": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "scaleUp": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      }
     },
     "initContainers": {
       "type": "array",

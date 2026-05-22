@@ -78,3 +78,14 @@ Validate terminationGracePeriodSeconds > preStopSleepSeconds
 {{- fail "terminationGracePeriodSeconds must be greater than preStopSleepSeconds" -}}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Validate autoscaling replica bounds when HPA is enabled
+*/}}
+{{- define "stac-auth-proxy.validateAutoscaling" -}}
+{{- if .Values.autoscaling.enabled -}}
+{{- if lt (int .Values.autoscaling.maxReplicas) (int .Values.autoscaling.minReplicas) -}}
+{{- fail "autoscaling.maxReplicas must be greater than or equal to autoscaling.minReplicas" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}

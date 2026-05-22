@@ -1,0 +1,64 @@
+suite: test horizontal pod autoscaler
+templates:
+  - hpa.yaml
+tests:
+  - it: should not create HPA when disabled
+    set:
+      autoscaling.enabled: false
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should create HPA when enabled
+    set:
+      autoscaling.enabled: true
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - isKind:
+          of: HorizontalPodAutoscaler
+      - isAPIVersion:
+          of: autoscaling/v2
+
+  - it: should configure replicas and CPU target
+    set:
+      autoscaling.enabled: true
+      autoscaling.minReplicas: 2
+      autoscaling.maxReplicas: 15
+      autoscaling.targetCPUUtilizationPercentage: 75
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - equal:
+          path: spec.minReplicas
+          value: 2
+      - equal:
+          path: spec.maxReplicas
+          value: 15
+      - equal:
+          path: spec.metrics[0].resource.target.averageUtilization
+          value: 75
+
+  - it: should target the deployment and configure scale behavior
+    set:
+      autoscaling.enabled: true
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - equal:
+          path: spec.scaleTargetRef.apiVersion
+          value: apps/v1
+      - equal:
+          path: spec.scaleTargetRef.kind
+          value: Deployment
+      - matchRegex:
+          path: spec.scaleTargetRef.name
+          pattern: ^RELEASE-NAME-stac-auth-proxy$
+      - equal:
+          path: spec.behavior.scaleDown.stabilizationWindowSeconds
+          value: 300
+      - equal:
+          path: spec.behavior.scaleUp.selectPolicy
+          value: Max

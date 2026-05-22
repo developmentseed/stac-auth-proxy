@@ -66,3 +66,4 @@ jobs:
         with:
           helm-version: latest
           charts: helm/
+          unittest-version: v0.6.3

@@ -1,4 +1,5 @@
 {{- include "stac-auth-proxy.validateTerminationGracePeriod" . -}}
+{{- include "stac-auth-proxy.validateAutoscaling" . -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,7 +7,9 @@ metadata:
   labels:
     {{- include "stac-auth-proxy.labels" . | nindent 4 }}
 spec:
+  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "stac-auth-proxy.selectorLabels" . | nindent 6 }}

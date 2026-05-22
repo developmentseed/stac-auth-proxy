@@ -1,5 +1,6 @@
 """Test Cql2RewriteLinksFilterMiddleware."""
 
+import json
 import re
 
 import pytest
@@ -10,6 +11,24 @@ from starlette.testclient import TestClient
 from stac_auth_proxy.middleware.Cql2RewriteLinksFilterMiddleware import (
     Cql2RewriteLinksFilterMiddleware,
 )
+
+
+def _install_middlewares(app: FastAPI, system_filter: str) -> None:
+    """Attach the rewrite middleware behind a mock build-filter middleware."""
+
+    class MockBuildFilterMiddleware:
+        def __init__(self, app, state_key="cql2_filter"):
+            self.app = app
+            self.state_key = state_key
+
+        async def __call__(self, scope, receive, send):
+            if scope["type"] == "http":
+                request = Request(scope)
+                setattr(request.state, self.state_key, Expr(system_filter))
+            await self.app(scope, receive, send)
+
+    app.add_middleware(Cql2RewriteLinksFilterMiddleware)
+    app.add_middleware(MockBuildFilterMiddleware)
 
 
 def test_non_json_response():
@@ -335,3 +354,123 @@ class TestMiddlewareStackSimulation:
 
         # Other data should be preserved
         assert body["other_data"] == "preserved"
+
+
+class TestPostBodyClientFilterPreservation:
+    """
+    Client filters sent in a POST search body must be preserved in next-link bodies.
+
+    Regression: the middleware previously read the user's filter only from the
+    query string, silently dropping filters supplied via POST body.
+    """
+
+    @pytest.mark.parametrize(
+        "client_filter,client_filter_lang",
+        [
+            (
+                {"op": "<", "args": [{"property": "cloud_coverage"}, 50]},
+                "cql2-json",
+            ),
+            ("cloud_coverage < 30", "cql2-text"),
+            (None, None),
+        ],
+    )
+    def test_preserves_client_filter_from_post_body(
+        self, client_filter, client_filter_lang
+    ):
+        """Filter supplied in the POST body must be preserved in the next link."""
+        app = FastAPI()
+        _install_middlewares(app, system_filter="private = false")
+
+        @app.post("/search")
+        async def search_endpoint(request: Request):
+            body_json = await request.json()
+            system_expr = getattr(request.state, "cql2_filter", None)
+            user_filter = body_json.get("filter")
+            user_filter_lang = body_json.get("filter-lang")
+
+            combined = None
+            if system_expr is not None and user_filter is not None:
+                combined = system_expr + Expr(user_filter)
+            elif system_expr is not None:
+                combined = system_expr
+            elif user_filter is not None:
+                combined = Expr(user_filter)
+
+            next_body = {"token": "next-token"}
+            if combined is not None:
+                lang = user_filter_lang or "cql2-json"
+                next_body["filter-lang"] = lang
+                next_body["filter"] = (
+                    combined.to_text() if lang == "cql2-text" else combined.to_json()
+                )
+
+            return {
+                "links": [
+                    {
+                        "rel": "next",
+                        "method": "POST",
+                        "href": "http://example.com/search",
+                        "body": next_body,
+                    }
+                ],
+            }
+
+        request_body = {}
+        if client_filter is not None:
+            request_body["filter"] = client_filter
+            request_body["filter-lang"] = client_filter_lang
+
+        response = TestClient(app).post("/search", json=request_body)
+        assert response.status_code == 200, response.text
+        body = response.json()["links"][0]["body"]
+
+        assert body["token"] == "next-token"
+
+        if client_filter is None:
+            # No client filter → system filter must not leak into next link.
+            assert "filter" not in body
+            assert "filter-lang" not in body
+        else:
+            # Compare semantically: cql2-python may re-emit equivalent text
+            # with different formatting (e.g. added parens).
+            assert Expr(body["filter"]).to_json() == Expr(client_filter).to_json()
+            assert body["filter-lang"] == client_filter_lang
+
+    def test_request_body_is_intact_for_inner_app(self):
+        """Body capture must replay the exact original bytes to the inner app."""
+        app = FastAPI()
+        _install_middlewares(app, system_filter="private = false")
+
+        @app.post("/search")
+        async def search_endpoint(request: Request):
+            return {"echo": json.loads(await request.body())}
+
+        request_body = {
+            "collections": ["a", "b"],
+            "filter": {"op": "=", "args": [{"property": "x"}, 1]},
+            "filter-lang": "cql2-json",
+        }
+        response = TestClient(app).post("/search", json=request_body)
+        assert response.status_code == 200, response.text
+        assert response.json()["echo"] == request_body
+
+    def test_malformed_json_body_does_not_break_middleware(self):
+        """An unparseable body must pass through without the middleware crashing."""
+        app = FastAPI()
+        _install_middlewares(app, system_filter="private = false")
+
+        @app.post("/search")
+        async def search_endpoint(request: Request):
+            return Response(
+                content=await request.body(),
+                media_type="application/octet-stream",
+            )
+
+        response = TestClient(app).post(
+            "/search",
+            content=b"not json",
+            headers={"content-type": "application/json"},
+        )
+        assert response.status_code == 200
+        assert response.content == b"not json"

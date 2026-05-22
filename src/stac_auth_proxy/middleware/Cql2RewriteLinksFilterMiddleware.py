@@ -26,11 +26,12 @@ class Cql2RewriteLinksFilterMiddleware:
             return await self.app(scope, receive, send)
 
         request = Request(scope)
-        original_filter = request.query_params.get("filter")
         cql2_filter: Optional[Expr] = getattr(request.state, self.state_key, None)
         if cql2_filter is None:
             # No filter set, just pass through
             return await self.app(scope, receive, send)
+
+        user_filter, receive = await self._extract_user_filter(request, receive)
 
         # Intercept the response
         response_start = None
@@ -46,19 +47,74 @@ class Cql2RewriteLinksFilterMiddleware:
                 more_body = message.get("more_body", False)
                 if not more_body:
                     await self._process_and_send_response(
-                        response_start, body_chunks, send, original_filter
+                        response_start, body_chunks, send, user_filter
                     )
             else:
                 await send(message)
 
         await self.app(scope, receive, send_wrapper)
 
+    async def _extract_user_filter(
+        self, request: Request, receive: Receive
+    ) -> tuple[Optional[Expr], Receive]:
+        """
+        Recover the user's original filter from either the query string or JSON body.
+
+        For methods that may carry a JSON body (POST/PUT/PATCH), the body is buffered
+        and a replacement ``receive`` is returned so downstream consumers still see it.
+        """
+        query_filter = request.query_params.get("filter")
+        if query_filter:
+            try:
+                return Expr(query_filter), receive
+            except Exception:
+                logger.warning("Failed to parse user filter from query string")
+                return None, receive
+
+        if request.method not in ("POST", "PUT", "PATCH"):
+            return None, receive
+
+        body = b""
+        more_body = True
+        while more_body:
+            message = await receive()
+            if message["type"] == "http.request":
+                body += message.get("body", b"")
+                more_body = message.get("more_body", False)
+            else:
+                # e.g. http.disconnect - stop reading; downstream will get the same.
+                break
+
+        async def replay_receive() -> Message:
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        if not body:
+            return None, replay_receive
+
+        try:
+            body_json = json.loads(body)
+        except json.JSONDecodeError:
+            return None, replay_receive
+
+        if not isinstance(body_json, dict):
+            return None, replay_receive
+
+        body_filter = body_json.get("filter")
+        if body_filter is None:
+            return None, replay_receive
+
+        try:
+            return Expr(body_filter), replay_receive
+        except Exception:
+            logger.warning("Failed to parse user filter from request body")
+            return None, replay_receive
+
     async def _process_and_send_response(
         self,
         response_start: Message,
         body_chunks: list[bytes],
         send: Send,
-        original_filter: Optional[str],
+        user_filter: Optional[Expr],
     ):
         body = b"".join(body_chunks)
         try:
@@ -68,7 +124,6 @@ class Cql2RewriteLinksFilterMiddleware:
             await send({"type": "http.response.body", "body": body, "more_body": False})
             return
 
-        cql2_filter = Expr(original_filter) if original_filter else None
         links = data.get("links")
         if isinstance(links, list):
             for link in links:
@@ -77,19 +132,24 @@ class Cql2RewriteLinksFilterMiddleware:
                     url = urlparse(link["href"])
                     qs = parse_qs(url.query)
                     if "filter" in qs:
-                        if cql2_filter:
-                            qs["filter"] = [cql2_filter.to_text()]
+                        if user_filter is not None:
+                            qs["filter"] = [user_filter.to_text()]
                         else:
                             qs.pop("filter", None)
                             qs.pop("filter-lang", None)
                         new_query = urlencode(qs, doseq=True)
                         link["href"] = urlunparse(url._replace(query=new_query))
 
-                # Handle filter in body (for POST links)
+                # Handle filter in body (for POST links). The spec only
+                # requires cql2-json for POST bodies, but if the link advertises
+                # cql2-text we preserve that lang on the way out.
                 if "body" in link and isinstance(link["body"], dict):
                     if "filter" in link["body"]:
-                        if cql2_filter:
-                            link["body"]["filter"] = cql2_filter.to_json()
+                        if user_filter is not None:
+                            if link["body"].get("filter-lang") == "cql2-text":
+                                link["body"]["filter"] = user_filter.to_text()
+                            else:
+                                link["body"]["filter"] = user_filter.to_json()
                         else:
                             link["body"].pop("filter", None)
                             link["body"].pop("filter-lang", None)

@@ -83,18 +83,47 @@ helm install stac-auth-proxy oci://ghcr.io/developmentseed/stac-auth-proxy/chart
 
 ### Configuration
 
-| Parameter                | Description                                   | Required | Default |
-| ------------------------ | --------------------------------------------- | -------- | ------- |
-| `env.UPSTREAM_URL`       | URL of the STAC API to proxy                  | Yes      | -       |
-| `env.OIDC_DISCOVERY_URL` | OpenID Connect discovery document URL         | Yes      | -       |
-| `env`                    | Environment variables passed to the container | No       | `{}`    |
-| `ingress.enabled`        | Enable ingress                                | No       | `true`  |
-| `ingress.className`      | Ingress class name                            | No       | `nginx` |
-| `ingress.host`           | Hostname for the ingress                      | No       | `""`    |
-| `ingress.tls.enabled`    | Enable TLS for ingress                        | No       | `true`  |
-| `replicaCount`           | Number of replicas                            | No       | `1`     |
+| Parameter                                    | Description                                      | Required | Default |
+| -------------------------------------------- | ------------------------------------------------ | -------- | ------- |
+| `env.UPSTREAM_URL`                           | URL of the STAC API to proxy                     | Yes      | -       |
+| `env.OIDC_DISCOVERY_URL`                     | OpenID Connect discovery document URL            | Yes      | -       |
+| `env`                                        | Environment variables passed to the container    | No       | `{}`    |
+| `ingress.enabled`                            | Enable ingress                                   | No       | `true`  |
+| `ingress.className`                          | Ingress class name                               | No       | `nginx` |
+| `ingress.host`                               | Hostname for the ingress                         | No       | `""`    |
+| `ingress.tls.enabled`                        | Enable TLS for ingress                           | No       | `true`  |
+| `replicaCount`                               | Number of replicas (ignored when HPA is enabled) | No       | `1`     |
+| `autoscaling.enabled`                        | Enable Horizontal Pod Autoscaler                 | No       | `false` |
+| `autoscaling.minReplicas`                    | Minimum replicas managed by HPA                  | No       | `1`     |
+| `autoscaling.maxReplicas`                    | Maximum replicas managed by HPA                  | No       | `10`    |
+| `autoscaling.targetCPUUtilizationPercentage` | Target average CPU utilization (%)               | No       | `80`    |
 
 For a complete list of values, see the [values.yaml](https://github.com/developmentseed/stac-auth-proxy/blob/main/helm/values.yaml) file.
+
+### Autoscaling
+
+When autoscaling is enabled, the HPA manages replica count and `replicaCount` is not applied to the Deployment (so `helm upgrade` does not reset scaling). Chart defaults use `minReplicas: 1`; use at least `2` for high availability. Scaling uses CPU utilization only; I/O-bound workloads may need a lower target or custom metrics.
+
+Enable Horizontal Pod Autoscaler to handle variable load:
+
+```yaml
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+# Override defaults if needed; CPU requests are required for utilization-based HPA
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 1Gi
+```
+
+You also need to make sure Kubernetes Metrics Server is installed.
 
 ### Management
 

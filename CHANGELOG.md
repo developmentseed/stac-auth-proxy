@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/developmentseed/stac-auth-proxy/compare/v1.1.0...v1.1.1) (2026-05-27)
+
+
+### Bug Fixes
+
+* bump versions of fastapi + starlette ([#170](https://github.com/developmentseed/stac-auth-proxy/issues/170)) ([52eae09](https://github.com/developmentseed/stac-auth-proxy/commit/52eae097a54c2407d3510a2b1265311a2a0327a3))
+
 ## [1.1.0](https://github.com/developmentseed/stac-auth-proxy/compare/v1.0.3...v1.1.0) (2026-05-22)
 
 

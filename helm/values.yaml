@@ -144,6 +144,7 @@ env:
   OIDC_DISCOVERY_URL: "http://localhost:8081/.well-known/openid-configuration"  # OpenID Connect discovery URL
 
   # Optional configuration
+  UPSTREAM_TIMEOUT: 15.0
   WAIT_FOR_UPSTREAM: true
   HEALTHZ_PREFIX: "/healthz"
   OIDC_DISCOVERY_INTERNAL_URL: "http://localhost:8081/.well-known/openid-configuration"

@@ -35,6 +35,11 @@
           "pattern": "^https?://.+",
           "description": "URL of the STAC API to proxy"
         },
+        "UPSTREAM_TIMEOUT": {
+          "type": ["number", "string"],
+          "description": "Timeout in seconds for requests forwarded to the upstream STAC API",
+          "default": 15.0
+        },
         "WAIT_FOR_UPSTREAM": {
           "type": ["boolean", "string"],
           "description": "Wait for upstream API to become available before starting proxy",

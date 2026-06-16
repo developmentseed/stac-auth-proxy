@@ -8,6 +8,7 @@ authentication, authorization, and proxying of requests to some internal STAC AP
 import logging
 from typing import Any, Optional
 
+import httpx
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from starlette_cramjam.middleware import CompressionMiddleware
@@ -235,6 +236,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         ReverseProxyHandler(
             upstream=str(settings.upstream_url),
             override_host=settings.override_host,
+            timeout=httpx.Timeout(timeout=settings.upstream_timeout),
         ).proxy_request,
         methods=[
             "GET",

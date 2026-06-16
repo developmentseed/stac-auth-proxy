@@ -12,6 +12,17 @@ The application is configurable via environment variables.
     - **Required:** Yes
     - **Example:** `https://your-stac-api.com/stac`
 
+### `UPSTREAM_TIMEOUT`
+
+: Timeout (in seconds) for requests forwarded to the upstream STAC API
+
+    - **Type:** float
+    - **Required:** No, defaults to `15.0`
+    - **Example:** `60.0`, `120`
+
+    > [!TIP]
+    > Increase this if your upstream API is slow to respond to expensive queries (e.g. large search results or heavy CQL2 filters) and you are seeing `500` errors caused by upstream timeouts.
+
 ### `WAIT_FOR_UPSTREAM`
 
 : Wait for upstream API to become available before starting proxy

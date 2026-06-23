@@ -4,6 +4,9 @@ on:
   push:
   release:
 
+env:
+  LATEST_PY_VERSION: '3.14'
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -12,7 +15,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
-          python-version: '3.13'
+          python-version: ${{ env.LATEST_PY_VERSION }}
       - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           enable-cache: true
@@ -24,27 +27,31 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12', '3.13', '3.14']
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - name: Install uv
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
-          python-version: '3.13'
-      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
-        with:
+          version: "0.9.*" 
           enable-cache: true
+          python-version: ${{ matrix.python-version }}
       - name: Run tests with coverage
         run: |
           uv run pytest -n auto --cov=src/stac_auth_proxy --cov-report=xml --cov-report=html --cov-report=term-missing --cov-fail-under=85
       - name: Upload coverage reports to Codecov
+        if: ${{ matrix.python-version == env.LATEST_PY_VERSION }}
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
           files: ./coverage.xml
           flags: unittests
           fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
       - name: Archive coverage reports
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: always()
+        if: ${{ matrix.python-version == env.LATEST_PY_VERSION }}
         with:
           name: coverage-reports
           path: |

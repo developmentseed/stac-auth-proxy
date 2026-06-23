@@ -1,14 +1,8 @@
 name: Publish Helm Chart
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'helm/**'
-      - '.github/workflows/publish-helm.yaml'
   release:
-    types: [created]
+    types: [published]
 
 jobs:
   publish-helm:
@@ -37,13 +31,9 @@ jobs:
 
       - name: Package Helm Chart
         run: |
-          VERSION_ARGS=""
-          if [[ "${{ github.event_name }}" == "release" ]]; then
-            VERSION="${{ github.event.release.tag_name }}"
-            VERSION="${VERSION#v}"
-            VERSION_ARGS="--version $VERSION --app-version $VERSION"
-          fi
-          helm package helm/ $VERSION_ARGS
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${VERSION#v}"
+          helm package helm/ --version "$VERSION" --app-version "$VERSION"
 
       - name: Push Helm Chart
         run: |

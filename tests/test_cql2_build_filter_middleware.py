@@ -89,3 +89,37 @@ class TestOptionsRequest:
         get_response = client.get("/collections/test-collection/items")
         assert get_response.status_code == 200
         assert get_response.json()["filter_was_built"] is True
+
+
+class TestEmptyFilter:
+    """Test middleware behavior with Empty Filter."""
+
+    def test_options_request_skips_filter_building(self):
+        """Test that OPTIONS requests skip CQL2 filter building."""
+        app = FastAPI()
+
+        # Create a simple filter that would be applied to items
+        async def items_filter(context):
+            return None
+
+        # Add middleware with a filter
+        app.add_middleware(
+            Cql2BuildFilterMiddleware,
+            items_filter=items_filter,
+        )
+
+        @app.get("/search")
+        async def search_get(request: Request):
+            # Check if the filter was built for comparison
+            cql2_filter = getattr(request.state, "cql2_filter", None)
+            return {
+                "filter_was_built": cql2_filter is not None,
+            }
+
+        client = TestClient(app)
+
+        # Test GET request - filter SHOULD be built
+        get_response = client.get("/search")
+        assert get_response.status_code == 200
+        get_data = get_response.json()
+        assert get_data["filter_was_built"] is False

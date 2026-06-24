@@ -107,7 +107,7 @@ class Cql2BuildFilterMiddleware:
 
     def _get_filter(
         self, path: str
-    ) -> Optional[Callable[..., Awaitable[str | dict[str, Any]]]]:
+    ) -> Optional[Callable[..., Awaitable[str | dict[str, Any] | None]]]:
         """Get the CQL2 filter builder for the given path."""
         endpoint_filters = [
             (self.collections_filter_path, self.collections_filter),

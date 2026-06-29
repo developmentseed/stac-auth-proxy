@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.2](https://github.com/developmentseed/stac-auth-proxy/compare/v1.1.1...v1.1.2) (2026-06-29)
+
+
+### Bug Fixes
+
+* allow Any type for classInput ([#182](https://github.com/developmentseed/stac-auth-proxy/issues/182)) ([56aa3f5](https://github.com/developmentseed/stac-auth-proxy/commit/56aa3f518fcbe4f131911167eaf3babf17578eff))
+* configurable upstream timeout. ([#174](https://github.com/developmentseed/stac-auth-proxy/issues/174)) ([533bac6](https://github.com/developmentseed/stac-auth-proxy/commit/533bac60e0157a859a0e91f03d2d48f9b89b89e4))
+* publish helm chart only on release ([#178](https://github.com/developmentseed/stac-auth-proxy/issues/178)) ([c89f650](https://github.com/developmentseed/stac-auth-proxy/commit/c89f650b9c4dadec2d5ad866b16d2411f5e6ed1e))
+
 ## [1.1.1](https://github.com/developmentseed/stac-auth-proxy/compare/v1.1.0...v1.1.1) (2026-05-27)
 
 

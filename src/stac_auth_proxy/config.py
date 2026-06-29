@@ -28,8 +28,8 @@ class _ClassInput(BaseModel):
     """Input model for dynamically loading a class or function."""
 
     cls: str
-    args: Sequence[str] = Field(default_factory=list)
-    kwargs: dict[str, str] = Field(default_factory=dict)
+    args: Sequence[Any] = Field(default_factory=list)
+    kwargs: dict[str, Any] = Field(default_factory=dict)
 
     def __call__(self):
         """Dynamically load a class and instantiate it with args & kwargs."""

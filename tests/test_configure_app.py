@@ -19,7 +19,6 @@ def get_flattened_routes(app: FastAPI | APIRouter, prefix=""):
     for route in routes:
         # 1. Standard Endpoints (APIRoute)
         if hasattr(route, "methods") and route.methods:
-            print(route)
             for m in route.methods:
                 if m == "HEAD":
                     continue

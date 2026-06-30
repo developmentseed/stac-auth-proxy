@@ -1,6 +1,8 @@
 """Tests for configuring an external FastAPI application."""
 
+import pytest
 from fastapi import APIRouter, FastAPI
+from pydantic import ValidationError
 
 from stac_auth_proxy import Settings, configure_app
 
@@ -65,3 +67,25 @@ def test_configure_app_excludes_proxy_route():
     routes = get_flattened_routes(app)
     assert settings.healthz_prefix in routes
     assert "/{path:path}" not in routes
+
+
+def test_configure_app_no_healthz():
+    """Ensure `configure_app` without adding health route."""
+    with pytest.raises(ValidationError):
+        settings = Settings(
+            upstream_url="https://example.com",
+            oidc_discovery_url="https://example.com/.well-known/openid-configuration",
+            healthz_prefix="",
+        )
+
+    app = FastAPI()
+    settings = Settings(
+        upstream_url="https://example.com",
+        oidc_discovery_url="https://example.com/.well-known/openid-configuration",
+        healthz_prefix=None,
+    )
+
+    configure_app(app, settings)
+
+    routes = get_flattened_routes(app)
+    assert settings.healthz_prefix not in routes

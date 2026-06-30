@@ -76,7 +76,7 @@ class Settings(BaseSettings):
 
     root_path: str = ""
     override_host: bool = True
-    healthz_prefix: str = Field(pattern=_PREFIX_PATTERN, default="/healthz")
+    healthz_prefix: str | None = Field(pattern=_PREFIX_PATTERN, default="/healthz")
     upstream_timeout: float = 15.0
     wait_for_upstream: bool = True
     check_conformance: bool = True

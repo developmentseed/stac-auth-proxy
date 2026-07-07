@@ -81,6 +81,7 @@ class Settings(BaseSettings):
     wait_for_upstream: bool = True
     check_conformance: bool = True
     enable_compression: bool = True
+    enable_metrics: bool = False
     proxy_options: bool = False
     cors: CorsSettings = Field(default_factory=CorsSettings)
 

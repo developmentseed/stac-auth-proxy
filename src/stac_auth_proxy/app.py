@@ -34,6 +34,19 @@ from .middleware import (
 logger = logging.getLogger(__name__)
 
 
+def add_metrics(app: FastAPI) -> None:
+    """Add the Prometheus metrics endpoint to the app."""
+    try:
+        from prometheus_fastapi_instrumentator import Instrumentator
+    except ImportError as exc:
+        raise RuntimeError(
+            "ENABLE_METRICS is enabled, but prometheus-fastapi-instrumentator "
+            "is not installed. Install stac-auth-proxy[metrics]."
+        ) from exc
+
+    Instrumentator().instrument(app).expose(app)
+
+
 def configure_app(
     app: FastAPI,
     settings: Optional[Settings] = None,
@@ -55,6 +68,7 @@ def configure_app(
 
     """
     settings = settings or Settings(**settings_kwargs)
+    public_endpoints = settings.public_endpoints
 
     #
     # Route Handlers
@@ -85,6 +99,10 @@ def configure_app(
             prefix=settings.healthz_prefix,
         )
 
+    if settings.enable_metrics:
+        add_metrics(app)
+        public_endpoints = {**public_endpoints, r"^/metrics$": ["GET"]}
+
     #
     # Middleware (order is important, last added = first to run)
     #
@@ -93,7 +111,7 @@ def configure_app(
         app.add_middleware(
             AuthenticationExtensionMiddleware,
             default_public=settings.default_public,
-            public_endpoints=settings.public_endpoints,
+            public_endpoints=public_endpoints,
             private_endpoints=settings.private_endpoints,
             items_filter_path=(
                 settings.items_filter_path if settings.items_filter else None
@@ -112,7 +130,7 @@ def configure_app(
             OpenApiMiddleware,
             openapi_spec_path=settings.openapi_spec_endpoint,
             oidc_discovery_url=str(settings.oidc_discovery_url),
-            public_endpoints=settings.public_endpoints,
+            public_endpoints=public_endpoints,
             private_endpoints=settings.private_endpoints,
             default_public=settings.default_public,
             root_path=settings.root_path,
@@ -153,7 +171,7 @@ def configure_app(
 
     app.add_middleware(
         EnforceAuthMiddleware,
-        public_endpoints=settings.public_endpoints,
+        public_endpoints=public_endpoints,
         private_endpoints=settings.private_endpoints,
         default_public=settings.default_public,
         oidc_discovery_url=settings.oidc_discovery_internal_url,

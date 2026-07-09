@@ -1,6 +1,7 @@
 """Tests for configuring an external FastAPI application."""
 
 from fastapi import APIRouter, FastAPI
+from fastapi.testclient import TestClient
 
 from stac_auth_proxy import Settings, configure_app
 
@@ -65,3 +66,21 @@ def test_configure_app_excludes_proxy_route():
     routes = get_flattened_routes(app)
     assert settings.healthz_prefix in routes
     assert "/{path:path}" not in routes
+
+
+def test_metrics_endpoint_returns_prometheus_output():
+    """Metrics returns Prometheus exposition format when enabled in PUBLIC_ENDPOINTS."""
+    app = FastAPI()
+    settings = Settings(
+        upstream_url="https://example.com",
+        oidc_discovery_url="https://example.com/.well-known/openid-configuration",
+        wait_for_upstream=False,
+        check_conformance=False,
+    )
+
+    configure_app(app, settings)
+    response = TestClient(app).get("/_mgmt/metrics")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")
+    assert "# HELP" in response.text

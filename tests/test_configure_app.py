@@ -3,6 +3,7 @@
 from fastapi import APIRouter, FastAPI
 from fastapi.testclient import TestClient
 
+import stac_auth_proxy.app as app_module
 from stac_auth_proxy import Settings, configure_app
 
 
@@ -84,3 +85,20 @@ def test_metrics_endpoint_returns_prometheus_output():
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/plain")
     assert "# HELP" in response.text
+
+
+def test_metrics_endpoint_skipped_without_instrumentator(monkeypatch):
+    """Metrics route and public endpoint are omitted when the extra is absent."""
+    monkeypatch.setattr(app_module, "Instrumentator", None)
+    app = FastAPI()
+    settings = Settings(
+        upstream_url="https://example.com",
+        oidc_discovery_url="https://example.com/.well-known/openid-configuration",
+        wait_for_upstream=False,
+        check_conformance=False,
+    )
+
+    configure_app(app, settings)
+
+    assert "/_mgmt/metrics" not in get_flattened_routes(app)
+    assert r"^/_mgmt/metrics" not in settings.public_endpoints

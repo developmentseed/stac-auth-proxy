@@ -10,8 +10,12 @@ from typing import Any, Optional
 
 import httpx
 from fastapi import FastAPI
-from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.middleware.cors import CORSMiddleware
+
+try:
+    from prometheus_fastapi_instrumentator import Instrumentator
+except ImportError:
+    Instrumentator = None
 from starlette_cramjam.middleware import CompressionMiddleware
 
 from .config import Settings
@@ -86,10 +90,12 @@ def configure_app(
             prefix=settings.healthz_prefix,
         )
 
-    if r"^/_mgmt/metrics" in settings.public_endpoints:
+    if Instrumentator and r"^/_mgmt/metrics" in settings.public_endpoints:
         Instrumentator().instrument(app).expose(
             app, endpoint="/_mgmt/metrics", include_in_schema=False
         )
+    else:
+        settings.public_endpoints.pop(r"^/_mgmt/metrics", None)
 
     #
     # Middleware (order is important, last added = first to run)

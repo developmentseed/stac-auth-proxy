@@ -6,6 +6,7 @@ authentication, authorization, and proxying of requests to some internal STAC AP
 """
 
 import logging
+import re
 from typing import Any, Optional
 
 import httpx
@@ -91,7 +92,10 @@ def configure_app(
         )
 
     if Instrumentator and r"^/_mgmt/metrics" in settings.public_endpoints:
-        Instrumentator().instrument(app).expose(
+        excluded_handlers = [r"/_mgmt/"]
+        if settings.healthz_prefix:
+            excluded_handlers.append(re.escape(settings.healthz_prefix))
+        Instrumentator(excluded_handlers=excluded_handlers).instrument(app).expose(
             app, endpoint="/_mgmt/metrics", include_in_schema=False
         )
     else:

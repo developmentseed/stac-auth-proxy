@@ -22,6 +22,7 @@ from starlette_cramjam.middleware import CompressionMiddleware
 from .config import Settings
 from .handlers import HealthzHandler, ReverseProxyHandler, SwaggerUI
 from .lifespan import build_lifespan
+from .metrics import stac_operation_instrumentation
 from .middleware import (
     AddProcessTimeHeaderMiddleware,
     AuthenticationExtensionMiddleware,
@@ -95,9 +96,9 @@ def configure_app(
         excluded_handlers = [r"/_mgmt/"]
         if settings.healthz_prefix:
             excluded_handlers.append(re.escape(settings.healthz_prefix))
-        Instrumentator(excluded_handlers=excluded_handlers).instrument(app).expose(
-            app, endpoint="/_mgmt/metrics", include_in_schema=False
-        )
+        Instrumentator(excluded_handlers=excluded_handlers).instrument(app).add(
+            stac_operation_instrumentation
+        ).expose(app, endpoint="/_mgmt/metrics", include_in_schema=False)
     else:
         settings.public_endpoints.pop(r"^/_mgmt/metrics", None)
 

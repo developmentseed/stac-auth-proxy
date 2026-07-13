@@ -1,10 +1,12 @@
 """Tests for configuring an external FastAPI application."""
 
+import pytest
 from fastapi import APIRouter, FastAPI
 from fastapi.testclient import TestClient
 
 import stac_auth_proxy.app as app_module
 from stac_auth_proxy import Settings, configure_app
+from stac_auth_proxy.metrics import classify_operation
 
 
 def get_flattened_routes(app: FastAPI | APIRouter, prefix=""):
@@ -80,11 +82,41 @@ def test_metrics_endpoint_returns_prometheus_output():
     )
 
     configure_app(app, settings)
-    response = TestClient(app).get("/_mgmt/metrics")
+    client = TestClient(app)
+    app.add_api_route("/collections", lambda: {"collections": []}, methods=["GET"])
+    client.get("/collections")
+    response = client.get("/_mgmt/metrics")
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/plain")
     assert "# HELP" in response.text
+    assert "stac_operation_duration_seconds" in response.text
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "expected"),
+    [
+        ("GET", "/", "landing_page"),
+        ("GET", "/conformance", "conformance"),
+        ("GET", "/search", "search"),
+        ("POST", "/search", "search"),
+        ("GET", "/collections", "list_collections"),
+        ("POST", "/collections", "create_collection"),
+        ("GET", "/collections/sentinel-2", "get_collection"),
+        ("PUT", "/collections/sentinel-2", "edit_collection"),
+        ("DELETE", "/collections/sentinel-2", "delete_collection"),
+        ("GET", "/collections/sentinel-2/items", "list_items"),
+        ("POST", "/collections/sentinel-2/items", "create_item"),
+        ("GET", "/collections/sentinel-2/items/abc", "get_item"),
+        ("DELETE", "/collections/sentinel-2/items/abc", "delete_item"),
+        ("POST", "/collections/sentinel-2/bulk_items", "bulk_create_items"),
+        ("GET", "/unknown", "other"),
+        ("POST", "/conformance", "other"),
+    ],
+)
+def test_classify_operation(method, path, expected):
+    """STAC paths map to low-cardinality operation names."""
+    assert classify_operation(method, path) == expected
 
 
 def test_metrics_endpoint_skipped_without_instrumentator(monkeypatch):

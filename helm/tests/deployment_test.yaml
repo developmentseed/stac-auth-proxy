@@ -117,3 +117,85 @@ tests:
       - lengthEqual:
           path: spec.template.spec.containers
           count: 1
+
+  - it: should default probe paths to /healthz
+    set:
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.httpGet.path
+          value: /healthz
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /healthz
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /healthz
+
+  - it: should prefix probe paths with ROOT_PATH
+    set:
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+      env.ROOT_PATH: /stac
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.httpGet.path
+          value: /stac/healthz
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /stac/healthz
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /stac/healthz
+
+  - it: should use ROOT_PATH and custom HEALTHZ_PREFIX for probe paths
+    set:
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+      env.ROOT_PATH: /stac
+      env.HEALTHZ_PREFIX: /ready
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.httpGet.path
+          value: /stac/ready
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /stac/ready
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /stac/ready
+
+  - it: should respect explicit probe httpGet.path over derivation
+    set:
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+      env.ROOT_PATH: /stac
+      startupProbe:
+        httpGet:
+          path: /custom-startup
+          port: http
+        periodSeconds: 2
+        failureThreshold: 30
+      livenessProbe:
+        httpGet:
+          path: /custom-live
+          port: http
+        periodSeconds: 60
+        failureThreshold: 3
+      readinessProbe:
+        httpGet:
+          path: /custom-ready
+          port: http
+        periodSeconds: 5
+        failureThreshold: 3
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.httpGet.path
+          value: /custom-startup
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /custom-live
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /custom-ready

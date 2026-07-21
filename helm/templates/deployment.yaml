@@ -38,15 +38,15 @@ spec:
               protocol: TCP
           {{- with .Values.startupProbe }}
           startupProbe:
-            {{- toYaml . | nindent 12 }}
+            {{- include "stac-auth-proxy.probe" (dict "context" $ "probe" .) | nindent 12 }}
           {{- end }}
           {{- with .Values.livenessProbe }}
           livenessProbe:
-            {{- toYaml . | nindent 12 }}
+            {{- include "stac-auth-proxy.probe" (dict "context" $ "probe" .) | nindent 12 }}
           {{- end }}
           {{- with .Values.readinessProbe }}
           readinessProbe:
-            {{- toYaml . | nindent 12 }}
+            {{- include "stac-auth-proxy.probe" (dict "context" $ "probe" .) | nindent 12 }}
           {{- end }}
           {{- if .Values.preStopSleepSeconds }}
           lifecycle:

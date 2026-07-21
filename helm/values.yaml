@@ -53,23 +53,22 @@ preStopSleepSeconds: 15
 # Probes
 # startupProbe disables liveness/readiness checks until startup succeeds,
 # giving the app time to wait for upstream services (e.g. during node scaling).
+# httpGet.path is derived as {ROOT_PATH}{HEALTHZ_PREFIX} when unset (default /healthz).
+# Set httpGet.path explicitly to override (e.g. path: /custom-health).
 startupProbe:
   httpGet:
-    path: /healthz
     port: http
   periodSeconds: 2
   failureThreshold: 30  # 60s total for startup
 
 livenessProbe:
   httpGet:
-    path: /healthz
     port: http
   periodSeconds: 60
   failureThreshold: 3
 
 readinessProbe:
   httpGet:
-    path: /healthz
     port: http
   periodSeconds: 5
   failureThreshold: 3
@@ -146,7 +145,9 @@ env:
   # Optional configuration
   UPSTREAM_TIMEOUT: 15.0
   WAIT_FOR_UPSTREAM: true
+  # Used with ROOT_PATH to derive probe httpGet.path when not set explicitly
   HEALTHZ_PREFIX: "/healthz"
+  # ROOT_PATH: "/stac"  # If set, probes default to {ROOT_PATH}{HEALTHZ_PREFIX}
   OIDC_DISCOVERY_INTERNAL_URL: "http://localhost:8081/.well-known/openid-configuration"
   DEFAULT_PUBLIC: false
   PRIVATE_ENDPOINTS: |

@@ -23,7 +23,7 @@ def str2list(x: str | Sequence[str]) -> Sequence[str] | str:
         if x.startswith("["):
             return json.loads(x)
         else:
-            return [s.strip() for s in x.split(",") if s.strip()]
+            return [s.strip() for s in x.split(",")]
 
     return x
 

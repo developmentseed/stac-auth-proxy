@@ -45,6 +45,13 @@ def test_settings_model_config():
     )
     assert settings.allowed_jwt_audiences == ["sfeos", "account"]
 
+    settings = Settings(
+        upstream_url="https://example.com",
+        oidc_discovery_url="https://example.com/.well-known/openid-configuration",
+        allowed_jwt_audiences="",
+    )
+    assert settings.allowed_jwt_audiences == [""]
+
 
 def test_settings_model_config_with_environment_variables(monkeypatch):
     """Test that the model config is set correctly with environment variables."""

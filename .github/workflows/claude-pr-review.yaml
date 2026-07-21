@@ -1,0 +1,17 @@
+name: Claude Auto Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+    paths-ignore:
+      - '.github/workflows/**'
+
+jobs:
+  review:
+    uses: developmentseed/.github/.github/workflows/claude-pr-review.yml@cb3a57e9fe3f9c46ab2316a8f7b11fa752903131 # main
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

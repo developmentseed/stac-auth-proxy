@@ -13,4 +13,5 @@ jobs:
       contents: read
       pull-requests: write
       id-token: write
-    secrets: inherit
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

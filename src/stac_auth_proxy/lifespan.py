@@ -1,8 +1,8 @@
 """Reusable lifespan handler for FastAPI applications."""
 
-import asyncio
 import logging
 import re
+from asyncio import sleep
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -58,7 +58,7 @@ async def check_server_health(
                 f"Upstream API {url!r} not healthy, retrying in {retry_in:.1f}s "
                 f"(attempt {attempt + 1}/{max_retries})"
             )
-            await asyncio.sleep(retry_in)
+            await sleep(retry_in)
 
     raise RuntimeError(
         f"Upstream API {url!r} failed to respond after {max_retries} attempts"

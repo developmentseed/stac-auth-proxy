@@ -30,7 +30,7 @@ async def test_check_server_health_success(source_api_server):
 async def test_check_server_health_failure():
     """Test health check failure."""
     with pytest.raises(RuntimeError) as exc_info:
-        with patch("asyncio.sleep") as mock_sleep:
+        with patch("stac_auth_proxy.lifespan.sleep") as mock_sleep:
             await check_server_health("http://localhost:9999")
     assert "failed to respond after" in str(exc_info.value)
     # Verify sleep was called with exponential backoff
@@ -50,7 +50,7 @@ async def test_check_server_health_retries_on_retryable_status(status_code):
     def handler(request):
         return httpx.Response(status_code)
 
-    with patch("asyncio.sleep") as mock_sleep:
+    with patch("stac_auth_proxy.lifespan.sleep") as mock_sleep:
         with patch(
             "httpx.AsyncClient",
             return_value=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
@@ -68,7 +68,7 @@ async def test_check_server_health_does_not_retry_on_non_retryable_status():
     def handler(request):
         return httpx.Response(404)
 
-    with patch("asyncio.sleep") as mock_sleep:
+    with patch("stac_auth_proxy.lifespan.sleep") as mock_sleep:
         with patch(
             "httpx.AsyncClient",
             return_value=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
@@ -92,7 +92,7 @@ async def test_check_server_health_recovers_from_retryable_status():
             return httpx.Response(503)
         return httpx.Response(200)
 
-    with patch("asyncio.sleep"):
+    with patch("stac_auth_proxy.lifespan.sleep"):
         with patch(
             "httpx.AsyncClient",
             return_value=httpx.AsyncClient(transport=httpx.MockTransport(handler)),

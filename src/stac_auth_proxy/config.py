@@ -145,6 +145,4 @@ class Settings(BaseSettings):
     @classmethod
     def parse_audience(cls, v) -> Sequence[str] | None:
         """Parse a comma separated string list of audiences into a list."""
-        if v:
-            return str2list(v)
-        return v
+        return str2list(v)

@@ -17,7 +17,7 @@ EndpointMethodsWithScope: TypeAlias = dict[
 _PREFIX_PATTERN = r"^/.*$"
 
 
-def str2list(x: str | Sequence[str]) -> Sequence[str] | str:
+def str2list(x: str | Sequence[str] | None) -> Sequence[str] | None:
     """Convert string to list based on , delimiter."""
     if isinstance(x, str):
         if x.startswith("["):

@@ -1,6 +1,7 @@
 """Configuration for the STAC Auth Proxy."""
 
 import importlib
+import json
 from typing import Any, Literal, Optional, Sequence, TypeAlias, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -16,12 +17,15 @@ EndpointMethodsWithScope: TypeAlias = dict[
 _PREFIX_PATTERN = r"^/.*$"
 
 
-def str2list(x: Optional[str] = None) -> Optional[Sequence[str]]:
+def str2list(x: str | Sequence[str] | None) -> Sequence[str] | None:
     """Convert string to list based on , delimiter."""
-    if x:
-        return x.replace(" ", "").split(",")
+    if isinstance(x, str):
+        if x.startswith("["):
+            return json.loads(x)
+        else:
+            return [s.strip() for s in x.split(",")]
 
-    return None
+    return x
 
 
 class _ClassInput(BaseModel):
@@ -58,7 +62,7 @@ class CorsSettings(BaseModel):
         mode="before",
     )
     @classmethod
-    def parse_list(cls, v):
+    def parse_list(cls, v) -> Sequence[str] | None:
         """Parse a comma-separated string into a list."""
         if isinstance(v, str):
             return [s.strip() for s in v.split(",") if s.strip()]
@@ -139,6 +143,6 @@ class Settings(BaseSettings):
 
     @field_validator("allowed_jwt_audiences", mode="before")
     @classmethod
-    def parse_audience(cls, v) -> Optional[Sequence[str]]:
+    def parse_audience(cls, v) -> Sequence[str] | None:
         """Parse a comma separated string list of audiences into a list."""
         return str2list(v)

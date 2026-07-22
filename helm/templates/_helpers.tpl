@@ -89,3 +89,25 @@ Validate autoscaling replica bounds when HPA is enabled
 {{- end -}}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Health endpoint path: {ROOT_PATH}{HEALTHZ_PREFIX}.
+ROOT_PATH trailing slash is trimmed; HEALTHZ_PREFIX defaults to /healthz.
+*/}}
+{{- define "stac-auth-proxy.healthzPath" -}}
+{{- $rootPath := dig "ROOT_PATH" "" .Values.env | trimSuffix "/" -}}
+{{- $healthzPrefix := dig "HEALTHZ_PREFIX" "/healthz" .Values.env -}}
+{{- printf "%s%s" $rootPath $healthzPrefix -}}
+{{- end -}}
+
+{{/*
+Render a probe, deriving httpGet.path from ROOT_PATH + HEALTHZ_PREFIX when unset.
+Usage: include "stac-auth-proxy.probe" (dict "context" . "probe" .Values.startupProbe)
+*/}}
+{{- define "stac-auth-proxy.probe" -}}
+{{- $result := deepCopy .probe -}}
+{{- if and $result.httpGet (not (hasKey $result.httpGet "path")) -}}
+{{- $_ := set $result.httpGet "path" (include "stac-auth-proxy.healthzPath" .context) -}}
+{{- end -}}
+{{- toYaml $result -}}
+{{- end -}}

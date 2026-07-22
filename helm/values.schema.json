@@ -67,7 +67,7 @@
         },
         "ROOT_PATH": {
           "type": "string",
-          "description": "Path prefix for the proxy API",
+          "description": "Path prefix for the proxy API. Also prefixes probe httpGet.path when those paths are unset.",
           "default": ""
         },
         "OIDC_DISCOVERY_URL": {
@@ -275,17 +275,17 @@
     "startupProbe": {
       "type": "object",
       "additionalProperties": true,
-      "description": "Startup probe configuration. Disables liveness/readiness probes until startup succeeds."
+      "description": "Startup probe configuration. Disables liveness/readiness probes until startup succeeds. httpGet.path defaults to {ROOT_PATH}{HEALTHZ_PREFIX} when unset."
     },
     "livenessProbe": {
       "type": "object",
       "additionalProperties": true,
-      "description": "Liveness probe configuration. Determines if the container should be restarted."
+      "description": "Liveness probe configuration. Determines if the container should be restarted. httpGet.path defaults to {ROOT_PATH}{HEALTHZ_PREFIX} when unset."
     },
     "readinessProbe": {
       "type": "object",
       "additionalProperties": true,
-      "description": "Readiness probe configuration. Determines if the container should receive traffic."
+      "description": "Readiness probe configuration. Determines if the container should receive traffic. httpGet.path defaults to {ROOT_PATH}{HEALTHZ_PREFIX} when unset."
     },
     "nodeSelector": {
       "type": "object",

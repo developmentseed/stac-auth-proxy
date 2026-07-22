@@ -95,8 +95,8 @@ Health endpoint path: {ROOT_PATH}{HEALTHZ_PREFIX}.
 ROOT_PATH trailing slash is trimmed; HEALTHZ_PREFIX defaults to /healthz.
 */}}
 {{- define "stac-auth-proxy.healthzPath" -}}
-{{- $rootPath := dig "ROOT_PATH" "" .Values.env | default "" | trimSuffix "/" -}}
-{{- $healthzPrefix := dig "HEALTHZ_PREFIX" "/healthz" .Values.env | default "/healthz" -}}
+{{- $rootPath := dig "ROOT_PATH" "" .Values.env | trimSuffix "/" -}}
+{{- $healthzPrefix := dig "HEALTHZ_PREFIX" "/healthz" .Values.env -}}
 {{- printf "%s%s" $rootPath $healthzPrefix -}}
 {{- end -}}
 
@@ -105,21 +105,9 @@ Render a probe, deriving httpGet.path from ROOT_PATH + HEALTHZ_PREFIX when unset
 Usage: include "stac-auth-proxy.probe" (dict "context" . "probe" .Values.startupProbe)
 */}}
 {{- define "stac-auth-proxy.probe" -}}
-{{- $result := dict -}}
-{{- range $k, $v := .probe -}}
-{{- if ne $k "httpGet" -}}
-{{- $_ := set $result $k $v -}}
-{{- end -}}
-{{- end -}}
-{{- if .probe.httpGet -}}
-{{- $httpGet := dict -}}
-{{- range $k, $v := .probe.httpGet -}}
-{{- $_ := set $httpGet $k $v -}}
-{{- end -}}
-{{- if not (hasKey $httpGet "path") -}}
-{{- $_ := set $httpGet "path" (include "stac-auth-proxy.healthzPath" .context) -}}
-{{- end -}}
-{{- $_ := set $result "httpGet" $httpGet -}}
+{{- $result := deepCopy .probe -}}
+{{- if and $result.httpGet (not (hasKey $result.httpGet "path")) -}}
+{{- $_ := set $result.httpGet "path" (include "stac-auth-proxy.healthzPath" .context) -}}
 {{- end -}}
 {{- toYaml $result -}}
 {{- end -}}

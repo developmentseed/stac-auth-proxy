@@ -92,7 +92,11 @@ def test_metrics_endpoint_returns_prometheus_output():
     assert response.headers["content-type"].startswith("text/plain")
     assert "# HELP" in response.text
     assert (
-        'stac_operation_duration_seconds_count{operation="list_collections",status="2xx"}'
+        'http_requests_total{method="GET",operation="list_collections",status="2xx"}'
+        in response.text
+    )
+    assert (
+        'http_request_duration_seconds_count{method="GET",operation="list_collections"}'
         in response.text
     )
 
@@ -100,7 +104,7 @@ def test_metrics_endpoint_returns_prometheus_output():
 @pytest.mark.parametrize(
     ("method", "path", "expected"),
     [
-        ("GET", "/", "landing_page"),
+        ("GET", "/", "landing"),
         ("GET", "/conformance", "conformance"),
         ("GET", "/search", "search"),
         ("POST", "/search", "search"),
@@ -113,9 +117,9 @@ def test_metrics_endpoint_returns_prometheus_output():
         ("POST", "/collections/sentinel-2/items", "create_item"),
         ("GET", "/collections/sentinel-2/items/abc", "get_item"),
         ("DELETE", "/collections/sentinel-2/items/abc", "delete_item"),
-        ("POST", "/collections/sentinel-2/bulk_items", "bulk_create_items"),
-        ("GET", "/unknown", "other"),
-        ("POST", "/conformance", "other"),
+        ("POST", "/collections/sentinel-2/bulk_items", "bulk"),
+        ("GET", "/unknown", "unknown"),
+        ("POST", "/conformance", "unknown"),
     ],
 )
 def test_classify_operation(method, path, expected):

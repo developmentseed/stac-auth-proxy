@@ -6,6 +6,7 @@ authentication, authorization, and proxying of requests to some internal STAC AP
 """
 
 import logging
+import re
 from typing import Any, Optional
 
 import httpx
@@ -16,6 +17,7 @@ from starlette_cramjam.middleware import CompressionMiddleware
 from .config import Settings
 from .handlers import HealthzHandler, ReverseProxyHandler, SwaggerUI
 from .lifespan import build_lifespan
+from .metrics import METRICS_AVAILABLE, instrument_app
 from .middleware import (
     AddProcessTimeHeaderMiddleware,
     AuthenticationExtensionMiddleware,
@@ -84,6 +86,14 @@ def configure_app(
             HealthzHandler(upstream_url=str(settings.upstream_url)).router,
             prefix=settings.healthz_prefix,
         )
+
+    if METRICS_AVAILABLE and r"^/_mgmt/metrics" in settings.public_endpoints:
+        excluded_handlers = [r"/_mgmt/"]
+        if settings.healthz_prefix:
+            excluded_handlers.append(re.escape(settings.healthz_prefix))
+        instrument_app(app, excluded_handlers=excluded_handlers)
+    else:
+        settings.public_endpoints.pop(r"^/_mgmt/metrics", None)
 
     #
     # Middleware (order is important, last added = first to run)

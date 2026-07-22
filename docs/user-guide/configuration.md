@@ -160,9 +160,12 @@ The application is configurable via environment variables.
       "^/docs/oauth2-redirect": ["GET"],
       "^/healthz": ["GET"],
       "^/_mgmt/ping": ["GET"],
-      "^/_mgmt/health": ["GET"]
+      "^/_mgmt/health": ["GET"],
+      "^/_mgmt/metrics": ["GET"]
     }
     ```
+    > [!NOTE]
+    > `/_mgmt/metrics` is only served when the `metrics` extra is installed (`pip install stac-auth-proxy[metrics]`); otherwise it's automatically dropped from `PUBLIC_ENDPOINTS` at startup.
 
 ### `ENABLE_AUTHENTICATION_EXTENSION`
 

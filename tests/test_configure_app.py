@@ -1,8 +1,12 @@
 """Tests for configuring an external FastAPI application."""
 
+import pytest
 from fastapi import APIRouter, FastAPI
+from fastapi.testclient import TestClient
 
+import stac_auth_proxy.app as app_module
 from stac_auth_proxy import Settings, configure_app
+from stac_auth_proxy.metrics import classify_operation
 
 
 def get_flattened_routes(app: FastAPI | APIRouter, prefix=""):
@@ -65,3 +69,76 @@ def test_configure_app_excludes_proxy_route():
     routes = get_flattened_routes(app)
     assert settings.healthz_prefix in routes
     assert "/{path:path}" not in routes
+
+
+def test_metrics_endpoint_returns_prometheus_output():
+    """Metrics returns Prometheus exposition format when enabled in PUBLIC_ENDPOINTS."""
+    app = FastAPI()
+    settings = Settings(
+        upstream_url="https://example.com",
+        oidc_discovery_url="https://example.com/.well-known/openid-configuration",
+        wait_for_upstream=False,
+        check_conformance=False,
+        default_public=True,
+    )
+
+    configure_app(app, settings)
+    app.add_api_route("/collections", lambda: {"collections": []}, methods=["GET"])
+    client = TestClient(app)
+    assert client.get("/collections").status_code == 200
+    response = client.get("/_mgmt/metrics")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")
+    assert "# HELP" in response.text
+    assert (
+        'http_requests_total{method="GET",operation="list_collections",status="2xx"}'
+        in response.text
+    )
+    assert (
+        'http_request_duration_seconds_count{method="GET",operation="list_collections"}'
+        in response.text
+    )
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "expected"),
+    [
+        ("GET", "/", "landing"),
+        ("GET", "/conformance", "conformance"),
+        ("GET", "/search", "search"),
+        ("POST", "/search", "search"),
+        ("GET", "/collections", "list_collections"),
+        ("POST", "/collections", "create_collection"),
+        ("GET", "/collections/sentinel-2", "get_collection"),
+        ("PUT", "/collections/sentinel-2", "edit_collection"),
+        ("DELETE", "/collections/sentinel-2", "delete_collection"),
+        ("GET", "/collections/sentinel-2/items", "list_items"),
+        ("POST", "/collections/sentinel-2/items", "create_item"),
+        ("GET", "/collections/sentinel-2/items/abc", "get_item"),
+        ("DELETE", "/collections/sentinel-2/items/abc", "delete_item"),
+        ("POST", "/collections/sentinel-2/bulk_items", "bulk"),
+        ("GET", "/unknown", "unknown"),
+        ("POST", "/conformance", "unknown"),
+    ],
+)
+def test_classify_operation(method, path, expected):
+    """STAC paths map to low-cardinality operation names."""
+    assert classify_operation(method, path) == expected
+
+
+def test_metrics_endpoint_skipped_without_instrumentator(monkeypatch):
+    """Metrics route and public endpoint are omitted when the extra is absent."""
+    monkeypatch.setattr(app_module, "METRICS_AVAILABLE", False)
+    app = FastAPI()
+    settings = Settings(
+        upstream_url="https://example.com",
+        oidc_discovery_url="https://example.com/.well-known/openid-configuration",
+        wait_for_upstream=False,
+        check_conformance=False,
+    )
+
+    configure_app(app, settings)
+
+    assert "/_mgmt/metrics" not in get_flattened_routes(app)
+    assert r"^/_mgmt/metrics" not in settings.public_endpoints

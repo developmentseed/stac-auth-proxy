@@ -53,6 +53,8 @@ docker run -p 8000:8000 \
    ```bash
    pip install stac-auth-proxy
    ```
+   > [!TIP]
+   > To expose a Prometheus `/_mgmt/metrics` endpoint, install the `metrics` extra instead: `pip install stac-auth-proxy[metrics]`.
 2. Set environment variables:
    ```bash
    export UPSTREAM_URL=https://your-stac-api.com/stac

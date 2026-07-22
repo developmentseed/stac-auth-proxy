@@ -12,17 +12,16 @@ from typing import Any, Optional
 import httpx
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
-
-try:
-    from prometheus_fastapi_instrumentator import Instrumentator
-except ImportError:
-    Instrumentator = None
 from starlette_cramjam.middleware import CompressionMiddleware
 
 from .config import Settings
 from .handlers import HealthzHandler, ReverseProxyHandler, SwaggerUI
 from .lifespan import build_lifespan
-from .metrics import stac_operation_instrumentation
+from .metrics import (
+    METRICS_AVAILABLE,
+    Instrumentator,
+    stac_operation_instrumentation,
+)
 from .middleware import (
     AddProcessTimeHeaderMiddleware,
     AuthenticationExtensionMiddleware,
@@ -92,13 +91,15 @@ def configure_app(
             prefix=settings.healthz_prefix,
         )
 
-    if Instrumentator and r"^/_mgmt/metrics" in settings.public_endpoints:
+    if METRICS_AVAILABLE and r"^/_mgmt/metrics" in settings.public_endpoints:
         excluded_handlers = [r"/_mgmt/"]
         if settings.healthz_prefix:
             excluded_handlers.append(re.escape(settings.healthz_prefix))
-        Instrumentator(excluded_handlers=excluded_handlers).instrument(app).add(
+        Instrumentator(excluded_handlers=excluded_handlers).add(
             stac_operation_instrumentation
-        ).expose(app, endpoint="/_mgmt/metrics", include_in_schema=False)
+        ).instrument(app).expose(
+            app, endpoint="/_mgmt/metrics", include_in_schema=False
+        )
     else:
         settings.public_endpoints.pop(r"^/_mgmt/metrics", None)
 

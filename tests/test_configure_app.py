@@ -79,18 +79,22 @@ def test_metrics_endpoint_returns_prometheus_output():
         oidc_discovery_url="https://example.com/.well-known/openid-configuration",
         wait_for_upstream=False,
         check_conformance=False,
+        default_public=True,
     )
 
     configure_app(app, settings)
-    client = TestClient(app)
     app.add_api_route("/collections", lambda: {"collections": []}, methods=["GET"])
-    client.get("/collections")
+    client = TestClient(app)
+    assert client.get("/collections").status_code == 200
     response = client.get("/_mgmt/metrics")
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/plain")
     assert "# HELP" in response.text
-    assert "stac_operation_duration_seconds" in response.text
+    assert (
+        'stac_operation_duration_seconds_count{operation="list_collections",status="2xx"}'
+        in response.text
+    )
 
 
 @pytest.mark.parametrize(
@@ -121,7 +125,7 @@ def test_classify_operation(method, path, expected):
 
 def test_metrics_endpoint_skipped_without_instrumentator(monkeypatch):
     """Metrics route and public endpoint are omitted when the extra is absent."""
-    monkeypatch.setattr(app_module, "Instrumentator", None)
+    monkeypatch.setattr(app_module, "METRICS_AVAILABLE", False)
     app = FastAPI()
     settings = Settings(
         upstream_url="https://example.com",

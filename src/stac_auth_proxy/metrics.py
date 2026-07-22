@@ -3,6 +3,8 @@
 import re
 from typing import Any, Callable, Optional
 
+METRICS_AVAILABLE = False
+Instrumentator: Any = None
 stac_operation_instrumentation: Optional[Callable[[Any], None]] = None
 
 OPERATIONS = [  # ordered; first match wins
@@ -44,6 +46,7 @@ def classify_operation(method: str, path: str) -> str:
 
 try:
     from prometheus_client import Histogram
+    from prometheus_fastapi_instrumentator import Instrumentator as _Instrumentator
     from prometheus_fastapi_instrumentator.metrics import Info
 
     _DURATION = Histogram(
@@ -59,7 +62,9 @@ try:
             status=info.modified_status,
         ).observe(info.modified_duration)
 
+    Instrumentator = _Instrumentator
     stac_operation_instrumentation = _stac_operation_instrumentation
+    METRICS_AVAILABLE = True
 
 except ImportError:
     pass

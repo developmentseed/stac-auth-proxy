@@ -3,7 +3,7 @@
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 from urllib.parse import ParseResult, urlparse, urlunparse
 
 from starlette.datastructures import Headers
@@ -27,8 +27,17 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
     app: ASGIApp
     upstream_url: str
     root_path: Optional[str] = None
+    root_path_skip_prefixes: Sequence[str] = ()
 
     json_content_type_expr: str = r"application/(geo\+)?json"
+
+    def __post_init__(self) -> None:
+        """Normalize skip prefixes, dropping empty entries and trailing slashes."""
+        self.root_path_skip_prefixes = tuple(
+            prefix.rstrip("/")
+            for prefix in self.root_path_skip_prefixes
+            if prefix.rstrip("/")
+        )
 
     def should_transform_response(self, request: Request, scope: Scope) -> bool:
         """Only transform responses with JSON content type."""
@@ -69,6 +78,21 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
             return
 
         parsed_link = urlparse(link["href"])
+
+        # Leave links to sibling services untouched. On a shared-host deployment
+        # (e.g. this proxy at /stac and a tiler at /raster on the same hostname),
+        # same-host links to other services must not be treated as local to the
+        # upstream API and must not have the root_path prepended.
+        if parsed_link.netloc == request_url.netloc and any(
+            parsed_link.path == prefix or parsed_link.path.startswith(f"{prefix}/")
+            for prefix in self.root_path_skip_prefixes
+        ):
+            logger.debug(
+                "Ignoring link %s because its path matches a configured skip prefix (%s)",
+                link["href"],
+                self.root_path_skip_prefixes,
+            )
+            return
 
         if parsed_link.netloc not in [
             request_url.netloc,

@@ -92,6 +92,17 @@ The application is configurable via environment variables.
     > [!NOTE]
     > This is independent of the upstream API's path. The proxy will handle removing this prefix from incoming requests and adding it to outgoing links.
 
+### `ROOT_PATH_SKIP_PREFIXES`
+
+: Path prefixes of sibling services on the proxy's hostname whose links must not be rewritten
+
+    - **Type:** comma-separated list of path prefixes
+    - **Required:** No, defaults to `''` (rewrite all same-host links)
+    - **Example:** `/raster,/vector,/browser`
+
+    > [!NOTE]
+    > When the proxy shares a hostname with other services (e.g. the proxy at `/stac` alongside a tiler at `/raster`), STAC responses may contain links to those sibling services on the same host. By default the proxy cannot distinguish these from its own links and would prepend `ROOT_PATH` to them, breaking them. List the sibling services' path prefixes here to leave such links untouched. Matching is path-segment-aware (`/raster` matches `/raster` and `/raster/...`, but not `/rasterfoo`).
+
 ## Authentication
 
 ### `OIDC_DISCOVERY_URL`

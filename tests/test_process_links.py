@@ -511,6 +511,134 @@ def test_transform_upstream_links_nested_objects():
 
 
 @pytest.mark.parametrize(
+    "root_path_skip_prefixes,input_links,expected_links",
+    [
+        # Same-host links to sibling services are skipped; STAC links still rewritten
+        (
+            ["/raster", "/vector"],
+            [
+                {"rel": "self", "href": "http://proxy.example.com/collections"},
+                {
+                    "rel": "xyz",
+                    "href": "http://proxy.example.com/raster/collections/c/items/i/{z}/{x}/{y}",
+                },
+                {
+                    "rel": "tilejson",
+                    "href": "http://proxy.example.com/vector/tilejson.json",
+                },
+            ],
+            [
+                "http://proxy.example.com/stac/collections",
+                "http://proxy.example.com/raster/collections/c/items/i/{z}/{x}/{y}",
+                "http://proxy.example.com/vector/tilejson.json",
+            ],
+        ),
+        # Default (no skip prefixes): same-host sibling link gets root_path (current behavior)
+        (
+            (),
+            [
+                {"rel": "xyz", "href": "http://proxy.example.com/raster/tiles"},
+            ],
+            [
+                "http://proxy.example.com/stac/raster/tiles",
+            ],
+        ),
+        # Matching is path-segment-aware: "/raster" must not match "/rasterfoo"
+        (
+            ["/raster"],
+            [
+                {"rel": "self", "href": "http://proxy.example.com/rasterfoo/tiles"},
+                {"rel": "exact", "href": "http://proxy.example.com/raster"},
+                {"rel": "child", "href": "http://proxy.example.com/raster/tiles"},
+            ],
+            [
+                "http://proxy.example.com/stac/rasterfoo/tiles",
+                "http://proxy.example.com/raster",
+                "http://proxy.example.com/raster/tiles",
+            ],
+        ),
+        # Trailing slashes on configured prefixes are normalized
+        (
+            ["/raster/"],
+            [
+                {"rel": "xyz", "href": "http://proxy.example.com/raster/tiles"},
+                {"rel": "exact", "href": "http://proxy.example.com/raster"},
+            ],
+            [
+                "http://proxy.example.com/raster/tiles",
+                "http://proxy.example.com/raster",
+            ],
+        ),
+        # Skip prefixes only apply to the request host; other hosts are untouched anyway
+        (
+            ["/raster"],
+            [
+                {"rel": "xyz", "href": "http://other.example.com/raster/tiles"},
+            ],
+            [
+                "http://other.example.com/raster/tiles",
+            ],
+        ),
+    ],
+)
+def test_transform_with_root_path_skip_prefixes(
+    root_path_skip_prefixes, input_links, expected_links
+):
+    """Test that same-host links matching a skip prefix are not rewritten."""
+    middleware = ProcessLinksMiddleware(
+        app=None,
+        upstream_url="http://upstream.example.com",
+        root_path="/stac",
+        root_path_skip_prefixes=root_path_skip_prefixes,
+    )
+    request_scope = {
+        "type": "http",
+        "path": "/test",
+        "headers": [
+            (b"host", b"proxy.example.com"),
+            (b"content-type", b"application/json"),
+        ],
+    }
+
+    data = {"links": input_links}
+    transformed = middleware.transform_json(data, Request(request_scope))
+
+    for i, expected in enumerate(expected_links):
+        assert transformed["links"][i]["href"] == expected
+
+
+def test_transform_with_root_path_skip_prefixes_and_forwarded_headers():
+    """Test that skip prefixes apply to the forwarded (client-facing) host."""
+    middleware = ProcessLinksMiddleware(
+        app=None,
+        upstream_url="http://upstream.example.com",
+        root_path="/stac",
+        root_path_skip_prefixes=["/raster"],
+    )
+    request_scope = {
+        "type": "http",
+        "path": "/test",
+        "headers": [
+            (b"host", b"internal-proxy:8080"),
+            (b"content-type", b"application/json"),
+            (b"x-forwarded-host", b"api.example.com"),
+            (b"x-forwarded-proto", b"https"),
+        ],
+    }
+
+    data = {
+        "links": [
+            {"rel": "self", "href": "https://api.example.com/collections"},
+            {"rel": "xyz", "href": "https://api.example.com/raster/tiles"},
+        ]
+    }
+    transformed = middleware.transform_json(data, Request(request_scope))
+
+    assert transformed["links"][0]["href"] == "https://api.example.com/stac/collections"
+    assert transformed["links"][1]["href"] == "https://api.example.com/raster/tiles"
+
+
+@pytest.mark.parametrize(
     "headers,expected_base_url",
     [
         # X-Forwarded-* headers

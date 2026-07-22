@@ -79,6 +79,7 @@ class Settings(BaseSettings):
     allowed_jwt_audiences: Optional[Sequence[str]] = None
 
     root_path: str = ""
+    root_path_skip_prefixes: Sequence[str] = ()
     override_host: bool = True
     healthz_prefix: str = Field(pattern=_PREFIX_PATTERN, default="/healthz")
     upstream_timeout: float = 15.0
@@ -147,3 +148,20 @@ class Settings(BaseSettings):
     def parse_audience(cls, v) -> Sequence[str] | None:
         """Parse a comma separated string list of audiences into a list."""
         return str2list(v)
+
+    @field_validator("root_path_skip_prefixes", mode="before")
+    @classmethod
+    def parse_root_path_skip_prefixes(cls, v) -> Sequence[str] | None:
+        """Parse a comma separated string of path prefixes into a normalized list."""
+        values = str2list(v)
+        if values is None:
+            return values
+        prefixes = []
+        for value in values:
+            prefix = value.strip().rstrip("/")
+            if not prefix:
+                continue
+            if not prefix.startswith("/"):
+                raise ValueError(f"Path prefix {value!r} must start with '/'")
+            prefixes.append(prefix)
+        return prefixes

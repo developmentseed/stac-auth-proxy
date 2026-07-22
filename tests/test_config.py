@@ -1,5 +1,7 @@
 """Test config classes."""
 
+import pytest
+
 from stac_auth_proxy.config import CorsSettings, Settings
 
 
@@ -51,6 +53,37 @@ def test_settings_model_config():
         allowed_jwt_audiences="",
     )
     assert settings.allowed_jwt_audiences == [""]
+
+
+def test_root_path_skip_prefixes():
+    """Test parsing and normalization of root_path_skip_prefixes."""
+    common_kwargs = {
+        "upstream_url": "https://example.com",
+        "oidc_discovery_url": "https://example.com/.well-known/openid-configuration",
+    }
+
+    # Defaults to empty (feature disabled)
+    settings = Settings(**common_kwargs)
+    assert list(settings.root_path_skip_prefixes) == []
+
+    # Comma-separated string, with trailing slashes normalized
+    settings = Settings(
+        **common_kwargs,
+        root_path_skip_prefixes="/raster/,/vector,/browser",
+    )
+    assert list(settings.root_path_skip_prefixes) == ["/raster", "/vector", "/browser"]
+
+    # List input
+    settings = Settings(**common_kwargs, root_path_skip_prefixes=["/raster"])
+    assert list(settings.root_path_skip_prefixes) == ["/raster"]
+
+    # Empty entries are dropped
+    settings = Settings(**common_kwargs, root_path_skip_prefixes="/raster,,")
+    assert list(settings.root_path_skip_prefixes) == ["/raster"]
+
+    # Prefixes must start with a slash
+    with pytest.raises(ValueError):
+        Settings(**common_kwargs, root_path_skip_prefixes="raster")
 
 
 def test_settings_model_config_with_environment_variables(monkeypatch):

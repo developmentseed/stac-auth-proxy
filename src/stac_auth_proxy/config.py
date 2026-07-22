@@ -160,6 +160,8 @@ class Settings(BaseSettings):
         for value in values:
             prefix = value.strip().rstrip("/")
             if not prefix:
+                if value.strip():
+                    raise ValueError(f"Path prefix {value!r} would match every path")
                 continue
             if not prefix.startswith("/"):
                 raise ValueError(f"Path prefix {value!r} must start with '/'")

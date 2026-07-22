@@ -85,6 +85,10 @@ def test_root_path_skip_prefixes():
     with pytest.raises(ValueError):
         Settings(**common_kwargs, root_path_skip_prefixes="raster")
 
+    # A bare slash would skip every same-host link
+    with pytest.raises(ValueError):
+        Settings(**common_kwargs, root_path_skip_prefixes="/")
+
 
 def test_settings_model_config_with_environment_variables(monkeypatch):
     """Test that the model config is set correctly with environment variables."""

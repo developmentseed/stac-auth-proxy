@@ -638,6 +638,36 @@ def test_transform_with_root_path_skip_prefixes_and_forwarded_headers():
     assert transformed["links"][1]["href"] == "https://api.example.com/raster/tiles"
 
 
+def test_transform_upstream_netloc_links_ignore_skip_prefixes():
+    """Skip prefixes only apply to client-facing links, not upstream-host links."""
+    middleware = ProcessLinksMiddleware(
+        app=None,
+        upstream_url="http://upstream.example.com",
+        root_path="/stac",
+        root_path_skip_prefixes=["/raster"],
+    )
+    request_scope = {
+        "type": "http",
+        "path": "/test",
+        "headers": [
+            (b"host", b"proxy.example.com"),
+            (b"content-type", b"application/json"),
+        ],
+    }
+
+    # A link on the upstream host is rewritten to the proxy host with root_path,
+    # even when its path matches a skip prefix: skip prefixes describe sibling
+    # services on the proxy's public hostname, not paths behind the upstream.
+    data = {
+        "links": [{"rel": "xyz", "href": "http://upstream.example.com/raster/tiles"}]
+    }
+    transformed = middleware.transform_json(data, Request(request_scope))
+
+    assert (
+        transformed["links"][0]["href"] == "http://proxy.example.com/stac/raster/tiles"
+    )
+
+
 @pytest.mark.parametrize(
     "headers,expected_base_url",
     [

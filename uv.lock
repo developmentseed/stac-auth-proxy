@@ -2075,7 +2075,7 @@ requires-dist = [
     { name = "mkdocs-material", extras = ["imaging"], marker = "extra == 'docs'", specifier = ">=9.6.16" },
     { name = "mkdocstrings", extras = ["python"], marker = "extra == 'docs'", specifier = ">=0.30.0" },
     { name = "prometheus-fastapi-instrumentator", marker = "extra == 'metrics'", specifier = ">=8.0.2" },
-    { name = "pydantic-settings", specifier = ">=2.6.1" },
+    { name = "pydantic-settings", specifier = ">=2.7.0" },
     { name = "pyjwt", specifier = ">=2.10.1" },
     { name = "starlette", specifier = ">=1.0.1" },
     { name = "starlette-cramjam", specifier = ">=0.4.0" },

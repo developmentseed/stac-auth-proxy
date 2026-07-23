@@ -2,11 +2,11 @@
 
 import importlib
 import json
-from typing import Any, Literal, Optional, Sequence, TypeAlias, Union
+from typing import Annotated, Any, Literal, Optional, Sequence, TypeAlias, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic.networks import HttpUrl
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 METHODS = Literal["GET", "POST", "PUT", "DELETE", "PATCH"]
 EndpointMethods: TypeAlias = dict[str, Sequence[METHODS]]
@@ -79,6 +79,9 @@ class Settings(BaseSettings):
     allowed_jwt_audiences: Optional[Sequence[str]] = None
 
     root_path: str = ""
+    # NoDecode: pydantic-settings JSON-decodes Sequence fields before validators,
+    # which rejects the documented comma-separated env form (/raster,/vector).
+    root_path_skip_prefixes: Annotated[Sequence[str], NoDecode] = ()
     override_host: bool = True
     healthz_prefix: str = Field(pattern=_PREFIX_PATTERN, default="/healthz")
     upstream_timeout: float = 15.0
@@ -147,3 +150,29 @@ class Settings(BaseSettings):
     def parse_audience(cls, v) -> Sequence[str] | None:
         """Parse a comma separated string list of audiences into a list."""
         return str2list(v)
+
+    @field_validator("root_path_skip_prefixes", mode="before")
+    @classmethod
+    def parse_root_path_skip_prefixes(cls, v) -> Sequence[str]:
+        """
+        Parse and normalize path prefixes that should not get ``ROOT_PATH`` added.
+
+        Accepts a comma-separated string or sequence. Drops empty entries and
+        trailing slashes. Each prefix must start with ``/``. A bare ``/`` is
+        rejected because it would match every path.
+        """
+        values = str2list(v)
+        if not values:
+            return ()
+
+        prefixes: list[str] = []
+        for value in values:
+            prefix = value.strip().rstrip("/")
+            if not prefix:
+                if value.strip():
+                    raise ValueError(f"Path prefix {value!r} would match every path")
+                continue
+            if not prefix.startswith("/"):
+                raise ValueError(f"Path prefix {value!r} must start with '/'")
+            prefixes.append(prefix)
+        return tuple(prefixes)

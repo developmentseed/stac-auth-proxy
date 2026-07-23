@@ -70,6 +70,11 @@
           "description": "Path prefix for the proxy API. Also prefixes probe httpGet.path when those paths are unset.",
           "default": ""
         },
+        "ROOT_PATH_SKIP_PREFIXES": {
+          "type": "string",
+          "description": "Comma-separated path prefixes that should not get ROOT_PATH added (e.g. /raster,/vector,/browser when those apps share the same host).",
+          "default": ""
+        },
         "OIDC_DISCOVERY_URL": {
           "type": "string",
           "pattern": "^https?://.+",

@@ -175,6 +175,7 @@ def configure_app(
             ProcessLinksMiddleware,
             upstream_url=str(settings.upstream_url),
             root_path=settings.root_path,
+            root_path_skip_prefixes=settings.root_path_skip_prefixes,
         )
 
     if settings.root_path:

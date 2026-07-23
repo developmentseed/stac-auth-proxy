@@ -39,6 +39,8 @@ The proxy can be optionally served from a non-root path (e.g., `/api/v1`). Addit
 - Update the OpenAPI specification to include the `ROOT_PATH` in the servers field
 - Handle requests that don't match the `ROOT_PATH` with a 404 response
 
+If other apps share the same host (e.g. the proxy at `/stac` and a tiler at `/raster`), their links would also get `ROOT_PATH` added by mistake. Set `ROOT_PATH_SKIP_PREFIXES` to those paths (e.g. `/raster`) so the proxy leaves them alone.
+
 ## Non-OIDC Workaround
 
 If the upstream server utilizes RS256 JWTs but does not utilize a proper OIDC server, the proxy can be configured to work around this by setting the `OIDC_DISCOVERY_URL` to a statically-hosted OIDC discovery document that points to a valid JWKS endpoint.

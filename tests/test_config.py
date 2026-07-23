@@ -1,5 +1,7 @@
 """Test config classes."""
 
+import pytest
+
 from stac_auth_proxy.config import CorsSettings, Settings
 
 
@@ -51,6 +53,53 @@ def test_settings_model_config():
         allowed_jwt_audiences="",
     )
     assert settings.allowed_jwt_audiences == [""]
+
+
+def test_root_path_skip_prefixes():
+    """Test parsing and normalization of root_path_skip_prefixes."""
+    common_kwargs = {
+        "upstream_url": "https://example.com",
+        "oidc_discovery_url": "https://example.com/.well-known/openid-configuration",
+    }
+
+    # Defaults to empty (feature disabled)
+    settings = Settings(**common_kwargs)
+    assert list(settings.root_path_skip_prefixes) == []
+
+    # Comma-separated string, with trailing slashes normalized
+    settings = Settings(
+        **common_kwargs,
+        root_path_skip_prefixes="/raster/,/vector,/browser",
+    )
+    assert list(settings.root_path_skip_prefixes) == ["/raster", "/vector", "/browser"]
+
+    # List input
+    settings = Settings(**common_kwargs, root_path_skip_prefixes=["/raster"])
+    assert list(settings.root_path_skip_prefixes) == ["/raster"]
+
+    # Empty entries are dropped
+    settings = Settings(**common_kwargs, root_path_skip_prefixes="/raster,,")
+    assert list(settings.root_path_skip_prefixes) == ["/raster"]
+
+    # Prefixes must start with a slash
+    with pytest.raises(ValueError):
+        Settings(**common_kwargs, root_path_skip_prefixes="raster")
+
+    # A bare "/" would mean "skip everything" — reject it
+    with pytest.raises(ValueError):
+        Settings(**common_kwargs, root_path_skip_prefixes="/")
+
+
+def test_root_path_skip_prefixes_from_environment(monkeypatch):
+    """Comma-separated env value (e.g. /raster,/vector) must load as a list."""
+    monkeypatch.setenv("UPSTREAM_URL", "https://example.com")
+    monkeypatch.setenv(
+        "OIDC_DISCOVERY_URL", "https://example.com/.well-known/openid-configuration"
+    )
+    monkeypatch.setenv("ROOT_PATH_SKIP_PREFIXES", "/raster,/vector,/browser")
+
+    settings = Settings()
+    assert list(settings.root_path_skip_prefixes) == ["/raster", "/vector", "/browser"]
 
 
 def test_settings_model_config_with_environment_variables(monkeypatch):

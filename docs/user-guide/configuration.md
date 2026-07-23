@@ -92,6 +92,21 @@ The application is configurable via environment variables.
     > [!NOTE]
     > This is independent of the upstream API's path. The proxy will handle removing this prefix from incoming requests and adding it to outgoing links.
 
+### `ROOT_PATH_SKIP_PREFIXES`
+
+: Path prefixes that should **not** get `ROOT_PATH` added
+
+    - **Type:** comma-separated list of path prefixes
+    - **Required:** No, defaults to `''` (add `ROOT_PATH` to all same-host links)
+    - **Example:** `/raster,/vector,/browser`
+
+    > [!NOTE]
+    > The proxy usually **adds** `ROOT_PATH` to same-host links that do not have it yet (e.g. `/collections` → `/stac/collections`). That is intentional: upstream often returns links without `ROOT_PATH`.
+    >
+    > The problem is when other apps live on the same host (e.g. a tiler at `/raster`). Their links look like same-host links too, so the proxy would turn `/raster/...` into `/stac/raster/...` and break them. List those other apps' path prefixes here so they are left alone. (If a link still uses the upstream hostname, the proxy can still rewrite the host to the public one; only the `ROOT_PATH` add is skipped.)
+    >
+    > Matching is by path segment: `/raster` matches `/raster` and `/raster/...`, but not `/rasterfoo`.
+
 ## Authentication
 
 ### `OIDC_DISCOVERY_URL`

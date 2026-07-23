@@ -511,6 +511,111 @@ def test_transform_upstream_links_nested_objects():
 
 
 @pytest.mark.parametrize(
+    "root_path_skip_prefixes,input_links,expected_links",
+    [
+        # Skip-listed paths stay put; normal STAC paths still get /stac
+        (
+            ["/raster", "/vector"],
+            [
+                {"rel": "self", "href": "http://proxy.example.com/collections"},
+                {
+                    "rel": "xyz",
+                    "href": "http://proxy.example.com/raster/collections/c/items/i/{z}/{x}/{y}",
+                },
+                {
+                    "rel": "tilejson",
+                    "href": "http://proxy.example.com/vector/tilejson.json",
+                },
+            ],
+            [
+                "http://proxy.example.com/stac/collections",
+                "http://proxy.example.com/raster/collections/c/items/i/{z}/{x}/{y}",
+                "http://proxy.example.com/vector/tilejson.json",
+            ],
+        ),
+        # No skip list: even /raster gets /stac added (the bug without this setting)
+        (
+            (),
+            [
+                {"rel": "xyz", "href": "http://proxy.example.com/raster/tiles"},
+            ],
+            [
+                "http://proxy.example.com/stac/raster/tiles",
+            ],
+        ),
+        # "/raster" matches /raster and /raster/..., but not /rasterfoo
+        (
+            ["/raster"],
+            [
+                {"rel": "self", "href": "http://proxy.example.com/rasterfoo/tiles"},
+                {"rel": "exact", "href": "http://proxy.example.com/raster"},
+                {"rel": "child", "href": "http://proxy.example.com/raster/tiles"},
+            ],
+            [
+                "http://proxy.example.com/stac/rasterfoo/tiles",
+                "http://proxy.example.com/raster",
+                "http://proxy.example.com/raster/tiles",
+            ],
+        ),
+    ],
+)
+def test_transform_with_root_path_skip_prefixes(
+    root_path_skip_prefixes, input_links, expected_links
+):
+    """Skip-listed paths keep their path; STAC links still get root_path."""
+    middleware = ProcessLinksMiddleware(
+        app=None,
+        upstream_url="http://upstream.example.com",
+        root_path="/stac",
+        root_path_skip_prefixes=root_path_skip_prefixes,
+    )
+    request_scope = {
+        "type": "http",
+        "path": "/test",
+        "headers": [
+            (b"host", b"proxy.example.com"),
+            (b"content-type", b"application/json"),
+        ],
+    }
+
+    data = {"links": input_links}
+    transformed = middleware.transform_json(data, Request(request_scope))
+
+    for i, expected in enumerate(expected_links):
+        assert transformed["links"][i]["href"] == expected
+
+
+def test_transform_upstream_netloc_links_honor_skip_prefixes():
+    """
+    Skip-listed links on the upstream host: rewrite host, do not add root_path.
+
+    The link is outside the upstream path (/api), so without the skip list it
+    would be ignored entirely. With the skip list, we still swap the host.
+    """
+    middleware = ProcessLinksMiddleware(
+        app=None,
+        upstream_url="http://upstream.example.com/api",
+        root_path="/stac",
+        root_path_skip_prefixes=["/raster"],
+    )
+    request_scope = {
+        "type": "http",
+        "path": "/test",
+        "headers": [
+            (b"host", b"proxy.example.com"),
+            (b"content-type", b"application/json"),
+        ],
+    }
+
+    data = {
+        "links": [{"rel": "xyz", "href": "http://upstream.example.com/raster/tiles"}]
+    }
+    transformed = middleware.transform_json(data, Request(request_scope))
+
+    assert transformed["links"][0]["href"] == "http://proxy.example.com/raster/tiles"
+
+
+@pytest.mark.parametrize(
     "headers,expected_base_url",
     [
         # X-Forwarded-* headers

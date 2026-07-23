@@ -85,9 +85,21 @@ def test_root_path_skip_prefixes():
     with pytest.raises(ValueError):
         Settings(**common_kwargs, root_path_skip_prefixes="raster")
 
-    # A bare slash would skip every same-host link
+    # A bare "/" would mean "skip everything" — reject it
     with pytest.raises(ValueError):
         Settings(**common_kwargs, root_path_skip_prefixes="/")
+
+
+def test_root_path_skip_prefixes_from_environment(monkeypatch):
+    """Comma-separated env value (e.g. /raster,/vector) must load as a list."""
+    monkeypatch.setenv("UPSTREAM_URL", "https://example.com")
+    monkeypatch.setenv(
+        "OIDC_DISCOVERY_URL", "https://example.com/.well-known/openid-configuration"
+    )
+    monkeypatch.setenv("ROOT_PATH_SKIP_PREFIXES", "/raster,/vector,/browser")
+
+    settings = Settings()
+    assert list(settings.root_path_skip_prefixes) == ["/raster", "/vector", "/browser"]
 
 
 def test_settings_model_config_with_environment_variables(monkeypatch):

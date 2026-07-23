@@ -39,7 +39,7 @@ The proxy can be optionally served from a non-root path (e.g., `/api/v1`). Addit
 - Update the OpenAPI specification to include the `ROOT_PATH` in the servers field
 - Handle requests that don't match the `ROOT_PATH` with a 404 response
 
-If the proxy shares its hostname with other services (e.g. the proxy at `/stac` alongside a tiler at `/raster`), links to those services would also receive the `ROOT_PATH` prefix. Use `ROOT_PATH_SKIP_PREFIXES` to exempt their path prefixes from link rewriting.
+If other apps share the same host (e.g. the proxy at `/stac` and a tiler at `/raster`), their links would also get `ROOT_PATH` added by mistake. Set `ROOT_PATH_SKIP_PREFIXES` to those paths (e.g. `/raster`) so the proxy leaves them alone.
 
 ## Non-OIDC Workaround
 

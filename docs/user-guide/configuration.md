@@ -94,14 +94,18 @@ The application is configurable via environment variables.
 
 ### `ROOT_PATH_SKIP_PREFIXES`
 
-: Path prefixes of sibling services on the proxy's hostname whose links must not be rewritten
+: Path prefixes that should **not** get `ROOT_PATH` added
 
     - **Type:** comma-separated list of path prefixes
-    - **Required:** No, defaults to `''` (rewrite all same-host links)
+    - **Required:** No, defaults to `''` (add `ROOT_PATH` to all same-host links)
     - **Example:** `/raster,/vector,/browser`
 
     > [!NOTE]
-    > When the proxy shares a hostname with other services (e.g. the proxy at `/stac` alongside a tiler at `/raster`), STAC responses may contain links to those sibling services on the same host. By default the proxy cannot distinguish these from its own links and would prepend `ROOT_PATH` to them, breaking them. List the sibling services' path prefixes here to leave such links untouched. Matching is path-segment-aware (`/raster` matches `/raster` and `/raster/...`, but not `/rasterfoo`).
+    > The proxy usually **adds** `ROOT_PATH` to same-host links that do not have it yet (e.g. `/collections` → `/stac/collections`). That is intentional: upstream often returns links without `ROOT_PATH`.
+    >
+    > The problem is when other apps live on the same host (e.g. a tiler at `/raster`). Their links look like same-host links too, so the proxy would turn `/raster/...` into `/stac/raster/...` and break them. List those other apps' path prefixes here so they are left alone. (If a link still uses the upstream hostname, the proxy can still rewrite the host to the public one; only the `ROOT_PATH` add is skipped.)
+    >
+    > Matching is by path segment: `/raster` matches `/raster` and `/raster/...`, but not `/rasterfoo`.
 
 ## Authentication
 

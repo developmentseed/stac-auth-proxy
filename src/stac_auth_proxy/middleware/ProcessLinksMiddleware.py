@@ -27,17 +27,9 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
     app: ASGIApp
     upstream_url: str
     root_path: Optional[str] = None
-    root_path_skip_prefixes: Sequence[str] = ()
 
     json_content_type_expr: str = r"application/(geo\+)?json"
-
-    def __post_init__(self) -> None:
-        """Normalize skip prefixes, dropping empty entries and trailing slashes."""
-        self.root_path_skip_prefixes = tuple(
-            prefix.rstrip("/")
-            for prefix in self.root_path_skip_prefixes
-            if prefix.rstrip("/")
-        )
+    root_path_skip_prefixes: Sequence[str] = ()
 
     def should_transform_response(self, request: Request, scope: Scope) -> bool:
         """Only transform responses with JSON content type."""
@@ -79,21 +71,6 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
 
         parsed_link = urlparse(link["href"])
 
-        # Leave links to sibling services untouched. On a shared-host deployment
-        # (e.g. this proxy at /stac and a tiler at /raster on the same hostname),
-        # same-host links to other services must not be treated as local to the
-        # upstream API and must not have the root_path prepended.
-        if parsed_link.netloc == request_url.netloc and any(
-            parsed_link.path == prefix or parsed_link.path.startswith(f"{prefix}/")
-            for prefix in self.root_path_skip_prefixes
-        ):
-            logger.debug(
-                "Ignoring link %s because its path matches a configured skip prefix (%s)",
-                link["href"],
-                self.root_path_skip_prefixes,
-            )
-            return
-
         if parsed_link.netloc not in [
             request_url.netloc,
             upstream_url.netloc,
@@ -106,16 +83,22 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
             )
             return
 
-        # If the link path is not a descendant of the upstream path, don't transform it
+        # Skip links outside the upstream path, unless they match a skip prefix
+        # (those still need host rewrite, just not root_path).
         if upstream_url.path != "/" and not parsed_link.path.startswith(
             upstream_url.path
         ):
-            logger.debug(
-                "Ignoring link %s because it is not descendant of upstream path (%s)",
-                link["href"],
-                upstream_url.path,
-            )
-            return
+            path = parsed_link.path
+            if not any(
+                path == prefix or path.startswith(f"{prefix}/")
+                for prefix in self.root_path_skip_prefixes
+            ):
+                logger.debug(
+                    "Ignoring link %s because it is not descendant of upstream path (%s)",
+                    link["href"],
+                    upstream_url.path,
+                )
+                return
 
         # Replace the upstream host with the client's host
         if parsed_link.netloc == upstream_url.netloc:
@@ -129,14 +112,19 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
                 path=parsed_link.path[len(upstream_url.path) :]
             )
 
-        # Add the root_path to the link if it exists
-        if self.root_path and not (
-            parsed_link.path.startswith(f"{self.root_path}/")
-            or parsed_link.path == self.root_path
+        # Add root_path unless this link is for another app on the same host
+        # (listed in root_path_skip_prefixes), or it already has root_path.
+        path = parsed_link.path
+        skip_root_path = any(
+            path == prefix or path.startswith(f"{prefix}/")
+            for prefix in self.root_path_skip_prefixes
+        )
+        if (
+            self.root_path
+            and not skip_root_path
+            and not (path.startswith(f"{self.root_path}/") or path == self.root_path)
         ):
-            parsed_link = parsed_link._replace(
-                path=f"{self.root_path}{parsed_link.path}"
-            )
+            parsed_link = parsed_link._replace(path=f"{self.root_path}{path}")
 
         updated_href = urlunparse(parsed_link)
         if updated_href == link["href"]:

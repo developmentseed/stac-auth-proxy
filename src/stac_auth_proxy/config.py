@@ -2,11 +2,11 @@
 
 import importlib
 import json
-from typing import Any, Literal, Optional, Sequence, TypeAlias, Union
+from typing import Annotated, Any, Literal, Optional, Sequence, TypeAlias, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic.networks import HttpUrl
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 METHODS = Literal["GET", "POST", "PUT", "DELETE", "PATCH"]
 EndpointMethods: TypeAlias = dict[str, Sequence[METHODS]]
@@ -26,6 +26,31 @@ def str2list(x: str | Sequence[str] | None) -> Sequence[str] | None:
             return [s.strip() for s in x.split(",")]
 
     return x
+
+
+def normalize_root_path_skip_prefixes(
+    values: Sequence[str] | None,
+) -> tuple[str, ...]:
+    """
+    Clean up path prefixes that should not get ``ROOT_PATH`` added.
+
+    Drops empty entries and trailing slashes. Each prefix must start with
+    ``/``. A bare ``/`` is rejected because it would match every path.
+    """
+    if not values:
+        return ()
+
+    prefixes: list[str] = []
+    for value in values:
+        prefix = value.strip().rstrip("/")
+        if not prefix:
+            if value.strip():
+                raise ValueError(f"Path prefix {value!r} would match every path")
+            continue
+        if not prefix.startswith("/"):
+            raise ValueError(f"Path prefix {value!r} must start with '/'")
+        prefixes.append(prefix)
+    return tuple(prefixes)
 
 
 class _ClassInput(BaseModel):
@@ -79,7 +104,9 @@ class Settings(BaseSettings):
     allowed_jwt_audiences: Optional[Sequence[str]] = None
 
     root_path: str = ""
-    root_path_skip_prefixes: Sequence[str] = ()
+    # NoDecode: pydantic-settings JSON-decodes Sequence fields before validators,
+    # which rejects the documented comma-separated env form (/raster,/vector).
+    root_path_skip_prefixes: Annotated[Sequence[str], NoDecode] = ()
     override_host: bool = True
     healthz_prefix: str = Field(pattern=_PREFIX_PATTERN, default="/healthz")
     upstream_timeout: float = 15.0
@@ -151,19 +178,6 @@ class Settings(BaseSettings):
 
     @field_validator("root_path_skip_prefixes", mode="before")
     @classmethod
-    def parse_root_path_skip_prefixes(cls, v) -> Sequence[str] | None:
+    def parse_root_path_skip_prefixes(cls, v) -> Sequence[str]:
         """Parse a comma separated string of path prefixes into a normalized list."""
-        values = str2list(v)
-        if values is None:
-            return values
-        prefixes = []
-        for value in values:
-            prefix = value.strip().rstrip("/")
-            if not prefix:
-                if value.strip():
-                    raise ValueError(f"Path prefix {value!r} would match every path")
-                continue
-            if not prefix.startswith("/"):
-                raise ValueError(f"Path prefix {value!r} must start with '/'")
-            prefixes.append(prefix)
-        return prefixes
+        return normalize_root_path_skip_prefixes(str2list(v))

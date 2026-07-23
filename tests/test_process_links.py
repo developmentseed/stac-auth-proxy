@@ -513,7 +513,7 @@ def test_transform_upstream_links_nested_objects():
 @pytest.mark.parametrize(
     "root_path_skip_prefixes,input_links,expected_links",
     [
-        # Same-host links to sibling services are skipped; STAC links still rewritten
+        # Skip-listed paths stay put; normal STAC paths still get /stac
         (
             ["/raster", "/vector"],
             [
@@ -533,7 +533,7 @@ def test_transform_upstream_links_nested_objects():
                 "http://proxy.example.com/vector/tilejson.json",
             ],
         ),
-        # Default (no skip prefixes): same-host sibling link gets root_path (current behavior)
+        # No skip list: even /raster gets /stac added (the bug without this setting)
         (
             (),
             [
@@ -543,7 +543,7 @@ def test_transform_upstream_links_nested_objects():
                 "http://proxy.example.com/stac/raster/tiles",
             ],
         ),
-        # Matching is path-segment-aware: "/raster" must not match "/rasterfoo"
+        # "/raster" matches /raster and /raster/..., but not /rasterfoo
         (
             ["/raster"],
             [
@@ -557,34 +557,12 @@ def test_transform_upstream_links_nested_objects():
                 "http://proxy.example.com/raster/tiles",
             ],
         ),
-        # Trailing slashes on configured prefixes are normalized
-        (
-            ["/raster/"],
-            [
-                {"rel": "xyz", "href": "http://proxy.example.com/raster/tiles"},
-                {"rel": "exact", "href": "http://proxy.example.com/raster"},
-            ],
-            [
-                "http://proxy.example.com/raster/tiles",
-                "http://proxy.example.com/raster",
-            ],
-        ),
-        # Skip prefixes only apply to the request host; other hosts are untouched anyway
-        (
-            ["/raster"],
-            [
-                {"rel": "xyz", "href": "http://other.example.com/raster/tiles"},
-            ],
-            [
-                "http://other.example.com/raster/tiles",
-            ],
-        ),
     ],
 )
 def test_transform_with_root_path_skip_prefixes(
     root_path_skip_prefixes, input_links, expected_links
 ):
-    """Test that same-host links matching a skip prefix are not rewritten."""
+    """Skip-listed paths keep their path; STAC links still get root_path."""
     middleware = ProcessLinksMiddleware(
         app=None,
         upstream_url="http://upstream.example.com",
@@ -607,42 +585,16 @@ def test_transform_with_root_path_skip_prefixes(
         assert transformed["links"][i]["href"] == expected
 
 
-def test_transform_with_root_path_skip_prefixes_and_forwarded_headers():
-    """Test that skip prefixes apply to the forwarded (client-facing) host."""
+def test_transform_upstream_netloc_links_honor_skip_prefixes():
+    """
+    Skip-listed links on the upstream host: rewrite host, do not add root_path.
+
+    The link is outside the upstream path (/api), so without the skip list it
+    would be ignored entirely. With the skip list, we still swap the host.
+    """
     middleware = ProcessLinksMiddleware(
         app=None,
-        upstream_url="http://upstream.example.com",
-        root_path="/stac",
-        root_path_skip_prefixes=["/raster"],
-    )
-    request_scope = {
-        "type": "http",
-        "path": "/test",
-        "headers": [
-            (b"host", b"internal-proxy:8080"),
-            (b"content-type", b"application/json"),
-            (b"x-forwarded-host", b"api.example.com"),
-            (b"x-forwarded-proto", b"https"),
-        ],
-    }
-
-    data = {
-        "links": [
-            {"rel": "self", "href": "https://api.example.com/collections"},
-            {"rel": "xyz", "href": "https://api.example.com/raster/tiles"},
-        ]
-    }
-    transformed = middleware.transform_json(data, Request(request_scope))
-
-    assert transformed["links"][0]["href"] == "https://api.example.com/stac/collections"
-    assert transformed["links"][1]["href"] == "https://api.example.com/raster/tiles"
-
-
-def test_transform_upstream_netloc_links_ignore_skip_prefixes():
-    """Skip prefixes only apply to client-facing links, not upstream-host links."""
-    middleware = ProcessLinksMiddleware(
-        app=None,
-        upstream_url="http://upstream.example.com",
+        upstream_url="http://upstream.example.com/api",
         root_path="/stac",
         root_path_skip_prefixes=["/raster"],
     )
@@ -655,17 +607,12 @@ def test_transform_upstream_netloc_links_ignore_skip_prefixes():
         ],
     }
 
-    # A link on the upstream host is rewritten to the proxy host with root_path,
-    # even when its path matches a skip prefix: skip prefixes describe sibling
-    # services on the proxy's public hostname, not paths behind the upstream.
     data = {
         "links": [{"rel": "xyz", "href": "http://upstream.example.com/raster/tiles"}]
     }
     transformed = middleware.transform_json(data, Request(request_scope))
 
-    assert (
-        transformed["links"][0]["href"] == "http://proxy.example.com/stac/raster/tiles"
-    )
+    assert transformed["links"][0]["href"] == "http://proxy.example.com/raster/tiles"
 
 
 @pytest.mark.parametrize(

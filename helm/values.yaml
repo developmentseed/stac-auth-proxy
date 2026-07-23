@@ -148,6 +148,7 @@ env:
   # Used with ROOT_PATH to derive probe httpGet.path when not set explicitly
   HEALTHZ_PREFIX: "/healthz"
   # ROOT_PATH: "/stac"  # If set, probes default to {ROOT_PATH}{HEALTHZ_PREFIX}
+  # ROOT_PATH_SKIP_PREFIXES: "/raster,/vector,/browser"  # Other apps on the same host; do not add ROOT_PATH
   OIDC_DISCOVERY_INTERNAL_URL: "http://localhost:8081/.well-known/openid-configuration"
   DEFAULT_PUBLIC: false
   PRIVATE_ENDPOINTS: |

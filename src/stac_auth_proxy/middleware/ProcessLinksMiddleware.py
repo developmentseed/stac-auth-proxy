@@ -58,6 +58,13 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
                 )
         return data
 
+    def _matches_skip_prefix(self, path: str) -> bool:
+        """Return whether path is exactly a skip prefix or under one of them."""
+        return any(
+            path == prefix or path.startswith(f"{prefix}/")
+            for prefix in self.root_path_skip_prefixes
+        )
+
     def _update_link(
         self, link: dict[str, Any], request_url: ParseResult, upstream_url: ParseResult
     ) -> None:
@@ -88,11 +95,7 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
         if upstream_url.path != "/" and not parsed_link.path.startswith(
             upstream_url.path
         ):
-            path = parsed_link.path
-            if not any(
-                path == prefix or path.startswith(f"{prefix}/")
-                for prefix in self.root_path_skip_prefixes
-            ):
+            if not self._matches_skip_prefix(parsed_link.path):
                 logger.debug(
                     "Ignoring link %s because it is not descendant of upstream path (%s)",
                     link["href"],
@@ -115,13 +118,9 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
         # Add root_path unless this link is for another app on the same host
         # (listed in root_path_skip_prefixes), or it already has root_path.
         path = parsed_link.path
-        skip_root_path = any(
-            path == prefix or path.startswith(f"{prefix}/")
-            for prefix in self.root_path_skip_prefixes
-        )
         if (
             self.root_path
-            and not skip_root_path
+            and not self._matches_skip_prefix(path)
             and not (path.startswith(f"{self.root_path}/") or path == self.root_path)
         ):
             parsed_link = parsed_link._replace(path=f"{self.root_path}{path}")

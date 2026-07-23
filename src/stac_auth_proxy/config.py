@@ -28,31 +28,6 @@ def str2list(x: str | Sequence[str] | None) -> Sequence[str] | None:
     return x
 
 
-def normalize_root_path_skip_prefixes(
-    values: Sequence[str] | None,
-) -> tuple[str, ...]:
-    """
-    Clean up path prefixes that should not get ``ROOT_PATH`` added.
-
-    Drops empty entries and trailing slashes. Each prefix must start with
-    ``/``. A bare ``/`` is rejected because it would match every path.
-    """
-    if not values:
-        return ()
-
-    prefixes: list[str] = []
-    for value in values:
-        prefix = value.strip().rstrip("/")
-        if not prefix:
-            if value.strip():
-                raise ValueError(f"Path prefix {value!r} would match every path")
-            continue
-        if not prefix.startswith("/"):
-            raise ValueError(f"Path prefix {value!r} must start with '/'")
-        prefixes.append(prefix)
-    return tuple(prefixes)
-
-
 class _ClassInput(BaseModel):
     """Input model for dynamically loading a class or function."""
 
@@ -179,5 +154,25 @@ class Settings(BaseSettings):
     @field_validator("root_path_skip_prefixes", mode="before")
     @classmethod
     def parse_root_path_skip_prefixes(cls, v) -> Sequence[str]:
-        """Parse a comma separated string of path prefixes into a normalized list."""
-        return normalize_root_path_skip_prefixes(str2list(v))
+        """
+        Parse and normalize path prefixes that should not get ``ROOT_PATH`` added.
+
+        Accepts a comma-separated string or sequence. Drops empty entries and
+        trailing slashes. Each prefix must start with ``/``. A bare ``/`` is
+        rejected because it would match every path.
+        """
+        values = str2list(v)
+        if not values:
+            return ()
+
+        prefixes: list[str] = []
+        for value in values:
+            prefix = value.strip().rstrip("/")
+            if not prefix:
+                if value.strip():
+                    raise ValueError(f"Path prefix {value!r} would match every path")
+                continue
+            if not prefix.startswith("/"):
+                raise ValueError(f"Path prefix {value!r} must start with '/'")
+            prefixes.append(prefix)
+        return tuple(prefixes)

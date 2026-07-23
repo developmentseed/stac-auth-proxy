@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.2.0](https://github.com/developmentseed/stac-auth-proxy/compare/v1.1.1...v1.2.0) (2026-07-23)
+
+
+### Features
+
+* add optional prometheus metrics endpoint. ([#186](https://github.com/developmentseed/stac-auth-proxy/issues/186)) ([6825f23](https://github.com/developmentseed/stac-auth-proxy/commit/6825f236d520b7a74bd891e2b7a5d0d8f1836ca5))
+
+
+### Bug Fixes
+
+* add ROOT_PATH_SKIP_PREFIXES to exempt sibling-service links from root_path rewriting  2 ([#198](https://github.com/developmentseed/stac-auth-proxy/issues/198)) ([349986b](https://github.com/developmentseed/stac-auth-proxy/commit/349986bd2d97eba709ef8743735610aea5180afa))
+* allow , delimited string in configuration ([#191](https://github.com/developmentseed/stac-auth-proxy/issues/191)) ([df530a2](https://github.com/developmentseed/stac-auth-proxy/commit/df530a2023a40a85e91aa0d0ea5785e002387201))
+* allow Any type for classInput ([#182](https://github.com/developmentseed/stac-auth-proxy/issues/182)) ([56aa3f5](https://github.com/developmentseed/stac-auth-proxy/commit/56aa3f518fcbe4f131911167eaf3babf17578eff))
+* configurable upstream timeout. ([#174](https://github.com/developmentseed/stac-auth-proxy/issues/174)) ([533bac6](https://github.com/developmentseed/stac-auth-proxy/commit/533bac60e0157a859a0e91f03d2d48f9b89b89e4))
+* **helm:** make health path take root path into account. ([#189](https://github.com/developmentseed/stac-auth-proxy/issues/189)) ([5236a0e](https://github.com/developmentseed/stac-auth-proxy/commit/5236a0e9930ebe4e8a20f5e4af1e5fc6e09262e8))
+* publish helm chart only on release ([#178](https://github.com/developmentseed/stac-auth-proxy/issues/178)) ([c89f650](https://github.com/developmentseed/stac-auth-proxy/commit/c89f650b9c4dadec2d5ad866b16d2411f5e6ed1e))
+* **tests:** fix flaky health-check retry test caused by global asyncio.sleep patch ([#193](https://github.com/developmentseed/stac-auth-proxy/issues/193)) ([fec33b6](https://github.com/developmentseed/stac-auth-proxy/commit/fec33b6b2df2fda2800228712c734c550debfe9d))
+
 ## [1.1.1](https://github.com/developmentseed/stac-auth-proxy/compare/v1.1.0...v1.1.1) (2026-05-27)
 
 

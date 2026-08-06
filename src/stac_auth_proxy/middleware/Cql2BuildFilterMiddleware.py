@@ -82,6 +82,8 @@ class Cql2BuildFilterMiddleware:
 
         filter_expr = await filter_builder(
             {
+                "request": request,
+                # Warning: this is deprecated...
                 "req": {
                     "path": request.url.path,
                     "method": request.method,

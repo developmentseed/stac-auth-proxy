@@ -1,6 +1,6 @@
 """Test Cql2BuildFilterMiddleware."""
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from starlette.testclient import TestClient
 
 from stac_auth_proxy.middleware.Cql2BuildFilterMiddleware import (
@@ -89,3 +89,39 @@ class TestOptionsRequest:
         get_response = client.get("/collections/test-collection/items")
         assert get_response.status_code == 200
         assert get_response.json()["filter_was_built"] is True
+
+
+class TestErrorHandling:
+    """Test middleware behavior when filter_fcn returns an exception."""
+
+    def test_exception_handling(self):
+        """Test that the middleware correctly handles exceptions raised by the filter function."""
+        app = FastAPI()
+
+        # Create a simple filter, function raise an exception if user is not "good"
+        async def items_filter(context):
+            query_params = context["req"].get("query_params", {})
+            if query_params.get("user") != "good":
+                raise HTTPException(status_code=403, detail="Bad user")
+
+            return "private = false"
+
+        # Add middleware with a filter
+        app.add_middleware(
+            Cql2BuildFilterMiddleware,
+            items_filter=items_filter,
+        )
+
+        @app.get("/search")
+        async def search_get(request: Request):
+            return {}
+
+        client = TestClient(app)
+
+        # Test GET request SHOULD return 403 for bad user
+        get_response = client.get("/search")
+        assert get_response.status_code == 403
+
+        # Test GET request SHOULD return 200 for good user
+        get_response = client.get("/search", params={"user": "good"})
+        assert get_response.status_code == 200

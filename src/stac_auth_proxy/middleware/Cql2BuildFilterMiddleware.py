@@ -6,8 +6,9 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Optional
 
 from cql2 import Expr, ValidationError
+from fastapi import HTTPException
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from ..utils import requests
@@ -80,24 +81,31 @@ class Cql2BuildFilterMiddleware:
         if not filter_builder:
             return await self.app(scope, receive, send)
 
-        filter_expr = await filter_builder(
-            {
-                "req": {
-                    "path": request.url.path,
-                    "method": request.method,
-                    "query_params": dict(request.query_params),
-                    "path_params": requests.extract_variables(request.url.path),
-                    "headers": dict(request.headers),
-                },
-                **scope["state"],
-            }
-        )
+        try:
+            filter_expr = await filter_builder(
+                {
+                    "req": {
+                        "path": request.url.path,
+                        "method": request.method,
+                        "query_params": dict(request.query_params),
+                        "path_params": requests.extract_variables(request.url.path),
+                        "headers": dict(request.headers),
+                    },
+                    **scope["state"],
+                }
+            )
+        except HTTPException as e:
+            response = JSONResponse({"detail": e.detail}, status_code=e.status_code)
+            return await response(scope, receive, send)
+
         cql2_filter = Expr(filter_expr)
         try:
             cql2_filter.validate()
         except ValidationError:
             logger.error("Invalid CQL2 filter: %s", filter_expr)
-            return Response(status_code=502, content="Invalid CQL2 filter")
+            response = JSONResponse({"detail": "Invalid CQL2 filter"}, status_code=502)
+            return await response(scope, receive, send)
+
         setattr(request.state, self.state_key, cql2_filter)
 
         return await self.app(scope, receive, send)

@@ -20,8 +20,8 @@ def extract_variables(url: str) -> dict:
     we can't rely on the path parameters that FastAPI provides.
     """
     path = urlparse(url).path
-    # This allows either /items or /bulk_items, with an optional item_id following.
-    pattern = r"^/collections/(?P<collection_id>[^/]+)(?:/(?:items|bulk_items)(?:/(?P<item_id>[^/]+))?)?/?$"
+    # This allows either /queryables or /items or /bulk_items, with an optional item_id following.
+    pattern = r"^/collections/(?P<collection_id>[^/]+)(?:/(?:items|bulk_items|queryables)(?:/(?P<item_id>[^/]+))?)?/?$"
     match = re.match(pattern, path)
     return {k: v for k, v in match.groupdict().items() if v} if match else {}
 

@@ -15,6 +15,7 @@ from stac_auth_proxy.utils.requests import (
     (
         ("/collections/123", {"collection_id": "123"}),
         ("/collections/123/items", {"collection_id": "123"}),
+        ("/collections/123/queryables", {"collection_id": "123"}),
         ("/collections/123/bulk_items", {"collection_id": "123"}),
         ("/collections/123/items/456", {"collection_id": "123", "item_id": "456"}),
         ("/collections/123/bulk_items/456", {"collection_id": "123", "item_id": "456"}),

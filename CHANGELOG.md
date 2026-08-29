@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/developmentseed/stac-auth-proxy/compare/v1.2.0...v1.3.0) (2026-08-29)
+
+
+### Features
+
+* add HTTPException handling in CQL2BuildFilter middleware ([#202](https://github.com/developmentseed/stac-auth-proxy/issues/202)) ([5aeee7c](https://github.com/developmentseed/stac-auth-proxy/commit/5aeee7c473f053485c7f33ad91b0590b7a8ea4a5))
+
+
+### Bug Fixes
+
+* allow queryables endpoints for collections ([#204](https://github.com/developmentseed/stac-auth-proxy/issues/204)) ([8b3d3c9](https://github.com/developmentseed/stac-auth-proxy/commit/8b3d3c96eeaee4e2ed045f329e20a95738ce41ac))
+
 ## [1.2.0](https://github.com/developmentseed/stac-auth-proxy/compare/v1.1.1...v1.2.0) (2026-07-23)
 
 

@@ -124,35 +124,36 @@ class Cql2RewriteLinksFilterMiddleware:
             await send({"type": "http.response.body", "body": body, "more_body": False})
             return
 
-        links = data.get("links")
-        if isinstance(links, list):
-            for link in links:
-                # Handle filter in query string
-                if "href" in link:
-                    url = urlparse(link["href"])
-                    qs = parse_qs(url.query)
-                    if "filter" in qs:
-                        if user_filter is not None:
-                            qs["filter"] = [user_filter.to_text()]
-                        else:
-                            qs.pop("filter", None)
-                            qs.pop("filter-lang", None)
-                        new_query = urlencode(qs, doseq=True)
-                        link["href"] = urlunparse(url._replace(query=new_query))
-
-                # Handle filter in body (for POST links). The spec only
-                # requires cql2-json for POST bodies, but if the link advertises
-                # cql2-text we preserve that lang on the way out.
-                if "body" in link and isinstance(link["body"], dict):
-                    if "filter" in link["body"]:
-                        if user_filter is not None:
-                            if link["body"].get("filter-lang") == "cql2-text":
-                                link["body"]["filter"] = user_filter.to_text()
+        if isinstance(data, dict):
+            links = data.get("links")
+            if isinstance(links, list):
+                for link in links:
+                    # Handle filter in query string
+                    if "href" in link:
+                        url = urlparse(link["href"])
+                        qs = parse_qs(url.query)
+                        if "filter" in qs:
+                            if user_filter is not None:
+                                qs["filter"] = [user_filter.to_text()]
                             else:
-                                link["body"]["filter"] = user_filter.to_json()
-                        else:
-                            link["body"].pop("filter", None)
-                            link["body"].pop("filter-lang", None)
+                                qs.pop("filter", None)
+                                qs.pop("filter-lang", None)
+                            new_query = urlencode(qs, doseq=True)
+                            link["href"] = urlunparse(url._replace(query=new_query))
+
+                    # Handle filter in body (for POST links). The spec only
+                    # requires cql2-json for POST bodies, but if the link advertises
+                    # cql2-text we preserve that lang on the way out.
+                    if "body" in link and isinstance(link["body"], dict):
+                        if "filter" in link["body"]:
+                            if user_filter is not None:
+                                if link["body"].get("filter-lang") == "cql2-text":
+                                    link["body"]["filter"] = user_filter.to_text()
+                                else:
+                                    link["body"]["filter"] = user_filter.to_json()
+                            else:
+                                link["body"].pop("filter", None)
+                                link["body"].pop("filter-lang", None)
 
         # Send the modified response
         new_body = json.dumps(data).encode("utf-8")

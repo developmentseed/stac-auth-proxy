@@ -2,7 +2,7 @@
 
 import re
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Optional, Sequence
 
 from starlette.datastructures import Headers
 from starlette.requests import Request
@@ -28,8 +28,8 @@ class OpenApiMiddleware(JsonResponseMiddleware):
     auth_scheme_name: str = "oidcAuth"
     auth_scheme_override: Optional[dict] = None
 
-    items_filter_path: Union[str, Sequence[str], None] = None
-    collections_filter_path: Union[str, Sequence[str], None] = None
+    items_filter_path: str | Sequence[str] | None = None
+    collections_filter_path: str | Sequence[str] | None = None
 
     json_content_type_expr: str = r"application/(vnd\.oai\.openapi\+json?|json)"
 

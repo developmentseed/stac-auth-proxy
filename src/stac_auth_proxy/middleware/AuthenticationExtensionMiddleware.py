@@ -3,7 +3,7 @@
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import Any, Sequence, Union
+from typing import Any, Sequence
 from urllib.parse import urlparse
 
 from starlette.datastructures import Headers
@@ -35,8 +35,8 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
         "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
     )
 
-    items_filter_path: Union[str, Sequence[str], None] = None
-    collections_filter_path: Union[str, Sequence[str], None] = None
+    items_filter_path: str | Sequence[str] | None = None
+    collections_filter_path: str | Sequence[str] | None = None
     root_path: str = ""
 
     json_content_type_expr: str = r"application/(geo\+)?json"

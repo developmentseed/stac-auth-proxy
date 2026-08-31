@@ -3,7 +3,7 @@
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Optional, Sequence, Union
+from typing import Any, Awaitable, Callable, Optional, Sequence
 
 from cql2 import Expr, ValidationError
 from fastapi import HTTPException
@@ -32,11 +32,11 @@ class Cql2BuildFilterMiddleware:
 
     # Filters
     collections_filter: Optional[Callable] = None
-    collections_filter_path: Union[str, Sequence[str]] = (
+    collections_filter_path: str | Sequence[str] = (
         r"^/collections(?:/(?P<collection_id>[^/]+))?$",
     )
     items_filter: Optional[Callable] = None
-    items_filter_path: Union[str, Sequence[str]] = (
+    items_filter_path: str | Sequence[str] = (
         r"^(?:/collections/(?P<collection_id>[^/]+)/items(?:/(?P<item_id>[^/]+))?|/search)$",
     )
 

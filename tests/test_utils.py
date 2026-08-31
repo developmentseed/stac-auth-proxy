@@ -5,6 +5,7 @@ from utils import parse_query_string
 
 from stac_auth_proxy.utils.requests import (
     extract_variables,
+    find_match,
     get_base_url,
     parse_forwarded_header,
 )
@@ -130,3 +131,27 @@ def test_get_base_url(headers, expected_url):
 
     result = get_base_url(request)
     assert result == expected_url
+
+
+@pytest.mark.parametrize(
+    "collections_filter_path",
+    [
+        r"^/collections/(?P<collection_id>[^/]+)/aggregations$",
+        [
+            r"^/collections/(?P<collection_id>[^/]+)/aggregate$",
+            r"^/collections/(?P<collection_id>[^/]+)/aggregations$",
+        ],
+    ],
+    ids=["bare string", "sequence"],
+)
+def test_find_match_authenticates_filter_paths(collections_filter_path):
+    """Any path carrying a filter requires auth, whatever default_public says."""
+    match = find_match(
+        "/collections/123/aggregations",
+        "GET",
+        private_endpoints={},
+        public_endpoints={},
+        default_public=True,
+        collections_filter_path=collections_filter_path,
+    )
+    assert match.uses_auth is True

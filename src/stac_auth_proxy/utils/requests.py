@@ -26,6 +26,13 @@ def extract_variables(url: str) -> dict:
     return {k: v for k, v in match.groupdict().items() if v} if match else {}
 
 
+def as_patterns(value: str | Sequence[str] | None) -> Sequence[str]:
+    """Normalize a filter path setting to a list of regex patterns."""
+    if value is None:
+        return []
+    return [value] if isinstance(value, str) else list(value)
+
+
 def dict_to_bytes(d: dict) -> bytes:
     """Convert a dictionary to a body."""
     return json.dumps(d, separators=(",", ":")).encode("utf-8")
@@ -56,8 +63,8 @@ def find_match(
     private_endpoints: EndpointMethods,
     public_endpoints: EndpointMethods,
     default_public: bool,
-    items_filter_path: Optional[str] = None,
-    collections_filter_path: Optional[str] = None,
+    items_filter_path: str | Sequence[str] | None = None,
+    collections_filter_path: str | Sequence[str] | None = None,
 ) -> "MatchResult":
     """Check if the given path and method match any of the regex patterns and methods in the endpoints."""
     primary_endpoints = private_endpoints if default_public else public_endpoints
@@ -70,7 +77,7 @@ def find_match(
 
     # If we have filter paths configured, check those as well (these are always considered to use auth if they match, regardless of default_public)
     for filter_path in [items_filter_path, collections_filter_path]:
-        if filter_path and re.match(filter_path, path):
+        if any(re.match(pattern, path) for pattern in as_patterns(filter_path)):
             return MatchResult(uses_auth=True)
 
     # If default_public and no match found in private_endpoints, it's public

@@ -2,6 +2,7 @@
 
 import importlib
 import json
+import re
 from typing import Annotated, Any, Literal, Optional, Sequence, TypeAlias, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -26,6 +27,36 @@ def str2list(x: str | Sequence[str] | None) -> Sequence[str] | None:
             return [s.strip() for s in x.split(",")]
 
     return x
+
+
+# NoDecode: pydantic-settings JSON-decodes Sequence fields before validators run,
+# which would reject a plain regex string.
+FilterPaths: TypeAlias = Annotated[Sequence[str], NoDecode]
+
+
+def str2patterns(x: str | Sequence[str] | None) -> Sequence[str]:
+    """
+    Parse a filter path or paths setting into a list of regex patterns.
+
+    Used as a Pydantic validator, this function supports:
+    - Single path pattern input as a string
+    - Multiple path patterns input as a JSON encoded string
+    - Directly passing multiple path parameters
+    """
+    if x is None:
+        return []
+
+    if isinstance(x, str):
+        patterns = json.loads(x) if x.startswith("[") else [x]
+    else:
+        patterns = list(x)
+
+    for pattern in patterns:
+        try:
+            re.compile(pattern)
+        except re.error as e:
+            raise ValueError(f"{pattern!r} is not a valid regular expression: {e}")
+    return patterns
 
 
 class _ClassInput(BaseModel):
@@ -129,9 +160,13 @@ class Settings(BaseSettings):
 
     # Filters
     items_filter: Optional[_ClassInput] = None
-    items_filter_path: str = r"^(/collections/([^/]+)/items(/[^/]+)?$|/search$)"
+    items_filter_path: FilterPaths = [
+        r"^(?:/collections/(?P<collection_id>[^/]+)/items(?:/(?P<item_id>[^/]+))?|/search)$"
+    ]
     collections_filter: Optional[_ClassInput] = None
-    collections_filter_path: str = r"^/collections(/[^/]+)?$"
+    collections_filter_path: FilterPaths = [
+        r"^/collections(?:/(?P<collection_id>[^/]+))?$"
+    ]
 
     model_config = SettingsConfigDict(
         env_nested_delimiter="_",
@@ -150,6 +185,17 @@ class Settings(BaseSettings):
     def parse_audience(cls, v) -> Sequence[str] | None:
         """Parse a comma separated string list of audiences into a list."""
         return str2list(v)
+
+    @field_validator("items_filter_path", "collections_filter_path", mode="before")
+    @classmethod
+    def parse_filter_paths(cls, v) -> Sequence[str]:
+        """
+        Parse the regex patterns identifying paths that a filter applies to.
+
+        Named capture groups in a pattern become the ``req.path_params`` passed to
+        the filter. A pattern declaring none falls back to the built-in extraction.
+        """
+        return str2patterns(v)
 
     @field_validator("root_path_skip_prefixes", mode="before")
     @classmethod

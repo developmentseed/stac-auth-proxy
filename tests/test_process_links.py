@@ -557,6 +557,18 @@ def test_transform_upstream_links_nested_objects():
                 "http://proxy.example.com/raster/tiles",
             ],
         ),
+        # Trailing slashes on directly-passed prefixes are normalized
+        (
+            ["/raster/"],
+            [
+                {"rel": "xyz", "href": "http://proxy.example.com/raster/tiles"},
+                {"rel": "exact", "href": "http://proxy.example.com/raster"},
+            ],
+            [
+                "http://proxy.example.com/raster/tiles",
+                "http://proxy.example.com/raster",
+            ],
+        ),
     ],
 )
 def test_transform_with_root_path_skip_prefixes(

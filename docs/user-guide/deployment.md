@@ -125,6 +125,17 @@ resources:
 
 You also need to make sure Kubernetes Metrics Server is installed.
 
+### Monitoring
+
+The chart supports two ways of exposing the Service to Prometheus:
+
+- `podAnnotations` / `service.annotations` — set the usual `prometheus.io/scrape`, `prometheus.io/port`, and `prometheus.io/path` annotations for annotation-based discovery.
+- `serviceMonitor.enabled: true` — creates a `ServiceMonitor` for [prometheus-operator](https://github.com/prometheus-operator/prometheus-operator) setups. Requires the `monitoring.coreos.com/v1` CRDs to already be installed in-cluster; set `serviceMonitor.additionalLabels` to match your Prometheus CR's `serviceMonitorSelector` (e.g. `release: <name>` for kube-prometheus-stack).
+
+> [!NOTE]
+>
+> Both scrape the `/_mgmt/metrics` endpoint, which is only served when the app is built/installed with the `metrics` extra (see [Getting Started](getting-started.md)). Enabling either without that extra will result in Prometheus getting 404s on scrape.
+
 ### Management
 
 ```bash

@@ -34,3 +34,25 @@ tests:
       - equal:
           path: spec.ports[0].targetPort
           value: http
+
+  - it: should not add annotations by default
+    set:
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - isNull:
+          path: metadata.annotations
+
+  - it: should add annotations when set
+    set:
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+      service.annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+    asserts:
+      - equal:
+          path: metadata.annotations
+          value:
+            prometheus.io/scrape: "true"
+            prometheus.io/port: "8000"

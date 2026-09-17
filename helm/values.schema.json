@@ -149,6 +149,47 @@
           "minimum": 1,
           "maximum": 65535,
           "description": "Service port number"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Annotations for the service resource (e.g. prometheus.io/scrape)"
+        }
+      }
+    },
+    "podAnnotations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Annotations added to the pod template (e.g. prometheus.io/scrape)"
+    },
+    "serviceMonitor": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Create a ServiceMonitor for prometheus-operator (requires the monitoring.coreos.com/v1 CRDs installed in-cluster)",
+          "default": false
+        },
+        "interval": {
+          "type": "string",
+          "description": "Scrape interval",
+          "default": "30s"
+        },
+        "path": {
+          "type": "string",
+          "description": "Metrics path to scrape",
+          "default": "/_mgmt/metrics"
+        },
+        "additionalLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Additional labels for the ServiceMonitor, used to match a Prometheus CR's serviceMonitorSelector (e.g. release: <name>)"
         }
       }
     },

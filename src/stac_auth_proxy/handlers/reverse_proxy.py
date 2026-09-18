@@ -103,7 +103,12 @@ class ReverseProxyHandler:
         logger.debug(f"Proxying request to {rp_req.url}")
 
         start_time = time.perf_counter()
-        rp_resp = await self.client.send(rp_req, stream=True)
+        try:
+            rp_resp = await self.client.send(rp_req, stream=True)
+        except httpx.TimeoutException:
+            return Response(status_code=504, content=b"Upstream timed out")
+        except httpx.ConnectError:
+            return Response(status_code=502, content=b"Upstream unreachable")
         proxy_time = time.perf_counter() - start_time
         rp_resp.headers["Server-Timing"] = build_server_timing_header(
             rp_resp.headers.get("Server-Timing"),

@@ -11,6 +11,17 @@ image:
 service:
   type: ClusterIP
   port: 8000
+  annotations: {}
+
+# Annotations added to the pod template (e.g. for Prometheus scraping)
+podAnnotations: {}
+
+# ServiceMonitor for prometheus-operator (requires the monitoring.coreos.com/v1 CRDs installed in-cluster)
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  path: /_mgmt/metrics
+  additionalLabels: {}
 
 ingress:
   enabled: true

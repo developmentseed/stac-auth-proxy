@@ -1,0 +1,79 @@
+suite: test service monitor
+templates:
+  - servicemonitor.yaml
+tests:
+  - it: should not create ServiceMonitor by default
+    set:
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not create ServiceMonitor when enabled but CRD is absent
+    set:
+      serviceMonitor.enabled: true
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should create ServiceMonitor when enabled and CRD is present
+    set:
+      serviceMonitor.enabled: true
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    capabilities:
+      apiVersions:
+        - monitoring.coreos.com/v1/ServiceMonitor
+    asserts:
+      - isKind:
+          of: ServiceMonitor
+      - equal:
+          path: spec.endpoints[0].port
+          value: http
+      - equal:
+          path: spec.endpoints[0].path
+          value: /_mgmt/metrics
+      - equal:
+          path: spec.endpoints[0].interval
+          value: 30s
+
+  - it: should use custom interval and path
+    set:
+      serviceMonitor.enabled: true
+      serviceMonitor.interval: 60s
+      serviceMonitor.path: /metrics
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    capabilities:
+      apiVersions:
+        - monitoring.coreos.com/v1/ServiceMonitor
+    asserts:
+      - equal:
+          path: spec.endpoints[0].interval
+          value: 60s
+      - equal:
+          path: spec.endpoints[0].path
+          value: /metrics
+
+  - it: should include additionalLabels and match service selector labels
+    set:
+      serviceMonitor.enabled: true
+      serviceMonitor.additionalLabels:
+        release: prometheus
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    capabilities:
+      apiVersions:
+        - monitoring.coreos.com/v1/ServiceMonitor
+    asserts:
+      - equal:
+          path: metadata.labels.release
+          value: prometheus
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/name: stac-auth-proxy
+            app.kubernetes.io/instance: RELEASE-NAME

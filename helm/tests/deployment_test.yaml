@@ -166,6 +166,28 @@ tests:
           path: spec.template.spec.containers[0].readinessProbe.httpGet.path
           value: /stac/ready
 
+  - it: should not add pod annotations by default
+    set:
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+    asserts:
+      - isNull:
+          path: spec.template.metadata.annotations
+
+  - it: should add pod annotations when set
+    set:
+      env.UPSTREAM_URL: "https://example.com"
+      env.OIDC_DISCOVERY_URL: "https://example.com/.well-known/openid-configuration"
+      podAnnotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations
+          value:
+            prometheus.io/scrape: "true"
+            prometheus.io/port: "8000"
+
   - it: should respect explicit probe httpGet.path over derivation
     set:
       env.UPSTREAM_URL: "https://example.com"

@@ -1,9 +1,15 @@
 """Tests for the reverse proxy handler's header functionality."""
 
+import httpx
 import pytest
 from fastapi import Request
 
 from stac_auth_proxy.handlers.reverse_proxy import ReverseProxyHandler
+
+
+async def empty_body():
+    """Receive channel that yields an empty request body."""
+    return {"type": "http.request", "body": b"", "more_body": False}
 
 
 def create_request(scope_overrides=None, headers=None):
@@ -25,7 +31,7 @@ def create_request(scope_overrides=None, headers=None):
     if headers:
         default_scope["headers"] = headers
 
-    return Request(default_scope)
+    return Request(default_scope, receive=empty_body)
 
 
 @pytest.fixture
@@ -310,3 +316,27 @@ async def test_x_forwarded_port_in_forwarded_header(legacy_headers):
 
     # Check that the x-forwarded-port header is preserved
     assert result_headers["X-Forwarded-Port"] == "443"
+
+
+@pytest.mark.parametrize(
+    "exception,expected_status",
+    [
+        (httpx.ConnectTimeout("Timed out"), 504),
+        (httpx.ConnectError("Connection refused"), 502),
+    ],
+)
+async def test_upstream_transport_errors(exception, expected_status):
+    """Transport failures become gateway responses rather than unhandled errors."""
+
+    def raise_error(request):
+        raise exception
+
+    handler = ReverseProxyHandler(
+        upstream="http://upstream-api.com",
+        client=httpx.AsyncClient(
+            base_url="http://upstream-api.com",
+            transport=httpx.MockTransport(raise_error),
+        ),
+    )
+    response = await handler.proxy_request(create_request())
+    assert response.status_code == expected_status

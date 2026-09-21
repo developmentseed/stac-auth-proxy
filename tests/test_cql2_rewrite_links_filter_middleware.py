@@ -98,10 +98,6 @@ class TestEdgeCases:
         app = FastAPI()
         app.add_middleware(Cql2RewriteLinksFilterMiddleware)
 
-        @app.get("/plain")
-        async def plain():
-            return Response(content="not json", media_type="text/plain")
-
         @app.get("/text", response_model=str)
         async def plain_text():
             return "text in json"

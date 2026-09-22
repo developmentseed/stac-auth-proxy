@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.3.0](https://github.com/developmentseed/stac-auth-proxy/compare/v1.2.0...v1.3.0) (2026-09-22)
+
+
+### Features
+
+* add HTTPException handling in CQL2BuildFilter middleware ([#202](https://github.com/developmentseed/stac-auth-proxy/issues/202)) ([5aeee7c](https://github.com/developmentseed/stac-auth-proxy/commit/5aeee7c473f053485c7f33ad91b0590b7a8ea4a5))
+* **helm:** add servicemonitor support. ([#209](https://github.com/developmentseed/stac-auth-proxy/issues/209)) ([979ceda](https://github.com/developmentseed/stac-auth-proxy/commit/979ceda352a3e5611a41096b4b5cc9c4b07a68b5))
+
+
+### Bug Fixes
+
+* allow queryables endpoints for collections ([#204](https://github.com/developmentseed/stac-auth-proxy/issues/204)) ([8b3d3c9](https://github.com/developmentseed/stac-auth-proxy/commit/8b3d3c96eeaee4e2ed045f329e20a95738ce41ac))
+* allow text in json response for CQl2RewriteLinksFilterMiddleware ([#205](https://github.com/developmentseed/stac-auth-proxy/issues/205)) ([e55d85f](https://github.com/developmentseed/stac-auth-proxy/commit/e55d85ff99e9276e573c125844f6221595475cd7))
+* update reverse_proxy.py to return correct status code for upstream request timeout ([#210](https://github.com/developmentseed/stac-auth-proxy/issues/210)) ([be008ba](https://github.com/developmentseed/stac-auth-proxy/commit/be008baadf593e24893d3d411f2f6426e9d60122))
+
 ## [1.2.0](https://github.com/developmentseed/stac-auth-proxy/compare/v1.1.1...v1.2.0) (2026-07-23)
 
 

@@ -151,3 +151,50 @@ def test_cors_model_config():
     ]
     assert cors_settings.allow_methods == ["GET", "POST"]
     assert cors_settings.allow_headers == ["Authorization", "Content-Type"]
+
+
+def test_items_and_collections_path_parameters():
+    """Tests related to parsing Collections/Items regexes from inputs."""
+    common_kwargs = {
+        "upstream_url": "https://example.com",
+        "oidc_discovery_url": "https://example.com/.well-known/openid-configuration",
+    }
+
+    # Single pattern case
+    settings = Settings(
+        **common_kwargs,
+        items_filter_path=r"^/collections/([^/]+)/items$",
+    )
+    assert settings.items_filter_path == [r"^/collections/([^/]+)/items$"]
+
+    # Don't split on commas (valid regex)
+    settings = Settings(
+        **common_kwargs,
+        items_filter_path=r"^/collections/([^/]{2,64})/items$",
+    )
+    assert settings.items_filter_path == [r"^/collections/([^/]{2,64})/items$"]
+
+    # JSON array decoded into list[str]
+    settings = Settings(
+        **common_kwargs,
+        collections_filter_path='["^/a$", "^/b$"]',
+    )
+    assert settings.collections_filter_path == ["^/a$", "^/b$"]
+
+    # Directly provided list[str] unaltered
+    custom_paths = [
+        r"^/collections(?:/(?P<collection_id>[^/]+))?$",
+        r"^/collections/(?P<collection_id>[^/]+)/aggregate$",
+    ]
+    settings = Settings(
+        **common_kwargs,
+        collections_filter_path=custom_paths,
+    )
+    assert settings.collections_filter_path == custom_paths
+
+    # Reject invalid regex at load
+    with pytest.raises(ValueError, match="not a valid regular expression"):
+        settings = Settings(
+            **common_kwargs,
+            items_filter_path=r"^/collections(?:/(?P<unclosed[^/]+))?$",
+        )

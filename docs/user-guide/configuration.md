@@ -323,10 +323,10 @@ These settings configure the CORS behavior when `PROXY_OPTIONS` is `false` (the 
 
 ### `ITEMS_FILTER_PATH`
 
-: Regex pattern used to identify request paths that require the application of the items filter
+: Regex patterns used to identify request paths that require the application of the items filter. See [Filter paths and path params](#filter-paths-and-path-params).
 
-    - **Type:** Regex string
-    - **Required:** No, defaults to `^(/collections/([^/]+)/items(/[^/]+)?$|/search$)`
+    - **Type:** Regex string, or a JSON array of regex strings
+    - **Required:** No, defaults to `["^(?:/collections/(?P<collection_id>[^/]+)/items(?:/(?P<item_id>[^/]+))?|/search)$"]`
     - **Example:** `^(/collections/([^/]+)/items(/[^/]+)?$|/search$|/custom$)`
 
 ### `COLLECTIONS_FILTER_CLS`
@@ -355,8 +355,58 @@ These settings configure the CORS behavior when `PROXY_OPTIONS` is `false` (the 
 
 ### `COLLECTIONS_FILTER_PATH`
 
-: Regex pattern used to identify request paths that require the application of the collections filter
+: Regex patterns used to identify request paths that require the application of the collections filter. See [Filter paths and path params](#filter-paths-and-path-params).
 
-    - **Type:** Regex string
-    - **Required:** No, defaults to `^/collections(/[^/]+)?$`
+    - **Type:** Regex string, or a JSON array of regex strings
+    - **Required:** No, defaults to `["^/collections(?:/(?P<collection_id>[^/]+))?$"]`
     - **Example:** `^.*?/collections(/[^/]+)?$`
+
+### Filter paths and path params
+
+`ITEMS_FILTER_PATH` and `COLLECTIONS_FILTER_PATH` do two jobs:
+
+1. **Scope**: They select the request paths a filter applies to.
+2. **Information**: They declare the request "path parameters" information handed to the filter.
+
+**Path params.** Named capture groups in the pattern that matched become `req.path_params`. A pattern declaring no named groups (the default) instead falls back to built-in extraction, which recognizes `/collections/{collection_id}` optionally followed by `items`, `bulk_items`, or `queryables` and an item ID. Patterns using the fallback are named in a log line at startup.
+
+**Supporting several patterns.** Covering all of your endpoints may require more than one pattern, especially if using named capture groups which do not support redefinition of the group name. To provide more than one pattern, provide the input as a JSON array.
+
+**Authentication.** A path matching either setting always requires authentication, whatever `DEFAULT_PUBLIC` is set to, and is marked accordingly in the OpenAPI spec. A separate `PRIVATE_ENDPOINTS` entry is not needed.
+
+**Example: the Aggregation extension.** The [STAC API Aggregation extension](https://github.com/stac-api-extensions/aggregation) adds four endpoints, which `stac-fastapi` registers as:
+
+| Path | Methods |
+| --- | --- |
+| `/aggregate` | GET |
+| `/aggregations` | GET |
+| `/collections/{collection_id}/aggregate` | GET |
+| `/collections/{collection_id}/aggregations` | GET |
+
+None are covered by the defaults. The two collection-scoped endpoints belong to the collections filter, and each needs its own pattern because both declare `collection_id`:
+
+```
+COLLECTIONS_FILTER_PATH='[
+  "^/collections(?:/(?P<collection_id>[^/]+))?$",
+  "^/collections/(?P<collection_id>[^/]+)/aggregate$",
+  "^/collections/(?P<collection_id>[^/]+)/aggregations$"
+]'
+```
+
+The two root-level endpoints aggregate across Items, so they belong to the items filter alongside `/search`:
+
+```
+ITEMS_FILTER_PATH='[
+  "^(?:/collections/(?P<collection_id>[^/]+)/items(?:/(?P<item_id>[^/]+))?|/search)$",
+  "^/aggregate$",
+  "^/aggregations$"
+]'
+```
+
+A pattern passes whatever it declares, so a path carrying more variables passes more of them:
+
+```
+"^/mosaic/(?P<zoom>[^/]+)/(?P<x>[^/]+)/(?P<y>[^/]+)/(?P<collection_id>[^/]+)\\.png$"
+```
+
+gives the filter `zoom`, `x`, `y`, and `collection_id`.

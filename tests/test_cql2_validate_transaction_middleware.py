@@ -7,11 +7,13 @@ import httpx
 import pytest
 from cql2 import Expr
 from fastapi import FastAPI, Request
+from starlette.datastructures import Headers
 from starlette.testclient import TestClient
 
 from stac_auth_proxy.middleware.Cql2ValidateTransactionMiddleware import (
     Cql2ValidateTransactionMiddleware,
     _deep_merge,
+    _forward_headers,
 )
 
 ITEM_FILTER = {"op": "=", "args": [{"property": "collection"}, "allowed"]}
@@ -141,6 +143,38 @@ class TestDeepMerge:
     def test_merge(self, base, override, expected):
         """Deep merge produces expected result."""
         assert _deep_merge(base, override) == expected
+
+
+class TestForwardHeaders:
+    """Test the _forward_headers helper."""
+
+    def test_keeps_auth_and_other_headers(self):
+        """Authorization and other non-excluded headers are kept."""
+        headers = Headers(
+            {
+                "authorization": "Bearer abc123",
+                "cookie": "session=xyz",
+                "accept": "application/json",
+            }
+        )
+        assert _forward_headers(headers) == {
+            "authorization": "Bearer abc123",
+            "cookie": "session=xyz",
+            "accept": "application/json",
+        }
+
+    def test_strips_hop_by_hop_and_sizing_headers(self):
+        """Host/content-length/content-type/transfer-encoding are stripped."""
+        headers = Headers(
+            {
+                "host": "proxy.example.com",
+                "content-length": "42",
+                "content-type": "application/json",
+                "transfer-encoding": "chunked",
+                "authorization": "Bearer abc123",
+            }
+        )
+        assert _forward_headers(headers) == {"authorization": "Bearer abc123"}
 
 
 class TestCreate:
@@ -490,6 +524,92 @@ class TestDelete:
         assert response.status_code == expected_status
         if error_code:
             assert response.json()["code"] == error_code
+
+
+class TestFetchExistingForwardsHeaders:
+    """
+    Regression test for the internal existing-record fetch dropping the
+    caller's Authorization header, which made PUT/PATCH/DELETE against a
+    private upstream endpoint fail upstream auth (401) and surface as a 502.
+    """
+
+    def _mock_client(self, handler):
+        return patch(
+            "httpx.AsyncClient",
+            return_value=httpx.AsyncClient(
+                base_url="http://upstream:8080",
+                transport=httpx.MockTransport(handler),
+            ),
+        )
+
+    def test_update_forwards_authorization(self, app_with_middleware, cql2_filter):
+        """PUT's internal existing-record fetch carries the caller's Authorization header."""
+        captured_headers = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured_headers.update(request.headers)
+            return httpx.Response(200, json={"id": "item1", "collection": "allowed"})
+
+        app = app_with_middleware()
+        _set_cql2_filter(app, cql2_filter)
+        client = TestClient(app)
+
+        with self._mock_client(handler):
+            response = client.put(
+                "/collections/allowed/items/item1",
+                json={"id": "item1", "collection": "allowed"},
+                headers={"Authorization": "Bearer token123"},
+            )
+
+        assert response.status_code == 200
+        assert captured_headers.get("authorization") == "Bearer token123"
+
+    def test_delete_forwards_authorization(self, app_with_middleware, cql2_filter):
+        """DELETE's internal existing-record fetch carries the caller's Authorization header."""
+        captured_headers = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured_headers.update(request.headers)
+            return httpx.Response(200, json={"id": "item1", "collection": "allowed"})
+
+        app = app_with_middleware()
+        _set_cql2_filter(app, cql2_filter)
+        client = TestClient(app)
+
+        with self._mock_client(handler):
+            response = client.delete(
+                "/collections/allowed/items/item1",
+                headers={"Authorization": "Bearer token123"},
+            )
+
+        assert response.status_code == 200
+        assert captured_headers.get("authorization") == "Bearer token123"
+
+    def test_does_not_forward_incoming_content_length(
+        self, app_with_middleware, cql2_filter
+    ):
+        """The bodied PUT's content-length must not leak onto the bodyless GET."""
+        captured_headers = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured_headers.update(request.headers)
+            return httpx.Response(200, json={"id": "item1", "collection": "allowed"})
+
+        app = app_with_middleware()
+        _set_cql2_filter(app, cql2_filter)
+        client = TestClient(app)
+
+        with self._mock_client(handler):
+            response = client.put(
+                "/collections/allowed/items/item1",
+                json={"id": "item1", "collection": "allowed", "extra": "x" * 100},
+                headers={"Authorization": "Bearer token123"},
+            )
+
+        assert response.status_code == 200
+        # A bodyless GET has no content-length; it must not be the original
+        # PUT body's content-length leaking through.
+        assert captured_headers.get("content-length") is None
 
 
 class TestPassthrough:

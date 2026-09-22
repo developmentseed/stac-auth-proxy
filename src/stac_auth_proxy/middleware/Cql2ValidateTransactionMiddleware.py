@@ -8,6 +8,7 @@ from typing import Optional
 
 import httpx
 from cql2 import Expr
+from starlette.datastructures import Headers
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -15,6 +16,15 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from ..utils.middleware import required_conformance
 
 logger = getLogger(__name__)
+
+# Hop-by-hop/body-sizing headers tied to the *original* (often bodied) request
+# that must not be copied onto the middleware's own bodyless upstream GET.
+_UNFORWARDED_HEADERS = {"host", "content-length", "content-type", "transfer-encoding"}
+
+
+def _forward_headers(headers: Headers) -> dict[str, str]:
+    """Select the subset of request headers safe to forward on internal requests."""
+    return {k: v for k, v in headers.items() if k.lower() not in _UNFORWARDED_HEADERS}
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
@@ -74,11 +84,11 @@ class Cql2ValidateTransactionMiddleware:
                 return await self._handle_create(scope, receive, send, cql2_filter)
             if method in ("PUT", "PATCH"):
                 return await self._handle_update(
-                    scope, receive, send, cql2_filter, path, method
+                    scope, receive, send, cql2_filter, path, method, request.headers
                 )
             if method == "DELETE":
                 return await self._handle_delete(
-                    scope, receive, send, cql2_filter, path
+                    scope, receive, send, cql2_filter, path, request.headers
                 )
 
         # Match collections endpoints: /collections, /collections/{id}
@@ -87,11 +97,11 @@ class Cql2ValidateTransactionMiddleware:
                 return await self._handle_create(scope, receive, send, cql2_filter)
             if method in ("PUT", "PATCH"):
                 return await self._handle_update(
-                    scope, receive, send, cql2_filter, path, method
+                    scope, receive, send, cql2_filter, path, method, request.headers
                 )
             if method == "DELETE":
                 return await self._handle_delete(
-                    scope, receive, send, cql2_filter, path
+                    scope, receive, send, cql2_filter, path, request.headers
                 )
 
         # Not a transaction endpoint, pass through
@@ -120,9 +130,13 @@ class Cql2ValidateTransactionMiddleware:
 
         return new_receive
 
-    async def _fetch_existing(self, path: str) -> Optional[dict]:
+    async def _fetch_existing(
+        self, path: str, headers: Optional[Headers] = None
+    ) -> Optional[dict]:
         """Fetch the existing record from upstream."""
-        response = await self._client.get(path)
+        response = await self._client.get(
+            path, headers=_forward_headers(headers) if headers else None
+        )
         if response.status_code == 404:
             return None
         response.raise_for_status()
@@ -223,6 +237,7 @@ class Cql2ValidateTransactionMiddleware:
         cql2_filter: Expr,
         path: str,
         method: str,
+        headers: Headers,
     ) -> None:
         """Validate update requests."""
         body = await self._read_body(receive)
@@ -241,7 +256,7 @@ class Cql2ValidateTransactionMiddleware:
 
         # Fetch existing record
         try:
-            existing = await self._fetch_existing(path)
+            existing = await self._fetch_existing(path, headers)
         except httpx.HTTPError:
             response = JSONResponse(
                 {
@@ -295,10 +310,11 @@ class Cql2ValidateTransactionMiddleware:
         send: Send,
         cql2_filter: Expr,
         path: str,
+        headers: Headers,
     ) -> None:
         """Validate delete requests."""
         try:
-            existing = await self._fetch_existing(path)
+            existing = await self._fetch_existing(path, headers)
         except httpx.HTTPError:
             response = JSONResponse(
                 {

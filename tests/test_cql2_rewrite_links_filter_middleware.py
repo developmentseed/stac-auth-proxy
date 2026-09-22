@@ -96,7 +96,7 @@ class TestEdgeCases:
     def test_text_in_json(self):
         """Test text encoded as JSON."""
         app = FastAPI()
-        app.add_middleware(Cql2RewriteLinksFilterMiddleware)
+        _install_middlewares(app, "id='foo'")
 
         @app.get("/text", response_model=str)
         async def plain_text():

@@ -142,7 +142,7 @@ class Cql2RewriteLinksFilterMiddleware:
             # Handle filter in body (for POST links). The spec only requires
             # cql2-json for POST bodies, but if the link advertises cql2-text
             # we preserve that lang on the way out.
-            link_body = link["body"] if "body" in link else None
+            link_body = link.get("body")
             if not isinstance(link_body, dict) or "filter" not in link_body:
                 continue
             if user_filter is None:

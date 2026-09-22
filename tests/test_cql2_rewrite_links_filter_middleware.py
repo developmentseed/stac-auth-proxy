@@ -93,6 +93,21 @@ class TestEdgeCases:
         data = response.json()
         assert data == {"links": "not a list"}
 
+    def test_text_in_json(self):
+        """Test text encoded as JSON."""
+        app = FastAPI()
+        _install_middlewares(app, "id='foo'")
+
+        @app.get("/text", response_model=str)
+        async def plain_text():
+            return "text in json"
+
+        client = TestClient(app)
+        response = client.get("/text")
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/json"
+        assert response.text == '"text in json"'
+
 
 class TestMiddlewareStackSimulation:
     """Test middleware behavior by simulating the full middleware stack."""

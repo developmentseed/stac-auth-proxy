@@ -95,7 +95,9 @@ class Cql2BuildFilterMiddleware:
                 }
             )
         except HTTPException as e:
-            response = JSONResponse({"detail": e.detail}, status_code=e.status_code)
+            response = JSONResponse(
+                {"detail": e.detail}, status_code=e.status_code, headers=e.headers
+            )
             return await response(scope, receive, send)
 
         cql2_filter = Expr(filter_expr)

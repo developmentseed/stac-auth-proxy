@@ -125,3 +125,27 @@ class TestErrorHandling:
         # Test GET request SHOULD return 200 for good user
         get_response = client.get("/search", params={"user": "good"})
         assert get_response.status_code == 200
+
+    def test_exception_headers_are_kept(self):
+        """Headers set on the HTTPException, such as WWW-Authenticate, reach the client."""
+        app = FastAPI()
+
+        async def items_filter(context):
+            raise HTTPException(
+                status_code=401,
+                detail="Not authenticated",
+                headers={"WWW-Authenticate": 'Bearer realm="stac"'},
+            )
+
+        app.add_middleware(
+            Cql2BuildFilterMiddleware,
+            items_filter=items_filter,
+        )
+
+        @app.get("/search")
+        async def search_get(request: Request):
+            return {}
+
+        response = TestClient(app).get("/search")
+        assert response.status_code == 401
+        assert response.headers["www-authenticate"] == 'Bearer realm="stac"'

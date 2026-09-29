@@ -633,6 +633,28 @@ class TestReadableButNotWritable:
         assert response.json()["code"] == error_code
 
     @pytest.mark.parametrize("method", ["put", "delete"])
+    def test_read_filter_that_cannot_be_evaluated_is_404(
+        self, app_with_middleware, cql2_filter, method
+    ):
+        """A read filter that raises on the record fails closed: 404, not 500."""
+        app = app_with_middleware()
+        # `IN` on a list-valued property cannot be reduced to a boolean
+        _set_cql2_filter(app, cql2_filter, Expr("tags IN ('a', 'b')"))
+        client = TestClient(app)
+        with patch.object(
+            Cql2ValidateTransactionMiddleware,
+            "_fetch_existing",
+            new_callable=AsyncMock,
+            return_value={"id": "item1", "collection": "denied", "tags": ["a"]},
+        ):
+            response = getattr(client, method)(
+                "/collections/denied/items/item1",
+                **({"json": {"id": "item1"}} if method == "put" else {}),
+            )
+        assert response.status_code == 404
+        assert response.json()["code"] == "NotFoundError"
+
+    @pytest.mark.parametrize("method", ["put", "delete"])
     def test_missing_record_is_404_even_when_everything_is_readable(
         self, app_with_middleware, cql2_filter, method
     ):

@@ -139,7 +139,7 @@ class Cql2ValidateTransactionMiddleware:
         read_filter: Optional[Expr] = getattr(
             Request(scope).state, self.read_state_key, None
         )
-        if read_filter is not None and read_filter.matches(existing):
+        if read_filter is not None and self._readable(read_filter, existing):
             return JSONResponse(
                 {
                     "code": "ForbiddenError",
@@ -151,6 +151,15 @@ class Cql2ValidateTransactionMiddleware:
             {"code": "NotFoundError", "description": "Record not found."},
             status_code=404,
         )
+
+    @staticmethod
+    def _readable(read_filter: Expr, record: dict) -> bool:
+        """Check the read filter against a record; an evaluation error counts as no match."""
+        try:
+            return bool(read_filter.matches(record))
+        except Exception as e:
+            logger.warning("Could not evaluate the read filter on a record: %s", e)
+            return False
 
     async def _handle_create(
         self,

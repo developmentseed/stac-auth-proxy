@@ -49,6 +49,8 @@ The [`ITEMS_FILTER_CLS`](configuration.md#items_filter_cls) applies filters to t
 - `PATCH /collections/{collection_id}/items/{item_id}` - Fetch existing item, validate both existing and merged result against CQL2 query
 - `DELETE /collections/{collection_id}/items/{item_id}` - Fetch existing item, validate against CQL2 query
 
+When an existing record does not match the filter for a `PUT`, `PATCH`, or `DELETE`, the proxy also calls the filter factory with the `GET` method for the same path. If that read filter matches the record, the caller can already see it, so the request is refused with `403`. Otherwise it is answered with `404`, so the existence of a record the caller cannot read is not disclosed.
+
 ## Filter Contract
 
 A filter factory implements the following contract:

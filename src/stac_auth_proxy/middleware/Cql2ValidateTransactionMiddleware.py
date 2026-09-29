@@ -42,6 +42,7 @@ class Cql2ValidateTransactionMiddleware:
 
     app: ASGIApp
     state_key: str = "cql2_filter"
+    read_state_key: str = "cql2_read_filter"
 
     # Transaction endpoint patterns
     items_pattern = r"^/collections/([^/]+)/(items|bulk_items)(?:/([^/]+))?$"
@@ -160,6 +161,29 @@ class Cql2ValidateTransactionMiddleware:
             return json.loads(body)
         except json.JSONDecodeError as e:
             raise UpstreamError("Existing record is not valid JSON") from e
+
+    def _denied_existing(self, scope: Scope, existing: dict) -> JSONResponse:
+        """
+        Refuse a change to an existing record that the filter does not match.
+
+        A record the caller may read is refused with 403; any other record is
+        reported as not found, so its existence is not disclosed.
+        """
+        read_filter: Optional[Expr] = getattr(
+            Request(scope).state, self.read_state_key, None
+        )
+        if read_filter is not None and read_filter.matches(existing):
+            return JSONResponse(
+                {
+                    "code": "ForbiddenError",
+                    "description": "Resource does not match access filter.",
+                },
+                status_code=403,
+            )
+        return JSONResponse(
+            {"code": "NotFoundError", "description": "Record not found."},
+            status_code=404,
+        )
 
     async def _handle_create(
         self,
@@ -293,10 +317,7 @@ class Cql2ValidateTransactionMiddleware:
 
         # Validate existing record matches filter
         if not cql2_filter.matches(existing):
-            response = JSONResponse(
-                {"code": "NotFoundError", "description": "Record not found."},
-                status_code=404,
-            )
+            response = self._denied_existing(scope, existing)
             return await response(scope, receive, send)
 
         # Merge for validation
@@ -348,10 +369,7 @@ class Cql2ValidateTransactionMiddleware:
             return await response(scope, receive, send)
 
         if not cql2_filter.matches(existing):
-            response = JSONResponse(
-                {"code": "NotFoundError", "description": "Record not found."},
-                status_code=404,
-            )
+            response = self._denied_existing(scope, existing)
             return await response(scope, receive, send)
 
         await self.app(scope, receive, send)

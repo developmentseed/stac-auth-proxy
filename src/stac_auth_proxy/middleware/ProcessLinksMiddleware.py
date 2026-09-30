@@ -31,6 +31,14 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
     json_content_type_expr: str = r"application/(geo\+)?json"
     root_path_skip_prefixes: Sequence[str] = ()
 
+    def __post_init__(self) -> None:
+        """Normalize skip prefixes, dropping empty entries and trailing slashes."""
+        self.root_path_skip_prefixes = tuple(
+            prefix.rstrip("/")
+            for prefix in self.root_path_skip_prefixes
+            if prefix.rstrip("/")
+        )
+
     def should_transform_response(self, request: Request, scope: Scope) -> bool:
         """Only transform responses with JSON content type."""
         return bool(

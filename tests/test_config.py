@@ -151,3 +151,28 @@ def test_cors_model_config():
     ]
     assert cors_settings.allow_methods == ["GET", "POST"]
     assert cors_settings.allow_headers == ["Authorization", "Content-Type"]
+
+
+def test_cors_env_vars(monkeypatch):
+    """The documented CORS_* env vars are honored alongside other nested settings."""
+    monkeypatch.setenv("UPSTREAM_URL", "http://upstream")
+    monkeypatch.setenv("OIDC_DISCOVERY_URL", "http://oidc/.well-known/x")
+    monkeypatch.setenv("CORS_ALLOW_ORIGINS", "https://a.com,https://b.com")
+    monkeypatch.setenv("CORS_ALLOW_CREDENTIALS", "false")
+    monkeypatch.setenv("CORS_MAX_AGE", "10")
+    monkeypatch.setenv("ITEMS_FILTER_CLS", "stac_auth_proxy.filters:Template")
+    monkeypatch.setenv("ITEMS_FILTER_ARGS", '["true"]')
+    settings = Settings()
+    assert list(settings.cors.allow_origins) == ["https://a.com", "https://b.com"]
+    assert settings.cors.allow_credentials is False
+    assert settings.cors.max_age == 10
+    assert settings.items_filter.cls == "stac_auth_proxy.filters:Template"
+    assert list(settings.items_filter.args) == ["true"]
+
+
+def test_cors_json_env_var(monkeypatch):
+    """The CORS={...} JSON env var form is honored."""
+    monkeypatch.setenv("UPSTREAM_URL", "http://upstream")
+    monkeypatch.setenv("OIDC_DISCOVERY_URL", "http://oidc/.well-known/x")
+    monkeypatch.setenv("CORS", '{"allow_origins": ["https://a.com"]}')
+    assert list(Settings().cors.allow_origins) == ["https://a.com"]

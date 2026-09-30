@@ -47,11 +47,12 @@ class _ClassInput(BaseModel):
 class CorsSettings(BaseModel):
     """CORS configuration settings."""
 
-    allow_origins: Sequence[str] = ["*"]
-    allow_methods: Sequence[str] = ["*"]
-    allow_headers: Sequence[str] = ["*"]
+    # NoDecode: accept the documented comma-separated env form (see root_path_skip_prefixes)
+    allow_origins: Annotated[Sequence[str], NoDecode] = ["*"]
+    allow_methods: Annotated[Sequence[str], NoDecode] = ["*"]
+    allow_headers: Annotated[Sequence[str], NoDecode] = ["*"]
     allow_credentials: bool = True
-    expose_headers: Sequence[str] = []
+    expose_headers: Annotated[Sequence[str], NoDecode] = []
     max_age: int = 600
 
     @field_validator(
@@ -135,6 +136,9 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_nested_delimiter="_",
+        # Split only once so CORS_ALLOW_ORIGINS -> cors.allow_origins,
+        # not cors.allow.origins (which is silently ignored).
+        env_nested_max_split=1,
     )
 
     @model_validator(mode="before")

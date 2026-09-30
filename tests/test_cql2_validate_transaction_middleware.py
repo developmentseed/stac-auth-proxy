@@ -7,7 +7,7 @@ import httpx
 import pytest
 from cql2 import Expr
 from fastapi import FastAPI, Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.testclient import TestClient
 
 from stac_auth_proxy.handlers import ReverseProxyHandler
@@ -604,13 +604,18 @@ class TestFetchExistingMiddlewareMode:
         @app.get("/collections/{collection_id}/items/{item_id}")
         async def get_item(request: Request):
             seen.append(request.headers)
+            request.state.set_by_get = True
+            if get_status == "raise":
+                raise RuntimeError("downstream blew up")
+            if get_status == "not-json":
+                return PlainTextResponse("not json")
             if get_status != 200:
                 return JSONResponse({"code": "Error"}, status_code=get_status)
             return existing or {"id": "item1", "collection": "allowed"}
 
         @app.put("/collections/{collection_id}/items/{item_id}")
         async def put_item(request: Request):
-            return json.loads(await request.body())
+            return {"state_leaked": hasattr(request.state, "set_by_get")}
 
         @app.delete("/collections/{collection_id}/items/{item_id}")
         async def delete_item():
@@ -634,6 +639,16 @@ class TestFetchExistingMiddlewareMode:
         assert len(seen) == 1
         assert not LEAKED_HEADERS & set(seen[0].keys())
 
+    def test_state_not_shared_with_caller(self):
+        """State written during the in-process GET doesn't leak into the real request."""
+        client, _ = self._create()
+        response = client.put(
+            "/collections/allowed/items/item1",
+            json={"id": "item1", "collection": "allowed"},
+            headers=CALLER_HEADERS,
+        )
+        assert response.json() == {"state_leaked": False}
+
     @pytest.mark.parametrize(
         "get_status,existing,expected_status,code",
         [
@@ -646,6 +661,8 @@ class TestFetchExistingMiddlewareMode:
             ),
             pytest.param(404, None, 404, "NotFoundError", id="missing"),
             pytest.param(500, None, 502, "UpstreamError", id="downstream-error"),
+            pytest.param("raise", None, 502, "UpstreamError", id="downstream-raises"),
+            pytest.param("not-json", None, 502, "UpstreamError", id="not-json"),
         ],
     )
     def test_existing_record_outcomes(

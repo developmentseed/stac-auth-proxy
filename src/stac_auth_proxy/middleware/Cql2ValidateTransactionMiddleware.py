@@ -130,6 +130,9 @@ class Cql2ValidateTransactionMiddleware:
             # downstream always answers with a complete, plain JSON body.
             "headers": [(k, v) for k, v in scope["headers"] if k == b"host"]
             + [(b"accept", b"application/json")],
+            # Copy so downstream writes to request.state can't leak into the caller's
+            # request.
+            "state": dict(scope.get("state", {})),
         }
         status = None
         body = b""
@@ -141,10 +144,13 @@ class Cql2ValidateTransactionMiddleware:
             nonlocal status, body
             if message["type"] == "http.response.start":
                 status = message["status"]
-            elif message["type"] == "http.response.body":
+            else:
                 body += message.get("body", b"")
 
-        await self.app(sub_scope, receive, send)
+        try:
+            await self.app(sub_scope, receive, send)
+        except Exception as e:
+            raise UpstreamError("Failed to fetch existing record") from e
 
         if status == 404:
             return None

@@ -480,3 +480,45 @@ def test_allowed_audiences_configuration_formats(
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == expected_status
+
+
+@pytest.mark.parametrize(
+    "auth_header,expected_detail",
+    [
+        (None, "Not authenticated"),
+        ("Bearer invalid-token", "Invalid or expired token"),
+        ("InvalidFormat", "Invalid Authorization header format"),
+    ],
+)
+def test_401_carries_www_authenticate_challenge(
+    source_api_server, auth_header, expected_detail
+):
+    """A 401 response carries a WWW-Authenticate challenge (RFC 6750, section 3)."""
+    test_app = app_factory(upstream_url=source_api_server)
+    client = TestClient(test_app)
+    headers = {"Authorization": auth_header} if auth_header else {}
+    response = client.get("/collections", headers=headers)
+    assert response.status_code == 401
+    assert response.json()["detail"] == expected_detail
+    assert response.headers.get("WWW-Authenticate", "").startswith("Bearer")
+
+
+def test_403_for_missing_scope_carries_scope_challenge(
+    source_api_server, token_builder
+):
+    """A 403 for missing scopes names the required scope in its challenge (RFC 6750, section 3)."""
+    test_app = AppFactory(
+        oidc_discovery_url="https://example-stac-api.com/.well-known/openid-configuration",
+        default_public=True,
+        public_endpoints={},
+        private_endpoints={r"^/collections$": [("POST", "collection:create")]},
+    )(upstream_url=source_api_server)
+    client = TestClient(test_app)
+    token = token_builder({"scope": "item:create"})
+    response = client.post(
+        "/collections", json={}, headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 403
+    assert (
+        response.headers.get("WWW-Authenticate") == 'Bearer scope="collection:create"'
+    )

@@ -95,12 +95,14 @@ def app_with_middleware():
     return _create
 
 
-def _set_cql2_filter(app, cql2_filter):
-    """Add middleware that sets cql2_filter on request state."""
+def _set_cql2_filter(app, cql2_filter, cql2_read_filter=None):
+    """Add middleware that sets cql2_filter (and cql2_read_filter) on request state."""
 
     @app.middleware("http")
     async def set_filter(request, call_next):
         request.state.cql2_filter = cql2_filter
+        if cql2_read_filter is not None:
+            request.state.cql2_read_filter = cql2_read_filter
         return await call_next(request)
 
 
@@ -572,5 +574,103 @@ class TestUpstreamFetchFailure:
             return_value=None,
         ):
             response = getattr(client, method)(path, **kwargs)
+        assert response.status_code == 404
+        assert response.json()["code"] == "NotFoundError"
+
+
+class TestReadableButNotWritable:
+    """A record the caller may read but not modify is refused with 403, not hidden."""
+
+    READ_ALL = {"op": "isNull", "args": [{"property": "no_such_field"}]}
+    READ_NONE = {"op": "=", "args": [{"property": "collection"}, "nothing"]}
+
+    @pytest.mark.parametrize(
+        "method,kwargs",
+        [
+            pytest.param(
+                "put",
+                {"json": {"id": "item1", "collection": "denied"}},
+                id="put",
+            ),
+            pytest.param("patch", {"json": {"properties": {}}}, id="patch"),
+            pytest.param("delete", {}, id="delete"),
+        ],
+    )
+    @pytest.mark.parametrize(
+        "read_filter,expected_status,error_code",
+        [
+            pytest.param(READ_ALL, 403, "ForbiddenError", id="readable"),
+            pytest.param(READ_NONE, 404, "NotFoundError", id="not-readable"),
+            pytest.param(None, 404, "NotFoundError", id="no-read-filter"),
+        ],
+    )
+    def test_existing_record_denied_by_write_filter(
+        self,
+        app_with_middleware,
+        cql2_filter,
+        method,
+        kwargs,
+        read_filter,
+        expected_status,
+        error_code,
+    ):
+        """403 if the read filter matches the existing record, else 404."""
+        app = app_with_middleware()
+        _set_cql2_filter(
+            app, cql2_filter, Expr(read_filter) if read_filter is not None else None
+        )
+        client = TestClient(app)
+        with patch.object(
+            Cql2ValidateTransactionMiddleware,
+            "_fetch_existing",
+            new_callable=AsyncMock,
+            return_value={"id": "item1", "collection": "denied", "properties": {}},
+        ):
+            response = getattr(client, method)(
+                "/collections/denied/items/item1", **kwargs
+            )
+        assert response.status_code == expected_status
+        assert response.json()["code"] == error_code
+
+    @pytest.mark.parametrize("method", ["put", "delete"])
+    def test_read_filter_that_cannot_be_evaluated_is_404(
+        self, app_with_middleware, cql2_filter, method
+    ):
+        """A read filter that raises on the record fails closed: 404, not 500."""
+        app = app_with_middleware()
+        # `IN` on a list-valued property cannot be reduced to a boolean
+        _set_cql2_filter(app, cql2_filter, Expr("tags IN ('a', 'b')"))
+        client = TestClient(app)
+        with patch.object(
+            Cql2ValidateTransactionMiddleware,
+            "_fetch_existing",
+            new_callable=AsyncMock,
+            return_value={"id": "item1", "collection": "denied", "tags": ["a"]},
+        ):
+            response = getattr(client, method)(
+                "/collections/denied/items/item1",
+                **({"json": {"id": "item1"}} if method == "put" else {}),
+            )
+        assert response.status_code == 404
+        assert response.json()["code"] == "NotFoundError"
+
+    @pytest.mark.parametrize("method", ["put", "delete"])
+    def test_missing_record_is_404_even_when_everything_is_readable(
+        self, app_with_middleware, cql2_filter, method
+    ):
+        """A record that does not exist stays a 404."""
+        app = app_with_middleware()
+        _set_cql2_filter(app, cql2_filter, Expr(self.READ_ALL))
+        client = TestClient(app)
+        with patch.object(
+            Cql2ValidateTransactionMiddleware,
+            "_fetch_existing",
+            new_callable=AsyncMock,
+            return_value=None,
+        ):
+            response = getattr(client, method)(
+                "/collections/denied/items/item1",
+                **({"json": {"id": "item1"}} if method == "put" else {}),
+            )
         assert response.status_code == 404
         assert response.json()["code"] == "NotFoundError"

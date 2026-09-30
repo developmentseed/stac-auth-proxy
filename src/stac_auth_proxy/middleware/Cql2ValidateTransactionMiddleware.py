@@ -2,11 +2,10 @@
 
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from logging import getLogger
 from typing import Optional
 
-import httpx
 from cql2 import Expr
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -15,6 +14,10 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from ..utils.middleware import required_conformance
 
 logger = getLogger(__name__)
+
+
+class UpstreamError(Exception):
+    """Raised when the existing record could not be fetched."""
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
@@ -38,18 +41,11 @@ class Cql2ValidateTransactionMiddleware:
     """Middleware to validate transaction requests against a CQL2 filter."""
 
     app: ASGIApp
-    upstream_url: str
     state_key: str = "cql2_filter"
-
-    _client: httpx.AsyncClient = field(init=False)
 
     # Transaction endpoint patterns
     items_pattern = r"^/collections/([^/]+)/(items|bulk_items)(?:/([^/]+))?$"
     collections_pattern = r"^/collections(?:/([^/]+))?$"
-
-    def __post_init__(self):
-        """Initialize the HTTP client."""
-        self._client = httpx.AsyncClient(base_url=self.upstream_url)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """Validate transaction requests against the CQL2 filter."""
@@ -74,12 +70,10 @@ class Cql2ValidateTransactionMiddleware:
                 return await self._handle_create(scope, receive, send, cql2_filter)
             if method in ("PUT", "PATCH"):
                 return await self._handle_update(
-                    scope, receive, send, cql2_filter, path, method
+                    scope, receive, send, cql2_filter, method
                 )
             if method == "DELETE":
-                return await self._handle_delete(
-                    scope, receive, send, cql2_filter, path
-                )
+                return await self._handle_delete(scope, receive, send, cql2_filter)
 
         # Match collections endpoints: /collections, /collections/{id}
         if re.match(self.collections_pattern, path):
@@ -87,12 +81,10 @@ class Cql2ValidateTransactionMiddleware:
                 return await self._handle_create(scope, receive, send, cql2_filter)
             if method in ("PUT", "PATCH"):
                 return await self._handle_update(
-                    scope, receive, send, cql2_filter, path, method
+                    scope, receive, send, cql2_filter, method
                 )
             if method == "DELETE":
-                return await self._handle_delete(
-                    scope, receive, send, cql2_filter, path
-                )
+                return await self._handle_delete(scope, receive, send, cql2_filter)
 
         # Not a transaction endpoint, pass through
         return await self.app(scope, receive, send)
@@ -120,13 +112,48 @@ class Cql2ValidateTransactionMiddleware:
 
         return new_receive
 
-    async def _fetch_existing(self, path: str) -> Optional[dict]:
-        """Fetch the existing record from upstream."""
-        response = await self._client.get(path)
-        if response.status_code == 404:
+    async def _fetch_existing(self, scope: Scope) -> Optional[dict]:
+        """
+        Fetch the existing record by sending a GET for the same path to the
+        downstream app, in-process.
+
+        When deployed as a proxy, this reaches the upstream via the reverse proxy
+        handler; when deployed as middleware, it reaches the STAC API's routes
+        directly. Either way the request never re-enters the auth middleware, so no
+        credentials need to be forwarded.
+        """
+        sub_scope = {
+            **scope,
+            "method": "GET",
+            "query_string": b"",
+            # Drop the caller's headers (body sizing, conditionals, encodings) so the
+            # downstream always answers with a complete, plain JSON body.
+            "headers": [(k, v) for k, v in scope["headers"] if k == b"host"]
+            + [(b"accept", b"application/json")],
+        }
+        status = None
+        body = b""
+
+        async def receive():
+            return {"type": "http.request", "body": b"", "more_body": False}
+
+        async def send(message):
+            nonlocal status, body
+            if message["type"] == "http.response.start":
+                status = message["status"]
+            elif message["type"] == "http.response.body":
+                body += message.get("body", b"")
+
+        await self.app(sub_scope, receive, send)
+
+        if status == 404:
             return None
-        response.raise_for_status()
-        return response.json()
+        if status != 200:
+            raise UpstreamError(f"Unexpected status {status} fetching existing record")
+        try:
+            return json.loads(body)
+        except json.JSONDecodeError as e:
+            raise UpstreamError("Existing record is not valid JSON") from e
 
     async def _handle_create(
         self,
@@ -221,7 +248,6 @@ class Cql2ValidateTransactionMiddleware:
         receive: Receive,
         send: Send,
         cql2_filter: Expr,
-        path: str,
         method: str,
     ) -> None:
         """Validate update requests."""
@@ -241,8 +267,8 @@ class Cql2ValidateTransactionMiddleware:
 
         # Fetch existing record
         try:
-            existing = await self._fetch_existing(path)
-        except httpx.HTTPError:
+            existing = await self._fetch_existing(scope)
+        except UpstreamError:
             response = JSONResponse(
                 {
                     "code": "UpstreamError",
@@ -294,12 +320,11 @@ class Cql2ValidateTransactionMiddleware:
         receive: Receive,
         send: Send,
         cql2_filter: Expr,
-        path: str,
     ) -> None:
         """Validate delete requests."""
         try:
-            existing = await self._fetch_existing(path)
-        except httpx.HTTPError:
+            existing = await self._fetch_existing(scope)
+        except UpstreamError:
             response = JSONResponse(
                 {
                     "code": "UpstreamError",

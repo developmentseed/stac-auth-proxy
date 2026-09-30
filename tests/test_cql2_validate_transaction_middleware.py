@@ -7,10 +7,13 @@ import httpx
 import pytest
 from cql2 import Expr
 from fastapi import FastAPI, Request
+from starlette.responses import JSONResponse
 from starlette.testclient import TestClient
 
+from stac_auth_proxy.handlers import ReverseProxyHandler
 from stac_auth_proxy.middleware.Cql2ValidateTransactionMiddleware import (
     Cql2ValidateTransactionMiddleware,
+    UpstreamError,
     _deep_merge,
 )
 
@@ -28,12 +31,9 @@ def cql2_filter():
 def app_with_middleware():
     """Create a FastAPI app with the transaction middleware."""
 
-    def _create(upstream_url="http://upstream:8080"):
+    def _create():
         app = FastAPI()
-        app.add_middleware(
-            Cql2ValidateTransactionMiddleware,
-            upstream_url=upstream_url,
-        )
+        app.add_middleware(Cql2ValidateTransactionMiddleware)
 
         @app.post("/collections/{collection_id}/items")
         async def create_item(request: Request):
@@ -540,7 +540,7 @@ class TestUpstreamFetchFailure:
             Cql2ValidateTransactionMiddleware,
             "_fetch_existing",
             new_callable=AsyncMock,
-            side_effect=httpx.ConnectError("Connection refused"),
+            side_effect=UpstreamError("Connection refused"),
         ):
             response = getattr(client, method)(path, **kwargs)
         assert response.status_code == 502
@@ -574,3 +574,152 @@ class TestUpstreamFetchFailure:
             response = getattr(client, method)(path, **kwargs)
         assert response.status_code == 404
         assert response.json()["code"] == "NotFoundError"
+
+
+CALLER_HEADERS = {
+    "Authorization": "Bearer caller-token",
+    "If-None-Match": "*",
+    "Accept-Encoding": "zstd",
+}
+LEAKED_HEADERS = {"authorization", "if-none-match", "accept-encoding"}
+
+
+class TestFetchExistingMiddlewareMode:
+    """Existing record is fetched in-process from the wrapped STAC API's routes."""
+
+    def _create(self, get_status=200, existing=None):
+        seen = []
+        app = FastAPI()
+        app.add_middleware(Cql2ValidateTransactionMiddleware)
+        _set_cql2_filter(app, Expr(ITEM_FILTER))
+
+        # Stand-in for EnforceAuthMiddleware, which sits outside the transaction
+        # middleware; the in-process GET must never need to pass through it again.
+        @app.middleware("http")
+        async def require_auth(request, call_next):
+            if "authorization" not in request.headers:
+                return JSONResponse({"code": "Unauthorized"}, status_code=401)
+            return await call_next(request)
+
+        @app.get("/collections/{collection_id}/items/{item_id}")
+        async def get_item(request: Request):
+            seen.append(request.headers)
+            if get_status != 200:
+                return JSONResponse({"code": "Error"}, status_code=get_status)
+            return existing or {"id": "item1", "collection": "allowed"}
+
+        @app.put("/collections/{collection_id}/items/{item_id}")
+        async def put_item(request: Request):
+            return json.loads(await request.body())
+
+        @app.delete("/collections/{collection_id}/items/{item_id}")
+        async def delete_item():
+            return {"deleted": True}
+
+        return TestClient(app), seen
+
+    @pytest.mark.parametrize("method", ["put", "delete"])
+    def test_fetches_without_caller_headers(self, method):
+        """The GET reaches the route without auth, conditional, or encoding headers."""
+        client, seen = self._create()
+        kwargs = (
+            {"json": {"id": "item1", "collection": "allowed"}}
+            if method == "put"
+            else {}
+        )
+        response = getattr(client, method)(
+            "/collections/allowed/items/item1", headers=CALLER_HEADERS, **kwargs
+        )
+        assert response.status_code == 200
+        assert len(seen) == 1
+        assert not LEAKED_HEADERS & set(seen[0].keys())
+
+    @pytest.mark.parametrize(
+        "get_status,existing,expected_status,code",
+        [
+            pytest.param(
+                200,
+                {"id": "item1", "collection": "denied"},
+                404,
+                "NotFoundError",
+                id="existing-denied",
+            ),
+            pytest.param(404, None, 404, "NotFoundError", id="missing"),
+            pytest.param(500, None, 502, "UpstreamError", id="downstream-error"),
+        ],
+    )
+    def test_existing_record_outcomes(
+        self, get_status, existing, expected_status, code
+    ):
+        """Status of the in-process GET maps onto the transaction response."""
+        client, _ = self._create(get_status=get_status, existing=existing)
+        response = client.put(
+            "/collections/allowed/items/item1",
+            json={"id": "item1", "collection": "allowed"},
+            headers=CALLER_HEADERS,
+        )
+        assert response.status_code == expected_status
+        assert response.json()["code"] == code
+
+
+class TestFetchExistingProxyMode:
+    """Existing record is fetched from the upstream via the reverse proxy handler."""
+
+    def _create(self, get_status=200):
+        upstream_requests = []
+
+        def upstream(request: httpx.Request):
+            upstream_requests.append(request)
+            if request.method == "GET":
+                if get_status != 200:
+                    return httpx.Response(get_status)
+                return httpx.Response(
+                    200, json={"id": "item1", "collection": "allowed"}
+                )
+            return httpx.Response(200, json={"ok": True})
+
+        proxy = ReverseProxyHandler(
+            upstream="http://upstream",
+            client=httpx.AsyncClient(
+                transport=httpx.MockTransport(upstream), base_url="http://upstream"
+            ),
+        )
+        app = FastAPI()
+        app.add_middleware(Cql2ValidateTransactionMiddleware)
+        _set_cql2_filter(app, Expr(ITEM_FILTER))
+        app.add_api_route(
+            "/{path:path}",
+            proxy.proxy_request,
+            methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+        )
+        return TestClient(app), upstream_requests
+
+    def test_put_fetches_then_forwards(self):
+        """PUT issues a clean GET to the upstream, then forwards the PUT."""
+        client, upstream_requests = self._create()
+        response = client.put(
+            "/collections/allowed/items/item1",
+            json={"id": "item1", "collection": "allowed"},
+            headers=CALLER_HEADERS,
+        )
+        assert response.status_code == 200
+        get, put = upstream_requests
+        assert (get.method, get.url.path) == (
+            "GET",
+            "/collections/allowed/items/item1",
+        )
+        assert not LEAKED_HEADERS & set(get.headers.keys())
+        assert get.headers["host"] == "upstream"
+        assert put.method == "PUT"
+        assert put.headers["authorization"] == "Bearer caller-token"
+
+    def test_upstream_error(self):
+        """A failing upstream GET is reported as 502 and the PUT is not forwarded."""
+        client, upstream_requests = self._create(get_status=503)
+        response = client.put(
+            "/collections/allowed/items/item1",
+            json={"id": "item1", "collection": "allowed"},
+        )
+        assert response.status_code == 502
+        assert response.json()["code"] == "UpstreamError"
+        assert [r.method for r in upstream_requests] == ["GET"]

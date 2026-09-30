@@ -82,6 +82,15 @@ class ReverseProxyHandler:
 
     async def proxy_request(self, request: Request) -> Response:
         """Proxy a request to the upstream STAC API."""
+        # An encoded "?" or "#" in the path (e.g. item id "a%3Fb") is decoded by
+        # the server, so request.url.path is truncated at it ("a") and the
+        # request would act on a different record than the client addressed.
+        if "?" in request.scope["path"] or "#" in request.scope["path"]:
+            return Response(
+                status_code=400,
+                content='Path must not contain encoded "?" or "#"',
+            )
+
         headers = self._prepare_headers(request)
 
         # https://github.com/fastapi/fastapi/discussions/7382#discussioncomment-5136466

@@ -64,10 +64,8 @@ class CorsSettings(BaseModel):
     )
     @classmethod
     def parse_list(cls, v) -> Sequence[str] | None:
-        """Parse a comma-separated string into a list."""
-        if isinstance(v, str):
-            return [s.strip() for s in v.split(",") if s.strip()]
-        return v
+        """Parse a comma-separated or JSON-list string into a list."""
+        return str2list(v)
 
 
 class Settings(BaseSettings):

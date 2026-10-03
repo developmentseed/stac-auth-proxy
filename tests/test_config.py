@@ -176,3 +176,11 @@ def test_cors_json_env_var(monkeypatch):
     monkeypatch.setenv("OIDC_DISCOVERY_URL", "http://oidc/.well-known/x")
     monkeypatch.setenv("CORS", '{"allow_origins": ["https://a.com"]}')
     assert list(Settings().cors.allow_origins) == ["https://a.com"]
+
+
+def test_cors_env_var_json_list(monkeypatch):
+    """A CORS_* list env var also accepts the JSON-list form."""
+    monkeypatch.setenv("UPSTREAM_URL", "http://upstream")
+    monkeypatch.setenv("OIDC_DISCOVERY_URL", "http://oidc/.well-known/x")
+    monkeypatch.setenv("CORS_ALLOW_ORIGINS", '["https://a.com", "https://b.com"]')
+    assert list(Settings().cors.allow_origins) == ["https://a.com", "https://b.com"]

@@ -1,5 +1,6 @@
 """Test authentication cases for the proxy app."""
 
+import pytest
 from fastapi.testclient import TestClient
 from utils import AppFactory, get_upstream_request
 
@@ -38,3 +39,14 @@ async def test_proxied_headers_with_encoding(source_api_server, mock_upstream):
 
     proxied_request = await get_upstream_request(mock_upstream)
     assert proxied_request.headers.get("accept-encoding") == "gzip"
+
+
+@pytest.mark.parametrize("encoded", ["%3F", "%23"])
+async def test_encoded_path_delimiters_rejected(
+    source_api_server, mock_upstream, encoded
+):
+    """DELETE of item 'a?b' must not be truncated to, and applied to, item 'a'."""
+    client = TestClient(app_factory(upstream_url=source_api_server))
+    response = client.delete(f"/collections/c/items/a{encoded}b")
+    assert response.status_code == 400
+    assert mock_upstream.call_count == 0

@@ -126,10 +126,9 @@ Configure filters using environment variables:
 ITEMS_FILTER_CLS=stac_auth_proxy.filters:Template
 ITEMS_FILTER_ARGS=["collection IN ('public')"]
 
-# With keyword arguments
+# With multiple arguments
 ITEMS_FILTER_CLS=stac_auth_proxy.filters:Opa
 ITEMS_FILTER_ARGS=["http://opa:8181", "stac/items/allow"]
-ITEMS_FILTER_KWARGS={"cache_ttl": 30.0}
 ```
 
 **Environment Variables:**

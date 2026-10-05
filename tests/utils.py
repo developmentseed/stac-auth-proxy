@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from typing import Callable, cast
 from unittest.mock import MagicMock
-from urllib.parse import parse_qs, unquote
+from urllib.parse import parse_qs
 
 import httpx
 from httpx import Headers, Request
@@ -58,16 +58,18 @@ def parse_query_string(qs: str) -> dict:
     """Parse a query string into a dictionary."""
     # Python's parse_qs will turn dicts into strings (e.g. parse_qs('foo={"x":"y"}') == {'foo': ['{"x":"y"}']})
     # so we need some special tooling to examine the query params and compare them to expected values
-    parsed = parse_qs(qs)
+    parsed = parse_qs(qs, keep_blank_values=True)
 
     result = {}
     for key, value_list in parsed.items():
+        # a duplicated param (e.g. a second "filter") must not go unnoticed
+        assert len(value_list) == 1, f"{key!r} repeated in query string: {qs!r}"
         value = value_list[0]
+        # parse_qs already percent-decodes; decoding again would hide encoding bugs
         if key == "filter" and parsed.get("filter-lang") == ["cql2-json"]:
-            decoded_str = unquote(value)
-            result[key] = json.loads(decoded_str)
+            result[key] = json.loads(value)
         else:
-            result[key] = unquote(value)
+            result[key] = value
 
     return result
 

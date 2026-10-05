@@ -5,6 +5,7 @@ import json
 import cql2
 import pytest
 from fastapi.testclient import TestClient
+from starlette.datastructures import QueryParams
 from utils import AppFactory, get_upstream_request
 
 FILTER_EXPR_CASES = [
@@ -60,6 +61,10 @@ SEARCH_POST_QUERIES = [
     ),
 ]
 
+# A client filter that, if not encoded when re-serialized, smuggles a second
+# "filter" param upstream in place of the proxy's
+SMUGGLED_FILTER = "id = 'a&filter=id IS NOT NULL&x='"
+
 SEARCH_GET_QUERIES = [
     pytest.param(
         {
@@ -99,6 +104,10 @@ SEARCH_GET_QUERIES = [
         },
         id="with_filter_json",
     ),
+    pytest.param(
+        {"filter-lang": "cql2-text", "filter": SMUGGLED_FILTER},
+        id="with_filter_containing_delimiters",
+    ),
 ]
 
 ITEMS_LIST_QUERIES = [
@@ -112,6 +121,10 @@ ITEMS_LIST_QUERIES = [
             "filter": "((collection = 'landsat-8-l1') AND (\"eo:cloud_cover\" <= 20) AND (platform = 'landsat-8'))",
         },
         id="items_with_filter",
+    ),
+    pytest.param(
+        {"filter-lang": "cql2-text", "filter": SMUGGLED_FILTER},
+        id="items_with_filter_containing_delimiters",
     ),
 ]
 
@@ -369,6 +382,10 @@ COLLECTIONS_QUERIES = [
         },
         id="collections_with_filter",
     ),
+    pytest.param(
+        {"filter-lang": "cql2-text", "filter": SMUGGLED_FILTER},
+        id="collections_with_filter_containing_delimiters",
+    ),
 ]
 
 
@@ -484,3 +501,79 @@ async def test_collection_get(
         200 if expected_applied_filter.matches(response_body) else 404
     )
     assert response.status_code == expected_response_status
+
+
+def _query_dependent_filter_client(source_api_server, raw_query: bytes = b""):
+    """
+    Client for an app whose items filter depends on the `collections` query param,
+    sending `raw_query` verbatim as the query string.
+    """
+    app = app_factory(
+        upstream_url=source_api_server,
+        items_filter={
+            "cls": "stac_auth_proxy.filters:Template",
+            "args": [
+                "{{ 'true' if req.query_params.get('collections') == 'public' "
+                "else \"collection = 'public'\" }}"
+            ],
+        },
+        default_public=True,
+    )
+
+    async def with_raw_query(scope, receive, send):
+        # TestClient can't send a raw "#" (it's taken as a fragment), a server can
+        if scope["type"] == "http" and raw_query:
+            scope = {**scope, "query_string": raw_query}
+        await app(scope, receive, send)
+
+    return TestClient(with_raw_query)
+
+
+@pytest.mark.parametrize(
+    "raw_query", [b"x=#&collections=private", b"collections=public&x=#"]
+)
+async def test_query_dependent_filter_sees_forwarded_params(
+    mock_upstream, source_api_server, raw_query
+):
+    """
+    A filter that depends on query params must have been computed from exactly the
+    params forwarded upstream, however the client spells them.
+    """
+    _query_dependent_filter_client(source_api_server, raw_query).get("/search")
+    [request] = mock_upstream.call_args[0]
+    forwarded = QueryParams(request.url.query.decode())
+    policy_saw = dict(QueryParams(raw_query))
+    expected_filter = (
+        "true" if policy_saw["collections"] == "public" else "collection = 'public'"
+    )
+    assert forwarded.getlist("collections") == [policy_saw["collections"]]
+    assert forwarded.getlist("x") == ["#"]
+    assert forwarded.getlist("filter") == [cql2.Expr(expected_filter).to_text()]
+
+
+@pytest.mark.parametrize(
+    "raw_query",
+    [
+        b"collections=private&collections=public",
+        b"FILTER=true",
+        b"filter-crs=http://www.opengis.net/def/crs/EPSG/0/3857",
+    ],
+)
+async def test_ambiguous_query_params_rejected(
+    mock_upstream, source_api_server, raw_query
+):
+    """Params that could change which filter the upstream applies are rejected."""
+    client = _query_dependent_filter_client(source_api_server, raw_query)
+    assert client.get("/search").status_code == 400
+    assert mock_upstream.call_count == 0
+
+
+@pytest.mark.parametrize(
+    "body",
+    [{"filter-crs": "http://www.opengis.net/def/crs/EPSG/0/3857"}, {"FILTER": True}],
+)
+async def test_ambiguous_body_params_rejected(mock_upstream, source_api_server, body):
+    """Body params that could change which filter the upstream applies are rejected."""
+    client = _query_dependent_filter_client(source_api_server)
+    assert client.post("/search", json=body).status_code == 400
+    assert mock_upstream.call_count == 0

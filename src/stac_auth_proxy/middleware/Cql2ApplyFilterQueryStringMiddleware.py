@@ -7,6 +7,7 @@ from typing import Optional
 
 from cql2 import Expr
 from starlette.requests import Request
+from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from ..utils import filters
@@ -51,6 +52,15 @@ class Cql2ApplyFilterQueryStringMiddleware:
             return await self.app(scope, receive, send)
 
         # Inject filter into query string
+        try:
+            query_string = filters.append_qs_filter(
+                scope.get("query_string", b""), cql2_filter
+            )
+        except filters.InvalidFilterRequestError as e:
+            response = JSONResponse(
+                {"code": "BadRequest", "description": str(e)}, status_code=400
+            )
+            return await response(scope, receive, send)
         scope = dict(scope)
-        scope["query_string"] = filters.append_qs_filter(request.url.query, cql2_filter)
+        scope["query_string"] = query_string
         return await self.app(scope, receive, send)

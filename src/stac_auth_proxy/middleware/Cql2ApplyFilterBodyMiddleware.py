@@ -88,9 +88,17 @@ class Cql2ApplyFilterBodyMiddleware:
             await response(scope, receive, send)
             return
 
-        new_body = json.dumps(
-            filters.append_body_filter(body_json, cql2_filter)
-        ).encode("utf-8")
+        try:
+            new_body_json = filters.append_body_filter(body_json, cql2_filter)
+        except filters.InvalidFilterRequestError as e:
+            from starlette.responses import JSONResponse
+
+            response = JSONResponse(
+                {"code": "BadRequest", "description": str(e)}, status_code=400
+            )
+            await response(scope, receive, send)
+            return
+        new_body = json.dumps(new_body_json).encode("utf-8")
 
         # Patch content-length in the headers
         headers = dict(scope["headers"])

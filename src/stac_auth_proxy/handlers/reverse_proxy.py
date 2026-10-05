@@ -3,6 +3,7 @@
 import logging
 import time
 from dataclasses import dataclass, field
+from urllib.parse import quote_from_bytes
 
 import httpx
 from fastapi import Request
@@ -89,7 +90,13 @@ class ReverseProxyHandler:
             request.method,
             url=httpx.URL(
                 path=request.url.path,
-                query=request.url.query.encode("utf-8"),
+                # The raw query string, as filter factories saw it: request.url.query
+                # is truncated at a raw "#". Escape only what httpx rejects ("#",
+                # space, non-ASCII), leaving existing escapes and delimiters as-is.
+                query=quote_from_bytes(
+                    request.scope.get("query_string", b""),
+                    safe="!$&'()*+,;=:@/?%[]",
+                ).encode("ascii"),
             ),
             headers=headers,
             content=request.stream(),

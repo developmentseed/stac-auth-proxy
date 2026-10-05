@@ -329,6 +329,9 @@ These settings configure the CORS behavior when `PROXY_OPTIONS` is `false` (the 
     - **Required:** No, defaults to `^(/collections/([^/]+)/items(/[^/]+)?$|/search$)`
     - **Example:** `^(/collections/([^/]+)/items(/[^/]+)?$|/search$|/custom$)`
 
+    > [!WARNING]
+    > Requests to paths matched by neither `ITEMS_FILTER_PATH` nor `COLLECTIONS_FILTER_PATH` are proxied **unfiltered**. If your upstream exposes other endpoints that reveal records or statistics about them, such as aggregation (`/aggregate`, `/collections/{id}/aggregate`), collection search (e.g. `/collections-search`), or queryables (`/queryables`, `/collections/{id}/queryables`), extend these patterns to cover them or block those endpoints.
+
 ### `COLLECTIONS_FILTER_CLS`
 
 : CQL2 expression factor for collection-level filtering

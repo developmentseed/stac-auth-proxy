@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.3.0](https://github.com/developmentseed/stac-auth-proxy/compare/v1.2.0...v1.3.0) (2026-10-06)
+
+
+### Features
+
+* add HTTPException handling in CQL2BuildFilter middleware ([#202](https://github.com/developmentseed/stac-auth-proxy/issues/202)) ([5aeee7c](https://github.com/developmentseed/stac-auth-proxy/commit/5aeee7c473f053485c7f33ad91b0590b7a8ea4a5))
+* **helm:** add servicemonitor support. ([#209](https://github.com/developmentseed/stac-auth-proxy/issues/209)) ([979ceda](https://github.com/developmentseed/stac-auth-proxy/commit/979ceda352a3e5611a41096b4b5cc9c4b07a68b5))
+
+
+### Bug Fixes
+
+* allow queryables endpoints for collections ([#204](https://github.com/developmentseed/stac-auth-proxy/issues/204)) ([8b3d3c9](https://github.com/developmentseed/stac-auth-proxy/commit/8b3d3c96eeaee4e2ed045f329e20a95738ce41ac))
+* allow text in json response for CQl2RewriteLinksFilterMiddleware ([#205](https://github.com/developmentseed/stac-auth-proxy/issues/205)) ([e55d85f](https://github.com/developmentseed/stac-auth-proxy/commit/e55d85ff99e9276e573c125844f6221595475cd7))
+* fetch existing record in-process for transaction validation ([#214](https://github.com/developmentseed/stac-auth-proxy/issues/214)) ([3ffdd1d](https://github.com/developmentseed/stac-auth-proxy/commit/3ffdd1dcbf904e5c819b8e04bd1b52556db89d20))
+* keep headers from HTTPException responses built by middleware ([#212](https://github.com/developmentseed/stac-auth-proxy/issues/212)) ([bd13264](https://github.com/developmentseed/stac-auth-proxy/commit/bd1326400db9e9f4f518e9866435a23cadb7602c))
+* key OPA filter cache on full request context, not just Authorization (GHSA-rm58-963w-252r) ([2a1c989](https://github.com/developmentseed/stac-auth-proxy/commit/2a1c9895da4a614c880f0ece791ab48077d9b23b))
+* normalize root_path_skip_prefixes in ProcessLinksMiddleware ([#199](https://github.com/developmentseed/stac-auth-proxy/issues/199)) ([1193600](https://github.com/developmentseed/stac-auth-proxy/commit/1193600f3bb6961493c64b56fe5b1ed73fe33944))
+* reject ambiguous request paths before path-based checks (GHSA-c42p-7w4w-p877) ([2a1c989](https://github.com/developmentseed/stac-auth-proxy/commit/2a1c9895da4a614c880f0ece791ab48077d9b23b))
+* update reverse_proxy.py to return correct status code for upstream request timeout ([#210](https://github.com/developmentseed/stac-auth-proxy/issues/210)) ([be008ba](https://github.com/developmentseed/stac-auth-proxy/commit/be008baadf593e24893d3d411f2f6426e9d60122))
+* URL-encode query string values when injecting CQL2 filter (GHSA-c2p2-r6vx-2qc8) ([2a1c989](https://github.com/developmentseed/stac-auth-proxy/commit/2a1c9895da4a614c880f0ece791ab48077d9b23b))
+
+
+### Documentation
+
+* add security policy ([#218](https://github.com/developmentseed/stac-auth-proxy/issues/218)) ([ed3a6d7](https://github.com/developmentseed/stac-auth-proxy/commit/ed3a6d75deb1324bd4c7f5112b3ff621d767ad4e))
+
 ## [1.2.0](https://github.com/developmentseed/stac-auth-proxy/compare/v1.1.1...v1.2.0) (2026-07-23)
 
 

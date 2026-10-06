@@ -1,7 +1,6 @@
 """Middleware to augment the request body with a CQL2 filter for search requests."""
 
 import json
-import re
 from dataclasses import dataclass
 from logging import getLogger
 from typing import Optional
@@ -11,7 +10,8 @@ from starlette.requests import Request
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from ..utils import filters
-from ..utils.middleware import required_conformance
+from ..utils.middleware import bad_request, required_conformance
+from ..utils.requests import match_path
 
 logger = getLogger(__name__)
 
@@ -46,7 +46,7 @@ class Cql2ApplyFilterBodyMiddleware:
             return await self.app(scope, receive, send)
 
         if not any(
-            re.match(expr, request.url.path) for expr in self.search_body_endpoints
+            match_path(expr, request.url.path) for expr in self.search_body_endpoints
         ):
             return await self.app(scope, receive, send)
 
@@ -62,41 +62,20 @@ class Cql2ApplyFilterBodyMiddleware:
             body_json = json.loads(body) if body else {}
         except json.JSONDecodeError:
             logger.warning("Failed to parse request body as JSON")
-            from starlette.responses import JSONResponse
-
-            response = JSONResponse(
-                {
-                    "code": "ParseError",
-                    "description": "Request body must be valid JSON.",
-                },
-                status_code=400,
-            )
+            response = bad_request("Request body must be valid JSON.", "ParseError")
             await response(scope, receive, send)
             return
 
         if not isinstance(body_json, dict):
             logger.warning("Request body must be a JSON object")
-            from starlette.responses import JSONResponse
-
-            response = JSONResponse(
-                {
-                    "code": "TypeError",
-                    "description": "Request body must be a JSON object.",
-                },
-                status_code=400,
-            )
+            response = bad_request("Request body must be a JSON object.", "TypeError")
             await response(scope, receive, send)
             return
 
         try:
             new_body_json = filters.append_body_filter(body_json, cql2_filter)
         except filters.InvalidFilterRequestError as e:
-            from starlette.responses import JSONResponse
-
-            response = JSONResponse(
-                {"code": "BadRequest", "description": str(e)}, status_code=400
-            )
-            await response(scope, receive, send)
+            await bad_request(str(e))(scope, receive, send)
             return
         new_body = json.dumps(new_body_json).encode("utf-8")
 

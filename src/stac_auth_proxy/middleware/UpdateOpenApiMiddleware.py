@@ -10,7 +10,7 @@ from starlette.types import ASGIApp, Scope
 
 from ..config import EndpointMethods
 from ..utils.middleware import JsonResponseMiddleware
-from ..utils.requests import find_match
+from ..utils.requests import find_match, match_path
 from ..utils.stac import ensure_type
 
 
@@ -35,16 +35,11 @@ class OpenApiMiddleware(JsonResponseMiddleware):
 
     def should_transform_response(self, request: Request, scope: Scope) -> bool:
         """Only transform responses for the OpenAPI spec path."""
-        return (
-            all(
-                re.match(expr, val)
-                for expr, val in [
-                    (self.openapi_spec_path, request.url.path),
-                    (
-                        self.json_content_type_expr,
-                        Headers(scope=scope).get("content-type", ""),
-                    ),
-                ]
+        return bool(
+            match_path(self.openapi_spec_path, request.url.path)
+            and re.match(
+                self.json_content_type_expr,
+                Headers(scope=scope).get("content-type", ""),
             )
             and 200 <= scope["status"] < 300
         )

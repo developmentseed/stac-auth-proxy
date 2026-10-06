@@ -30,7 +30,9 @@ from .middleware import (
     EnforceAuthMiddleware,
     OpenApiMiddleware,
     ProcessLinksMiddleware,
+    RejectAmbiguousPathMiddleware,
     RemoveRootPathMiddleware,
+    RestoreRootPathMiddleware,
 )
 
 logger = logging.getLogger(__name__)
@@ -98,6 +100,9 @@ def configure_app(
     #
     # Middleware (order is important, last added = first to run)
     #
+
+    # Innermost: put back the root path RemoveRootPathMiddleware removed, for routing
+    app.add_middleware(RestoreRootPathMiddleware)
 
     if settings.enable_authentication_extension:
         app.add_middleware(
@@ -175,16 +180,20 @@ def configure_app(
             root_path_skip_prefixes=settings.root_path_skip_prefixes,
         )
 
-    if settings.root_path:
-        app.add_middleware(
-            RemoveRootPathMiddleware,
-            root_path=settings.root_path,
-        )
+    app.add_middleware(
+        RemoveRootPathMiddleware,
+        root_path=settings.root_path,
+    )
 
     if settings.enable_compression:
         app.add_middleware(
             CompressionMiddleware,
         )
+
+    # Before anything that matches on the path (auth, filters, root path)
+    app.add_middleware(
+        RejectAmbiguousPathMiddleware,
+    )
 
     if not settings.proxy_options:
         # When credentials are enabled and origins are wildcarded, use

@@ -11,7 +11,7 @@ from starlette.requests import Request
 from starlette.types import ASGIApp, Scope
 
 from ..utils.middleware import JsonResponseMiddleware
-from ..utils.requests import get_base_url
+from ..utils.requests import get_base_url, is_under_prefix
 from ..utils.stac import get_links
 
 logger = logging.getLogger(__name__)
@@ -69,8 +69,7 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
     def _matches_skip_prefix(self, path: str) -> bool:
         """Return whether path is exactly a skip prefix or under one of them."""
         return any(
-            path == prefix or path.startswith(f"{prefix}/")
-            for prefix in self.root_path_skip_prefixes
+            is_under_prefix(path, prefix) for prefix in self.root_path_skip_prefixes
         )
 
     def _update_link(
@@ -100,8 +99,8 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
 
         # Skip links outside the upstream path, unless they match a skip prefix
         # (those still need host rewrite, just not root_path).
-        if upstream_url.path != "/" and not parsed_link.path.startswith(
-            upstream_url.path
+        if upstream_url.path != "/" and not is_under_prefix(
+            parsed_link.path, upstream_url.path
         ):
             if not self._matches_skip_prefix(parsed_link.path):
                 logger.debug(
@@ -118,7 +117,9 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
             )
 
         # Remove the upstream prefix from the link path
-        if upstream_url.path != "/" and parsed_link.path.startswith(upstream_url.path):
+        if upstream_url.path != "/" and is_under_prefix(
+            parsed_link.path, upstream_url.path
+        ):
             parsed_link = parsed_link._replace(
                 path=parsed_link.path[len(upstream_url.path) :]
             )
@@ -129,7 +130,7 @@ class ProcessLinksMiddleware(JsonResponseMiddleware):
         if (
             self.root_path
             and not self._matches_skip_prefix(path)
-            and not (path.startswith(f"{self.root_path}/") or path == self.root_path)
+            and not is_under_prefix(path, self.root_path)
         ):
             parsed_link = parsed_link._replace(path=f"{self.root_path}{path}")
 

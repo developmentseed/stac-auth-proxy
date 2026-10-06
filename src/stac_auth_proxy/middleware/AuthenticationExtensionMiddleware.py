@@ -12,7 +12,7 @@ from starlette.types import ASGIApp, Scope
 
 from ..config import EndpointMethods
 from ..utils.middleware import JsonResponseMiddleware
-from ..utils.requests import find_match
+from ..utils.requests import find_match, match_path, strip_prefix
 from ..utils.stac import ensure_type, get_links
 
 logger = logging.getLogger(__name__)
@@ -47,18 +47,15 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
         return (
             all(
                 (
-                    re.match(expr, val)
-                    for expr, val in [
-                        (
-                            # catalog, collections, collection, items, item, search
-                            r"^(/|/collections(/[^/]+(/items(/[^/]+)?)?)?|/search)$",
-                            request.url.path,
-                        ),
-                        (
-                            self.json_content_type_expr,
-                            Headers(scope=scope).get("content-type", ""),
-                        ),
-                    ]
+                    match_path(
+                        # catalog, collections, collection, items, item, search
+                        r"^(/|/collections(/[^/]+(/items(/[^/]+)?)?)?|/search)$",
+                        request.url.path,
+                    ),
+                    re.match(
+                        self.json_content_type_expr,
+                        Headers(scope=scope).get("content-type", ""),
+                    ),
                 ),
             )
             and 200 <= scope["status"] < 300
@@ -96,8 +93,7 @@ class AuthenticationExtensionMiddleware(JsonResponseMiddleware):
             # Some upstreams honor the Forwarded header's path component and bake
             # root_path into link hrefs; strip it so filter_path/endpoint regexes
             # (which are written relative to the STAC API) match either form.
-            if self.root_path and link_path.startswith(self.root_path):
-                link_path = link_path[len(self.root_path) :] or "/"
+            link_path = strip_prefix(link_path, self.root_path)
             match = find_match(
                 path=link_path,
                 method=link.get("method", "GET").upper(),

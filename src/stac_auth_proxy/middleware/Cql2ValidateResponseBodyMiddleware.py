@@ -1,7 +1,6 @@
 """Middleware to validate the response body with a CQL2 filter for single-record endpoints."""
 
 import json
-import re
 from dataclasses import dataclass
 from logging import getLogger
 from typing import Optional
@@ -11,6 +10,7 @@ from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from ..utils.middleware import required_conformance
+from ..utils.requests import match_path
 
 logger = getLogger(__name__)
 
@@ -46,7 +46,7 @@ class Cql2ValidateResponseBodyMiddleware:
             return await self.app(scope, receive, send)
 
         if not any(
-            re.match(expr, request.url.path) for expr in self.single_record_endpoints
+            match_path(expr, request.url.path) for expr in self.single_record_endpoints
         ):
             return await self.app(scope, receive, send)
 

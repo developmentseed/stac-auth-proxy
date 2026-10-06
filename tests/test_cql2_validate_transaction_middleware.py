@@ -310,6 +310,20 @@ class TestBulkCreate:
         assert response.status_code == 400
         assert response.json()["code"] == "ParseError"
 
+    def test_single_create_in_collection_named_like_bulk_items(
+        self, app_with_middleware, cql2_filter
+    ):
+        """A collection id containing 'bulk_items' must not route to the bulk handler."""
+        app = app_with_middleware()
+        _set_cql2_filter(app, cql2_filter)
+        client = TestClient(app)
+        response = client.post(
+            "/collections/bulk_items_2024/items",
+            json={"id": "item1", "collection": "denied"},
+        )
+        assert response.status_code == 403
+        assert response.json()["code"] == "ForbiddenError"
+
 
 class TestUpdate:
     """Test item and collection update validation."""

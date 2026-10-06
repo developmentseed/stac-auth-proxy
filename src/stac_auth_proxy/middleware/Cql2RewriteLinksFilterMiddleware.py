@@ -4,13 +4,31 @@ import json
 from dataclasses import dataclass
 from logging import getLogger
 from typing import Optional
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+from urllib.parse import unquote_plus, urlencode, urlparse, urlunparse
 
 from cql2 import Expr
 from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from ..utils import filters
+
 logger = getLogger(__name__)
+
+
+def _rewrite_href(href: str, user_filter: Optional[Expr]) -> str:
+    """Replace the proxy's filter in a URL with the user's own, or remove it."""
+    url = urlparse(href)
+    # Only the filter pieces change; the others are kept byte for byte
+    pieces = url.query.split("&") if url.query else []
+    keys = [unquote_plus(piece.partition("=")[0]) for piece in pieces]
+    if "filter" not in keys:
+        return href
+    pieces = [p for p, k in zip(pieces, keys) if k not in ("filter", "filter-lang")]
+    if user_filter is not None:
+        pieces.append(
+            urlencode({"filter": user_filter.to_text(), "filter-lang": "cql2-text"})
+        )
+    return urlunparse(url._replace(query="&".join(pieces)))
 
 
 @dataclass(frozen=True)
@@ -63,7 +81,10 @@ class Cql2RewriteLinksFilterMiddleware:
         For methods that may carry a JSON body (POST/PUT/PATCH), the body is buffered
         and a replacement ``receive`` is returned so downstream consumers still see it.
         """
-        query_filter = request.query_params.get("filter")
+        # Parsed as it was forwarded (raw UTF-8 bytes decoded as UTF-8)
+        query_filter = filters.parse_query_params(
+            request.scope.get("query_string", b"")
+        ).get("filter")
         if query_filter:
             try:
                 return Expr(query_filter), receive
@@ -116,6 +137,18 @@ class Cql2RewriteLinksFilterMiddleware:
         send: Send,
         user_filter: Optional[Expr],
     ):
+        # A redirect (e.g. an upstream adding or removing a trailing slash) echoes
+        # the forwarded query string, including the proxy's filter.
+        response_start = {
+            **response_start,
+            "headers": [
+                (k, _rewrite_href(v.decode("latin-1"), user_filter).encode("latin-1"))
+                if k.lower() == b"location"
+                else (k, v)
+                for k, v in response_start["headers"]
+            ],
+        }
+
         body = b"".join(body_chunks)
         try:
             data = json.loads(body)
@@ -128,16 +161,7 @@ class Cql2RewriteLinksFilterMiddleware:
         for link in links if isinstance(links, list) else []:
             # Handle filter in query string
             if "href" in link:
-                url = urlparse(link["href"])
-                qs = parse_qs(url.query)
-                if "filter" in qs:
-                    if user_filter is not None:
-                        qs["filter"] = [user_filter.to_text()]
-                    else:
-                        qs.pop("filter", None)
-                        qs.pop("filter-lang", None)
-                    new_query = urlencode(qs, doseq=True)
-                    link["href"] = urlunparse(url._replace(query=new_query))
+                link["href"] = _rewrite_href(link["href"], user_filter)
 
             # Handle filter in body (for POST links). The spec only requires
             # cql2-json for POST bodies, but if the link advertises cql2-text

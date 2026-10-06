@@ -1,17 +1,16 @@
 """Middleware to inject CQL2 filters into the query string for GET/list endpoints."""
 
-import re
 from dataclasses import dataclass
 from logging import getLogger
 from typing import Optional
 
 from cql2 import Expr
 from starlette.requests import Request
-from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from ..utils import filters
-from ..utils.middleware import required_conformance
+from ..utils.middleware import bad_request, required_conformance
+from ..utils.requests import match_path
 
 logger = getLogger(__name__)
 
@@ -47,7 +46,7 @@ class Cql2ApplyFilterQueryStringMiddleware:
         if request.method != "GET":
             return await self.app(scope, receive, send)
         if any(
-            re.match(expr, request.url.path) for expr in self.single_record_endpoints
+            match_path(expr, request.url.path) for expr in self.single_record_endpoints
         ):
             return await self.app(scope, receive, send)
 
@@ -57,10 +56,7 @@ class Cql2ApplyFilterQueryStringMiddleware:
                 scope.get("query_string", b""), cql2_filter
             )
         except filters.InvalidFilterRequestError as e:
-            response = JSONResponse(
-                {"code": "BadRequest", "description": str(e)}, status_code=400
-            )
-            return await response(scope, receive, send)
+            return await bad_request(str(e))(scope, receive, send)
         scope = dict(scope)
         scope["query_string"] = query_string
         return await self.app(scope, receive, send)

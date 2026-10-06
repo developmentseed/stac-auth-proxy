@@ -1,6 +1,9 @@
 """Tests for OpenAPI spec handling."""
 
+import ast
 import json
+import re
+from pathlib import Path
 from urllib.parse import parse_qs, quote
 
 import pytest
@@ -8,14 +11,21 @@ from cql2 import Expr
 from starlette.datastructures import QueryParams
 from utils import parse_query_string
 
+import stac_auth_proxy
+from stac_auth_proxy.config import DEFAULT_ITEMS_FILTER_PATH
 from stac_auth_proxy.utils.filters import (
+    MAX_QUERY_PIECES,
     InvalidFilterRequestError,
     append_body_filter,
     append_qs_filter,
+    check_query_size,
+    parse_query_params,
 )
 from stac_auth_proxy.utils.requests import (
     extract_variables,
+    find_match,
     get_base_url,
+    match_path,
     parse_forwarded_header,
 )
 
@@ -214,6 +224,8 @@ def test_append_qs_filter(qs, expected):
         # upstreams disagree on which of repeated values wins
         b"collections=private&collections=public",
         b"filter=true&filter=false",
+        # Express's qs parser merges bracket aliases
+        b"collections=a&collections[]=a",
         # look-alikes some upstreams read in place of the proxy's filter params
         b"FILTER=true",
         b"Filter-Lang=cql2-json",
@@ -293,3 +305,147 @@ def test_append_qs_filter_keeps_geometry_compact():
     for escaped in ("%2C", "%3A", "%5B", "%5D"):  # , : [ ]
         assert escaped not in out
     assert json.loads(parse_qs(out)["filter"][0]) == Expr(polygon).to_json()
+
+
+@pytest.mark.parametrize(
+    "pattern, path",
+    [
+        ("^/search$", "/search/"),  # upstreams that ignore the slash
+        ("^/admin/", "/admin/"),  # rules that expect the slash still match
+        ("^/admin/", "/admin/x"),
+        ("^/collections$", "/Collections"),
+    ],
+)
+def test_match_path(pattern, path):
+    """Path rules match case-insensitively, with or without one trailing slash."""
+    assert match_path(pattern, path)
+
+
+def test_private_endpoint_with_trailing_slash_requires_auth():
+    """A private rule written with a trailing slash isn't skipped."""
+    match = find_match("/admin/", "GET", {r"^/admin/": ["GET"]}, {}, True)
+    assert match.uses_auth
+
+
+def test_filter_path_keeps_private_endpoint_scopes():
+    """A filter path match still reports the scopes its private endpoint requires."""
+    match = find_match(
+        "/collections/c/bulk_items",
+        "POST",
+        {r"^/collections/([^/]+)/bulk_items$": [("POST", "item:create")]},
+        {},
+        False,
+        items_filter_path=DEFAULT_ITEMS_FILTER_PATH,
+    )
+    assert match.uses_auth
+    assert list(match.required_scopes) == ["item:create"]
+
+
+_RULES = [
+    r"^/collections/(?!public-)[^/]+/items",
+    r"^/admin/",
+    r"^/search$",
+    r"^/collections/([^/]+)/items(/[^/]+)?$",
+]
+_PATHS = [
+    "/collections/PUBLIC-secret/items",
+    "/collections/public-x/items",
+    "/Collections/c/items",
+    "/admin/",
+    "/admin",
+    "/search/",
+    "/SEARCH",
+    "/collections/c/items/i/",
+]
+
+
+@pytest.mark.parametrize("rule", _RULES)
+@pytest.mark.parametrize("path", _PATHS)
+def test_match_path_only_adds_matches(rule, path):
+    """
+    Case and trailing-slash handling may only widen what a rule matches: anything
+    the rule matches as written (case-sensitively) must still match.
+    """
+    if re.match(rule, path):
+        assert match_path(rule, path)
+
+
+@pytest.mark.parametrize(
+    "qs",
+    [
+        b"collections=a&limit=1",
+        "q=café".encode(),
+        b"q=caf%C3%A9",
+        b"q=%FF",
+        b"q=\xff",
+        b"q=a%26b%3Dc+d",
+        b"q=%23&x=",
+    ],
+)
+def test_factory_and_upstream_see_same_params(qs):
+    """The params filter factories get are exactly the params forwarded upstream."""
+    seen = dict(parse_query_params(qs))
+    forwarded = dict(QueryParams(append_qs_filter(qs, Expr("a = 'b'"))))
+    forwarded.pop("filter")
+    forwarded.pop("filter-lang")
+    assert forwarded == seen
+
+
+def test_filter_forwarded_before_client_params():
+    """Express keeps only the first 1000 params, so the filter must come first."""
+    qs = "&".join(f"a{i}=1" for i in range(1000)).encode()
+    keys = [
+        k for k, _ in QueryParams(append_qs_filter(qs, Expr("a = 'b'"))).multi_items()
+    ]
+    assert keys[:2] == ["filter", "filter-lang"]
+
+
+def test_middlewares_parse_query_with_parse_query_params():
+    """
+    request.query_params decodes raw bytes as latin-1, unlike the forwarded query;
+    access-control code must use filters.parse_query_params instead.
+    """
+    src = Path(stac_auth_proxy.__file__).parent
+    offenders = [
+        f"{f.relative_to(src)}:{node.lineno}"
+        for f in src.rglob("*.py")
+        for node in ast.walk(ast.parse(f.read_text()))
+        if isinstance(node, ast.Attribute) and node.attr == "query_params"
+    ]
+    assert offenders == []
+
+
+@pytest.mark.parametrize("client_filter", ["-", {"op": "bogus"}])
+def test_invalid_client_filter_rejected(client_filter):
+    """An unparseable client filter is a 400, not a crash (found by fuzzing)."""
+    with pytest.raises(InvalidFilterRequestError, match="Invalid filter"):
+        append_body_filter({"filter": client_filter}, Expr("a = 'b'"))
+
+
+def test_too_many_query_pieces_rejected():
+    """Pieces past Express's limit (empty ones included) would hide params upstream."""
+    check_query_size(b"&" * (MAX_QUERY_PIECES - 1))
+    with pytest.raises(InvalidFilterRequestError, match="Too many"):
+        check_query_size(b"&" * MAX_QUERY_PIECES)
+
+
+@pytest.mark.parametrize("client_filter", [{}, [], None, ""])
+def test_empty_client_filter_ignored(client_filter):
+    """An empty client filter means no filter, as before."""
+    body = append_body_filter({"filter": client_filter}, Expr("a = 'b'"))
+    assert body["filter"] == Expr("a = 'b'").to_json()
+
+
+def test_public_endpoint_not_widened_by_trailing_slash():
+    """Rules granting access match only as written: "/x/" isn't made public by "/x"."""
+    match = find_match(
+        "/collections/x/", "GET", {}, {r"^/collections/[^/]+$": ["GET"]}, False
+    )
+    assert match.uses_auth
+
+
+def test_captured_groups_come_from_path_as_given():
+    """IDs are captured as sent, not in their Unicode-normalized form."""
+    assert extract_variables("/collections/km\u00b2/items") == {
+        "collection_id": "km\u00b2"
+    }

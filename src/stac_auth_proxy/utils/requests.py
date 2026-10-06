@@ -22,8 +22,60 @@ def extract_variables(url: str) -> dict:
     path = urlparse(url).path
     # This allows either /queryables or /items or /bulk_items, with an optional item_id following.
     pattern = r"^/collections/(?P<collection_id>[^/]+)(?:/(?:items|bulk_items|queryables)(?:/(?P<item_id>[^/]+))?)?/?$"
-    match = re.match(pattern, path)
+    match = match_path(pattern, path)
     return {k: v for k, v in match.groupdict().items() if v} if match else {}
+
+
+def match_path(pattern: str, path: str, widen: bool = True) -> Optional[re.Match[str]]:
+    """
+    Match a path-based access rule against the path an upstream may route as.
+
+    Some upstreams route case-insensitively (stac-server/Express) or ignore a
+    trailing slash (Express, pygeoapi). So a rule matches if it matches the path as
+    given or, with ``widen``, ignoring case or without one trailing slash. Each
+    variation only adds matches: e.g. "^/admin/" still matches "/admin/", and
+    "(?!public-)" still matches "PUBLIC-x" as written. Rules that grant access
+    (public endpoints) must not be widened.
+    """
+    if not widen:
+        return re.match(pattern, path)
+    paths = [path]
+    if len(path) > 1 and path.endswith("/"):
+        paths.append(path[:-1])
+    for flags in (0, re.IGNORECASE):
+        for p in paths:
+            if match := re.match(pattern, p, flags):
+                return match
+    return None
+
+
+def is_under_prefix(path: str, prefix: str) -> bool:
+    """Whether path is prefix or below it, at a segment boundary ("/stacx" isn't under "/stac")."""
+    prefix = prefix.rstrip("/")
+    return path == prefix or path.startswith(f"{prefix}/")
+
+
+def strip_prefix(path: str, prefix: str) -> str:
+    """Remove a root path prefix from path, at a segment boundary, if path is under it."""
+    prefix = prefix.rstrip("/")
+    if prefix and is_under_prefix(path, prefix):
+        return path[len(prefix) :] or "/"
+    return path
+
+
+# Where RemoveRootPathMiddleware records the path the checks match on
+CHECKED_PATH = "stac_auth_proxy.checked_path"
+
+
+def checked_path(scope: dict) -> str:
+    """
+    Return the path that auth, filter and transaction checks matched on.
+
+    Recorded once rather than re-derived from root_path, which Starlette also
+    extends for Mounts: a proxy mounted under "/proxy" must forward "/proxy/x",
+    the path that was checked, not "/x".
+    """
+    return scope.get(CHECKED_PATH, scope["path"])
 
 
 def dict_to_bytes(d: dict) -> bytes:
@@ -35,10 +87,11 @@ def _check_endpoint_match(
     path: str,
     method: str,
     endpoints: EndpointMethods,
+    widen: bool = True,
 ) -> tuple[bool, Sequence[str]]:
     """Check if the path and method match any endpoint in the given endpoints map."""
     for pattern, endpoint_methods in endpoints.items():
-        if re.match(pattern, path):
+        if match_path(pattern, path, widen):
             for endpoint_method in endpoint_methods:
                 required_scopes: Sequence[str] = []
                 if isinstance(endpoint_method, tuple):
@@ -59,9 +112,17 @@ def find_match(
     items_filter_path: Optional[str] = None,
     collections_filter_path: Optional[str] = None,
 ) -> "MatchResult":
-    """Check if the given path and method match any of the regex patterns and methods in the endpoints."""
+    """
+    Check if the given path and method match any of the regex patterns and methods in the endpoints.
+
+    Some upstreams (e.g. stac-server/Express) route case-insensitively, so private
+    endpoints and filter paths match case-insensitively. Public endpoints stay
+    case-sensitive so that a case variation can only ever require more auth.
+    """
     primary_endpoints = private_endpoints if default_public else public_endpoints
-    matched, required_scopes = _check_endpoint_match(path, method, primary_endpoints)
+    matched, required_scopes = _check_endpoint_match(
+        path, method, primary_endpoints, widen=default_public
+    )
     if matched:
         return MatchResult(
             uses_auth=default_public,
@@ -70,8 +131,14 @@ def find_match(
 
     # If we have filter paths configured, check those as well (these are always considered to use auth if they match, regardless of default_public)
     for filter_path in [items_filter_path, collections_filter_path]:
-        if filter_path and re.match(filter_path, path):
-            return MatchResult(uses_auth=True)
+        if filter_path and match_path(filter_path, path):
+            # With default_public, private endpoints were already checked above
+            required_scopes = (
+                []
+                if default_public
+                else _check_endpoint_match(path, method, private_endpoints)[1]
+            )
+            return MatchResult(uses_auth=True, required_scopes=required_scopes)
 
     # If default_public and no match found in private_endpoints, it's public
     if default_public:

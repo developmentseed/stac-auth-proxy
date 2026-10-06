@@ -117,6 +117,10 @@ The context contains request and user information:
 }
 ```
 
+`query_params` holds one value per parameter. So that a filter never sees a different value than the upstream API acts on, requests to filtered endpoints that repeat a query parameter (e.g. `?collections=a&collections=b`), or use the bracket form (`collections[]`), are rejected with `400`. Use the comma-separated form (`?collections=a,b`) instead. Queries with more than 100 `&`-separated parts are rejected too, as some upstreams (Express) read only the first 1000 and could miss parameters the filter saw.
+
+`path` is the request path as sent. Filter paths match it ignoring case and one trailing slash (e.g. `/Search/` matches `^/search$`), because some upstreams route those to the same place. A policy that branches on `path` should compare it the same way, or use `path_params` instead.
+
 ## Filters Configuration
 
 Configure filters using environment variables:

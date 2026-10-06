@@ -1,7 +1,8 @@
 """Tests for configuring an external FastAPI application."""
 
 import pytest
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, Request
+from fastapi.staticfiles import StaticFiles
 from fastapi.testclient import TestClient
 
 import stac_auth_proxy.app as app_module
@@ -142,3 +143,143 @@ def test_metrics_endpoint_skipped_without_instrumentator(monkeypatch):
 
     assert "/_mgmt/metrics" not in get_flattened_routes(app)
     assert r"^/_mgmt/metrics" not in settings.public_endpoints
+
+
+def _app_with_own_root_path(proxy_root_path="/stac"):
+    """
+    Library mode: the STAC app sets root_path itself (as stac-fastapi does from
+    ROOT_PATH), with or without the proxy's own ROOT_PATH.
+    """
+    app = FastAPI(root_path="/stac")
+    settings = Settings(
+        upstream_url="https://example.com",
+        oidc_discovery_url="https://example.com/.well-known/openid-configuration",
+        wait_for_upstream=False,
+        check_conformance=False,
+        default_public=True,
+        root_path=proxy_root_path,
+        items_filter={
+            "cls": "stac_auth_proxy.filters:Template",
+            "args": ["collection = 'allowed'"],
+        },
+    )
+    configure_app(app, settings)
+    hits = []
+
+    @app.delete("/collections/{collection_id}")
+    async def delete_collection(collection_id: str):
+        hits.append(("delete", collection_id))
+        return {"deleted": collection_id}
+
+    @app.get("/collections/{collection_id}/items/{item_id}")
+    async def get_item(collection_id: str, item_id: str):
+        hits.append(("get_item", collection_id, item_id))
+        return {"type": "Feature", "id": item_id, "collection": collection_id}
+
+    return app, hits
+
+
+@pytest.mark.parametrize("proxy_root_path", ["/stac", ""])
+def test_app_root_path_double_prefix_cannot_skip_auth(proxy_root_path):
+    """Neither the root path nor a doubled one reaches a private route without a token."""
+    app, hits = _app_with_own_root_path(proxy_root_path)
+    client = TestClient(app)
+
+    assert client.delete("/stac/collections/x").status_code == 401
+    response = client.delete("/stac/stac/collections/x")
+    assert response.status_code == 404
+    assert hits == []
+
+
+@pytest.mark.parametrize("proxy_root_path", ["/stac", ""])
+def test_app_root_path_double_prefix_cannot_skip_filter(proxy_root_path):
+    """Records under the root path, doubled or not, are filtered."""
+    app, hits = _app_with_own_root_path(proxy_root_path)
+    client = TestClient(app)
+
+    assert client.get("/stac/collections/allowed/items/i").status_code == 200
+    assert client.get("/stac/collections/secret/items/i").status_code == 404
+    hits.clear()
+
+    response = client.get("/stac/stac/collections/secret/items/i")
+    assert response.status_code == 404
+    assert "secret" not in response.text
+    assert hits == []
+
+
+def test_app_root_path_without_proxy_root_path_keeps_mounts_and_urls(tmp_path):
+    """
+    Removing the app's own root path for the checks (ROOT_PATH unset) must not break
+    Mounts, or URLs built from root_path (request.base_url, FastAPI's docs).
+    """
+    (tmp_path / "a.css").write_text("body {}")
+    app, _ = _app_with_own_root_path(proxy_root_path="")
+    app.mount("/static", StaticFiles(directory=tmp_path), name="static")
+
+    @app.get("/whoami")
+    async def whoami(request: Request):
+        return {"base_url": str(request.base_url), "path": request.url.path}
+
+    client = TestClient(app)
+    assert client.get("/stac/static/a.css").text == "body {}"
+    # Routes see the usual ASGI request (root path included) ...
+    assert client.get("/stac/whoami").json() == {
+        "base_url": "http://testserver/stac/",
+        "path": "/stac/whoami",
+    }
+    # ... so URLs built from root_path, like FastAPI's docs, keep the prefix
+    assert "/stac/openapi.json" in client.get("/stac/docs").text
+
+
+def test_metrics_classify_routed_path_with_root_path():
+    """With ROOT_PATH, operations are classified on the path without it."""
+    from prometheus_client import REGISTRY
+
+    app = FastAPI(root_path="/stac")
+    configure_app(
+        app,
+        Settings(
+            upstream_url="https://example.com",
+            oidc_discovery_url="https://example.com/.well-known/openid-configuration",
+            wait_for_upstream=False,
+            check_conformance=False,
+            default_public=True,
+            root_path="/stac",
+        ),
+    )
+    app.add_api_route("/search", lambda: {}, methods=["GET"])
+    labels = {"method": "GET", "operation": "search", "status": "2xx"}
+    before = REGISTRY.get_sample_value("http_requests_total", labels) or 0
+    assert TestClient(app).get("/stac/search").status_code == 200
+    assert REGISTRY.get_sample_value("http_requests_total", labels) == before + 1
+
+
+def test_outer_middleware_sees_routed_endpoint_with_root_path():
+    """Keys set while routing (e.g. scope["route"]) reach middleware outside the proxy's."""
+    app = FastAPI()
+    configure_app(
+        app,
+        Settings(
+            upstream_url="https://example.com",
+            oidc_discovery_url="https://example.com/.well-known/openid-configuration",
+            wait_for_upstream=False,
+            check_conformance=False,
+            default_public=True,
+            root_path="/stac",
+        ),
+    )
+    app.add_api_route("/collections", lambda: {}, methods=["GET"])
+    seen = []
+
+    class Tracing:
+        def __init__(self, app):
+            self.app = app
+
+        async def __call__(self, scope, receive, send):
+            await self.app(scope, receive, send)
+            if scope["type"] == "http":
+                seen.append(scope.get("route"))
+
+    app.add_middleware(Tracing)
+    assert TestClient(app).get("/stac/collections").status_code == 200
+    assert [route.path for route in seen] == ["/collections"]

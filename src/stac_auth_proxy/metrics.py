@@ -3,6 +3,8 @@
 import re
 from typing import Any, Optional, Sequence
 
+from .utils.requests import checked_path
+
 METRICS_AVAILABLE = False
 
 OPERATIONS = [  # ordered; first match wins
@@ -71,7 +73,10 @@ try:
 
     def record_stac_metrics(info: Info) -> None:
         """Record request count and latency using STAC operation labels."""
-        operation = classify_operation(info.request.method, info.request.url.path)
+        # The routed path: the restored root path isn't part of STAC operations
+        operation = classify_operation(
+            info.request.method, checked_path(info.request.scope)
+        )
         REQUESTS.labels(operation, info.method, info.modified_status).inc()
         LATENCY.labels(operation, info.method).observe(info.modified_duration)
 

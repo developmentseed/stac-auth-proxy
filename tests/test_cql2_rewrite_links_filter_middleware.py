@@ -489,3 +489,84 @@ class TestPostBodyClientFilterPreservation:
         )
         assert response.status_code == 200
         assert response.content == b"not json"
+
+
+@pytest.mark.parametrize(
+    "location, expected",
+    [
+        (
+            "http://testserver/search?limit=1&filter=collection+%3D+%27secret%27"
+            "&filter-lang=cql2-text",
+            "http://testserver/search?limit=1",
+        ),
+        ("/search?limit=1", "/search?limit=1"),
+    ],
+)
+def test_redirect_location_filter_removed(location, expected):
+    """A redirect echoing the forwarded query string doesn't reveal the proxy's filter."""
+    app = FastAPI()
+    _install_middlewares(app, "collection = 'secret'")
+
+    @app.get("/search/")
+    async def redirect():
+        return Response(status_code=307, headers={"location": location})
+
+    response = TestClient(app).get("/search/", follow_redirects=False)
+    assert response.status_code == 307
+    assert response.headers["location"] == expected
+
+
+def test_raw_utf8_user_filter_restored_in_links():
+    """The user's filter put back into links is decoded as it was forwarded."""
+    app = FastAPI()
+    _install_middlewares(app, "collection = 'secret'")
+
+    @app.get("/search")
+    async def search():
+        return {"links": [{"rel": "next", "href": "http://testserver/search?filter=x"}]}
+
+    async def raw_query_app(scope, receive, send):
+        if scope["type"] == "http":
+            scope = {**scope, "query_string": "filter=name = 'café'".encode()}
+        await app(scope, receive, send)
+
+    [link] = TestClient(raw_query_app).get("/search").json()["links"]
+    assert "caf%C3%A9" in link["href"]
+
+
+def test_redirect_location_keeps_blank_params_and_relabels_user_filter():
+    """The user's filter is restored as cql2-text, and blank params are kept."""
+    app = FastAPI()
+    _install_middlewares(app, "collection = 'secret'")
+
+    @app.get("/search/")
+    async def redirect():
+        return Response(
+            status_code=307,
+            headers={
+                "location": "/search?datetime=&filter=%7B%7D&filter-lang=cql2-json"
+            },
+        )
+
+    response = TestClient(app).get(
+        "/search/", params={"filter": "a = 1"}, follow_redirects=False
+    )
+    assert response.headers["location"] == (
+        "/search?datetime=&filter=%28a+%3D+1%29&filter-lang=cql2-text"
+    )
+
+
+def test_redirect_location_other_params_kept_byte_for_byte():
+    """Only the filter pieces of a redirect's query change."""
+    app = FastAPI()
+    _install_middlewares(app, "collection = 'secret'")
+
+    @app.get("/search/")
+    async def redirect():
+        return Response(
+            status_code=307,
+            headers={"location": "/search?q=%FF&ids=a%2Cb&filter=x&filter-lang=y"},
+        )
+
+    response = TestClient(app).get("/search/", follow_redirects=False)
+    assert response.headers["location"] == "/search?q=%FF&ids=a%2Cb"

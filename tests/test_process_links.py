@@ -751,3 +751,23 @@ def test_transform_with_forwarded_headers(headers, expected_base_url):
     # but not include the forwarded path in the response URLs
     assert transformed["links"][0]["href"] == f"{expected_base_url}/proxy/collections"
     assert transformed["links"][1]["href"] == f"{expected_base_url}/proxy"
+
+
+def test_upstream_path_prefix_matched_at_segment_boundary():
+    """With UPSTREAM_URL .../api, a link to /api-docs isn't under the upstream path."""
+    middleware = ProcessLinksMiddleware(
+        app=None, upstream_url="http://upstream.example.com/api", root_path="/stac"
+    )
+    request = Request(
+        {
+            "type": "http",
+            "path": "/stac/collections",
+            "headers": [(b"host", b"proxy.example.com")],
+            "scheme": "http",
+            "server": ("proxy.example.com", 80),
+        }
+    )
+    href = "http://upstream.example.com/api-docs/x"
+    data = {"links": [{"rel": "docs", "href": href}]}
+    [link] = middleware.transform_json(data, request)["links"]
+    assert link["href"] == href  # not "http://proxy.example.com/stac-docs/x"

@@ -90,6 +90,20 @@ def test_root_path_skip_prefixes():
         Settings(**common_kwargs, root_path_skip_prefixes="/")
 
 
+@pytest.mark.parametrize(
+    "root_path, expected",
+    [("", ""), ("/", ""), ("/stac", "/stac"), ("/stac/", "/stac")],
+)
+def test_root_path_normalized(root_path, expected):
+    """Trailing slashes are dropped from root_path."""
+    settings = Settings(
+        upstream_url="https://example.com",
+        oidc_discovery_url="https://example.com/.well-known/openid-configuration",
+        root_path=root_path,
+    )
+    assert settings.root_path == expected
+
+
 def test_root_path_skip_prefixes_from_environment(monkeypatch):
     """Comma-separated env value (e.g. /raster,/vector) must load as a list."""
     monkeypatch.setenv("UPSTREAM_URL", "https://example.com")

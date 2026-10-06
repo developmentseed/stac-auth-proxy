@@ -107,6 +107,7 @@ dev = [
   "prometheus-fastapi-instrumentator>=8.0.2",
   "types-simplejson",
   "types-attrs",
+  "hypothesis>=6.100",
 ]
 
 [tool.pytest.ini_options]

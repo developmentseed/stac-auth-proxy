@@ -1,7 +1,6 @@
 """Middleware to validate transaction requests against a CQL2 filter."""
 
 import json
-import re
 from dataclasses import dataclass
 from logging import getLogger
 from typing import Optional
@@ -12,6 +11,7 @@ from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from ..utils.middleware import required_conformance
+from ..utils.requests import match_path
 
 logger = getLogger(__name__)
 
@@ -61,9 +61,9 @@ class Cql2ValidateTransactionMiddleware:
         method = request.method
 
         # Match items endpoints: /collections/{id}/items, /collections/{id}/bulk_items, /collections/{id}/items/{id}
-        if re.match(self.items_pattern, path):
+        if match := match_path(self.items_pattern, path):
             if method == "POST":
-                if "/bulk_items" in path:
+                if match.group(2).lower() == "bulk_items":
                     return await self._handle_bulk_create(
                         scope, receive, send, cql2_filter
                     )
@@ -76,7 +76,7 @@ class Cql2ValidateTransactionMiddleware:
                 return await self._handle_delete(scope, receive, send, cql2_filter)
 
         # Match collections endpoints: /collections, /collections/{id}
-        if re.match(self.collections_pattern, path):
+        if match_path(self.collections_pattern, path):
             if method == "POST":
                 return await self._handle_create(scope, receive, send, cql2_filter)
             if method in ("PUT", "PATCH"):

@@ -88,9 +88,15 @@ The application is configurable via environment variables.
     - **Type:** string
     - **Required:** No, defaults to `''` (root path)
     - **Example:** `/api/v1`
+    - Trailing slashes are dropped (`/api/v1/` is treated as `/api/v1`)
 
     > [!NOTE]
     > This is independent of the upstream API's path. The proxy will handle removing this prefix from incoming requests and adding it to outgoing links.
+    >
+    > Requests whose path still starts with the app's root path after this prefix is removed (e.g. `/stac/stac/...`) are rejected with a 404. So do not choose a `ROOT_PATH` that matches the first segment of an upstream path; for example, `ROOT_PATH=/api` blocks the upstream's `/api` OpenAPI endpoint.
+
+    > [!WARNING]
+    > Give the upstream API its own prefix with `uvicorn --root-path` or in `UPSTREAM_URL`, not with an app-level root path such as stac-fastapi's `ROOT_PATH`. See [Upstream APIs served from a non-root path](tips.md#upstream-apis-served-from-a-non-root-path).
 
 ### `ROOT_PATH_SKIP_PREFIXES`
 
@@ -149,6 +155,7 @@ The application is configurable via environment variables.
 : Endpoints explicitly marked as requiring authentication and possibly scopes
 
     - **Type:** JSON object mapping regex patterns to HTTP methods OR tuples of an HTTP method and string representing required scopes
+    - **Note:** Patterns are matched case-insensitively, since some upstream APIs (e.g. stac-server) route paths case-insensitively
     - **Required:** No, defaults to the following:
     ```json
     {
@@ -165,6 +172,7 @@ The application is configurable via environment variables.
 : Endpoints explicitly marked as not requiring authentication, used when `DEFAULT_PUBLIC == False`
 
     - **Type:** JSON object mapping regex patterns to HTTP methods
+    - **Note:** Patterns are matched exactly as written (case-sensitively, trailing slash included), so a differently-cased path falls back to requiring authentication. Write public rules as what to allow, not what to exclude: an exclusion such as `^/(?!admin)` doesn't exclude `/ADMIN`, which a case-insensitive upstream (Express) routes to `/admin`
     - **Required:** No, defaults to the following:
     ```json
     {
@@ -326,8 +334,9 @@ These settings configure the CORS behavior when `PROXY_OPTIONS` is `false` (the 
 : Regex pattern used to identify request paths that require the application of the items filter
 
     - **Type:** Regex string
-    - **Required:** No, defaults to `^(/collections/([^/]+)/items(/[^/]+)?$|/search$)`
-    - **Example:** `^(/collections/([^/]+)/items(/[^/]+)?$|/search$|/custom$)`
+    - **Note:** Matched case-insensitively
+    - **Required:** No, defaults to `^(/collections/([^/]+)/(items(/[^/]+)?|bulk_items)$|/search$)`
+    - **Example:** `^(/collections/([^/]+)/(items(/[^/]+)?|bulk_items)$|/search$|/custom$)`
 
 ### `COLLECTIONS_FILTER_CLS`
 
@@ -358,5 +367,6 @@ These settings configure the CORS behavior when `PROXY_OPTIONS` is `false` (the 
 : Regex pattern used to identify request paths that require the application of the collections filter
 
     - **Type:** Regex string
+    - **Note:** Matched case-insensitively
     - **Required:** No, defaults to `^/collections(/[^/]+)?$`
     - **Example:** `^.*?/collections(/[^/]+)?$`

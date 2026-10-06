@@ -355,6 +355,30 @@ async def test_search_post_empty_body(
     assert response.status_code == 200
 
 
+def test_bulk_items_validated_with_default_items_filter_path(
+    source_api_server, token_builder
+):
+    """Test that POST /collections/foo/bulk_items is validated against the items filter."""
+    client = _build_items_filter_client(
+        src_api_server=source_api_server,
+        template_expr="(properties.private = false)",
+        is_authenticated=True,
+        token_builder=token_builder,
+    )
+    response = client.post(
+        "/collections/foo/bulk_items",
+        json={
+            "items": {
+                "ok": {"id": "ok", "properties": {"private": False}},
+                "bad": {"id": "bad", "properties": {"private": True}},
+            }
+        },
+    )
+    assert response.status_code == 403
+    assert response.json()["code"] == "ForbiddenError"
+    assert "bad" in response.json()["description"]
+
+
 COLLECTIONS_FILTER_CASES = [
     pytest.param(
         "(properties.private = false)",

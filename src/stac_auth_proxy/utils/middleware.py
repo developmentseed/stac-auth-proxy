@@ -13,6 +13,11 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 logger = logging.getLogger(__name__)
 
 
+def bad_request(description: str, code: str = "BadRequest") -> JSONResponse:
+    """Build the 400 response for requests the proxy can't check unambiguously."""
+    return JSONResponse({"code": code, "description": description}, status_code=400)
+
+
 class JsonResponseMiddleware(ABC):
     """Base class for middleware that transforms JSON response bodies."""
 

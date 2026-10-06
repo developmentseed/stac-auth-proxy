@@ -5,7 +5,7 @@ import logging
 import re
 from collections import Counter
 from typing import Iterable, Optional
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, quote_from_bytes, urlencode
 
 from cql2 import Expr
 from starlette.datastructures import QueryParams
@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 # to keep geometry-heavy filters compact. Everything that delimits or decodes
 # (& = # + % ; space) is still escaped.
 _QS_SAFE = "!$'()*,/:?@[]"
+
+_ASCII_PRINTABLE = "".join(map(chr, range(0x21, 0x7F)))
 
 _FILTER_PARAMS = {"filter", "filter-lang", "filter-crs"}
 
@@ -44,6 +46,53 @@ def _check_filter_params(keys: Iterable[str]) -> None:
             )
 
 
+# Express's qs and Node's querystring read only the first 1000 "&"-separated pieces
+# (empty ones included), so a padded query could hide params from the upstream that
+# filter factories see. STAC queries need far fewer.
+MAX_QUERY_PIECES = 100
+
+
+def check_query_size(qs: bytes) -> None:
+    """Reject query strings with more pieces than an upstream is sure to read."""
+    if qs and qs.count(b"&") + 1 > MAX_QUERY_PIECES:
+        raise InvalidFilterRequestError(
+            f"Too many query parameters (at most {MAX_QUERY_PIECES})."
+        )
+
+
+def check_unique_params(keys: Iterable[str]) -> None:
+    """
+    Reject query params that filter factories and the upstream could read
+    differently: repeated params, as upstreams disagree on which value wins (first,
+    last, or all as an array) while factories see one, and bracket params
+    ("collections[]"), which Express's qs parser reads as "collections".
+    """
+    keys = list(keys)
+    bracketed = sorted({key for key in keys if "[" in key})
+    if bracketed:
+        raise InvalidFilterRequestError(
+            f"Bracketed query parameters are not supported: {', '.join(bracketed)}. "
+            "Use comma-separated values instead (e.g. collections=a,b)."
+        )
+    repeated = sorted(key for key, n in Counter(keys).items() if n > 1)
+    if repeated:
+        raise InvalidFilterRequestError(
+            f"Repeated query parameters are not supported: {', '.join(repeated)}. "
+            "Use comma-separated values instead (e.g. collections=a,b)."
+        )
+
+
+def parse_query_params(qs: bytes) -> QueryParams:
+    """
+    Parse a raw query string (``scope["query_string"]``).
+
+    Starlette's ``request.query_params`` decodes raw non-ASCII bytes as latin-1,
+    unlike their percent-encoded form (UTF-8). Percent-encode them first so filter
+    factories and the upstream see the same value.
+    """
+    return QueryParams(quote_from_bytes(qs, safe=_ASCII_PRINTABLE))
+
+
 def append_qs_filter(qs: bytes, filter: Expr) -> bytes:
     """
     Insert a filter expression into a raw query string (``scope["query_string"]``).
@@ -54,20 +103,20 @@ def append_qs_filter(qs: bytes, filter: Expr) -> bytes:
     filter was computed for. Repeated params are rejected rather than collapsed,
     as upstreams disagree on which value wins.
     """
-    params = QueryParams(qs)
-    repeated = [
-        k for k, n in Counter(k for k, _ in params.multi_items()).items() if n > 1
-    ]
-    if repeated:
-        raise InvalidFilterRequestError(
-            f"Repeated query parameters are not supported: {', '.join(repeated)}."
-        )
-    qs_dict = dict(params)
-    _check_filter_params(qs_dict)
+    params = parse_query_params(qs)
+    check_unique_params(k for k, _ in params.multi_items())
+    qs_dict = dict(params)  # look-alike filter params are checked by append_body_filter
     new_qs_dict = append_body_filter(
         qs_dict, filter, qs_dict.get("filter-lang") or "cql2-text"
     )
-    return dict_to_query_string(new_qs_dict).encode("utf-8")
+    # Filter first: Express's qs and Node's querystring keep only the first 1000
+    # params, so a client padding the query can't push the filter past them.
+    filter_first = {
+        "filter": new_qs_dict.pop("filter"),
+        "filter-lang": new_qs_dict.pop("filter-lang"),
+        **new_qs_dict,
+    }
+    return dict_to_query_string(filter_first).encode("utf-8")
 
 
 def append_body_filter(
@@ -77,8 +126,12 @@ def append_body_filter(
     _check_filter_params(body)
     cur_filter = body.get("filter")
     filter_lang = filter_lang or body.get("filter-lang") or "cql2-json"
-    if cur_filter is not None and cur_filter != "":
-        filter = filter + Expr(cur_filter)
+    if cur_filter not in (None, "", {}, []):
+        try:
+            client_filter = Expr(cur_filter)
+        except Exception as e:  # cql2 raises a bare Exception for invalid input
+            raise InvalidFilterRequestError(f"Invalid filter: {e}") from e
+        filter = filter + client_filter
     if filter_lang == "cql2-text":
         value = filter.to_text()
     else:

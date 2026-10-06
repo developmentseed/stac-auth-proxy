@@ -1,7 +1,11 @@
 """Test Cql2BuildFilterMiddleware."""
 
+from urllib.parse import parse_qsl
+
+import pytest
 from fastapi import FastAPI, HTTPException, Request
 from starlette.testclient import TestClient
+from utils import AppFactory
 
 from stac_auth_proxy.middleware.Cql2BuildFilterMiddleware import (
     Cql2BuildFilterMiddleware,
@@ -149,3 +153,123 @@ class TestErrorHandling:
         response = TestClient(app).get("/search")
         assert response.status_code == 401
         assert response.headers["www-authenticate"] == 'Bearer realm="stac"'
+
+
+class TestQueryParamConsistency:
+    """Filter factories must see the same query params the upstream acts on."""
+
+    # A policy keyed on a query param, as the docs suggest ("tailor the filter").
+    app_factory = AppFactory(
+        oidc_discovery_url="https://example-stac-api.com/.well-known/openid-configuration",
+        default_public=True,
+        items_filter={
+            "cls": "stac_auth_proxy.filters:Template",
+            "args": [
+                "{{ 'true' if req.query_params.get('collections') == 'public' "
+                "else \"collection = 'public'\" }}"
+            ],
+        },
+    )
+
+    def test_raw_non_ascii_seen_as_forwarded(self, mock_upstream, source_api_server):
+        """Raw UTF-8 query bytes reach the factory decoded as the upstream decodes them."""
+        app = AppFactory(
+            oidc_discovery_url="https://example-stac-api.com/.well-known/openid-configuration",
+            default_public=True,
+            items_filter={
+                "cls": "stac_auth_proxy.filters:Template",
+                "args": ["collection = '{{ req.query_params.get('collections') }}'"],
+            },
+        )(upstream_url=source_api_server)
+
+        async def raw_query_app(scope, receive, send):
+            if scope["type"] == "http":
+                scope = {**scope, "query_string": "collections=café".encode()}
+            await app(scope, receive, send)
+
+        assert TestClient(raw_query_app).get("/search").status_code == 200
+        [request] = mock_upstream.call_args[0]
+        assert request.url.params["collections"] == "café"
+        assert request.url.params["filter"] == "(collection = 'café')"
+
+    @pytest.mark.parametrize(
+        "query_string",
+        [
+            b"collections=secret&collections=public",
+            b"collections=public&collections=secret",
+        ],
+    )
+    def test_duplicate_query_params_rejected(
+        self, mock_upstream, source_api_server, query_string
+    ):
+        """Duplicate keys would let the factory and the upstream disagree; reject them."""
+        app = self.app_factory(upstream_url=source_api_server)
+
+        async def raw_query_app(scope, receive, send):
+            if scope["type"] == "http":
+                scope = {**scope, "query_string": query_string}
+            await app(scope, receive, send)
+
+        response = TestClient(raw_query_app).get("/search")
+        assert response.status_code == 400
+        assert response.json() == {
+            "code": "BadRequest",
+            "description": "Repeated query parameters are not supported: "
+            "collections. Use comma-separated values instead (e.g. collections=a,b).",
+        }
+        mock_upstream.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "query_string",
+        [
+            # Express's qs parser (stac-server) reads "collections[]" as "collections"
+            b"collections[]=secret",
+            b"collections=public&collections[]=secret",
+            b"collections%5B%5D=secret",
+        ],
+    )
+    def test_bracketed_query_params_rejected(
+        self, mock_upstream, source_api_server, query_string
+    ):
+        """Bracket params would reach the factory under a different key than upstream."""
+        app = self.app_factory(upstream_url=source_api_server)
+
+        async def raw_query_app(scope, receive, send):
+            if scope["type"] == "http":
+                scope = {**scope, "query_string": query_string}
+            await app(scope, receive, send)
+
+        response = TestClient(raw_query_app).get("/search")
+        assert response.status_code == 400
+        assert response.json()["description"].startswith(
+            "Bracketed query parameters are not supported: collections[]."
+        )
+        mock_upstream.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "collections, expected_filter",
+        [("public", "true"), ("secret", "(collection = 'public')")],
+    )
+    def test_unique_query_params_allowed(
+        self, mock_upstream, source_api_server, collections, expected_filter
+    ):
+        """Requests without duplicate keys are filtered on the value the upstream gets."""
+        client = TestClient(self.app_factory(upstream_url=source_api_server))
+        response = client.get("/search", params={"collections": collections})
+        assert response.status_code == 200
+        [request] = mock_upstream.call_args[0]
+        assert parse_qsl(request.url.query.decode()) == [
+            ("filter", expected_filter),
+            ("filter-lang", "cql2-text"),
+            ("collections", collections),
+        ]
+
+    def test_duplicate_query_params_allowed_without_filter(
+        self, mock_upstream, source_api_server
+    ):
+        """Endpoints with no filter configured are unaffected."""
+        client = TestClient(self.app_factory(upstream_url=source_api_server))
+        response = client.get("/collections?a=1&a=2")
+        assert response.status_code == 200
+        [request] = mock_upstream.call_args[0]
+        assert request.url.query == b"a=1&a=2"

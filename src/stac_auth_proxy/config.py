@@ -28,6 +28,13 @@ def str2list(x: str | Sequence[str] | None) -> Sequence[str] | None:
     return x
 
 
+# Shared by Settings and Cql2BuildFilterMiddleware (library use)
+DEFAULT_ITEMS_FILTER_PATH = (
+    r"^(/collections/([^/]+)/(items(/[^/]+)?|bulk_items)$|/search$)"
+)
+DEFAULT_COLLECTIONS_FILTER_PATH = r"^/collections(/[^/]+)?$"
+
+
 class _ClassInput(BaseModel):
     """Input model for dynamically loading a class or function."""
 
@@ -129,9 +136,9 @@ class Settings(BaseSettings):
 
     # Filters
     items_filter: Optional[_ClassInput] = None
-    items_filter_path: str = r"^(/collections/([^/]+)/items(/[^/]+)?$|/search$)"
+    items_filter_path: str = DEFAULT_ITEMS_FILTER_PATH
     collections_filter: Optional[_ClassInput] = None
-    collections_filter_path: str = r"^/collections(/[^/]+)?$"
+    collections_filter_path: str = DEFAULT_COLLECTIONS_FILTER_PATH
 
     model_config = SettingsConfigDict(
         env_nested_delimiter="_",
@@ -150,6 +157,12 @@ class Settings(BaseSettings):
     def parse_audience(cls, v) -> Sequence[str] | None:
         """Parse a comma separated string list of audiences into a list."""
         return str2list(v)
+
+    @field_validator("root_path", mode="after")
+    @classmethod
+    def normalize_root_path(cls, v: str) -> str:
+        """Drop trailing slashes, so links aren't built as ``/stac//collections``."""
+        return v.rstrip("/")
 
     @field_validator("root_path_skip_prefixes", mode="before")
     @classmethod

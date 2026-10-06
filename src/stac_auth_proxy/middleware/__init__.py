@@ -10,7 +10,11 @@ from .Cql2ValidateResponseBodyMiddleware import Cql2ValidateResponseBodyMiddlewa
 from .Cql2ValidateTransactionMiddleware import Cql2ValidateTransactionMiddleware
 from .EnforceAuthMiddleware import EnforceAuthMiddleware
 from .ProcessLinksMiddleware import ProcessLinksMiddleware
-from .RemoveRootPathMiddleware import RemoveRootPathMiddleware
+from .RejectAmbiguousPathMiddleware import RejectAmbiguousPathMiddleware
+from .RemoveRootPathMiddleware import (
+    RemoveRootPathMiddleware,
+    RestoreRootPathMiddleware,
+)
 from .UpdateOpenApiMiddleware import OpenApiMiddleware
 
 __all__ = [
@@ -25,5 +29,7 @@ __all__ = [
     "EnforceAuthMiddleware",
     "OpenApiMiddleware",
     "ProcessLinksMiddleware",
+    "RejectAmbiguousPathMiddleware",
     "RemoveRootPathMiddleware",
+    "RestoreRootPathMiddleware",
 ]

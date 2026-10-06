@@ -1,7 +1,6 @@
 """Middleware to build the Cql2Filter."""
 
 import logging
-import re
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Optional
 
@@ -11,8 +10,10 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from ..utils import requests
-from ..utils.middleware import required_conformance
+from ..config import DEFAULT_COLLECTIONS_FILTER_PATH, DEFAULT_ITEMS_FILTER_PATH
+from ..utils import filters, requests
+from ..utils.middleware import bad_request, required_conformance
+from ..utils.requests import match_path
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +33,9 @@ class Cql2BuildFilterMiddleware:
 
     # Filters
     collections_filter: Optional[Callable] = None
-    collections_filter_path: str = r"^/collections(/[^/]+)?$"
+    collections_filter_path: str = DEFAULT_COLLECTIONS_FILTER_PATH
     items_filter: Optional[Callable] = None
-    items_filter_path: str = r"^(/collections/([^/]+)/items(/[^/]+)?$|/search$)"
+    items_filter_path: str = DEFAULT_ITEMS_FILTER_PATH
 
     def __post_init__(self):
         """Set required conformances based on the filter functions."""
@@ -81,13 +82,23 @@ class Cql2BuildFilterMiddleware:
         if not filter_builder:
             return await self.app(scope, receive, send)
 
+        # The filter builder sees one value per key, while the upstream may act on a
+        # different one. Fail closed rather than let them disagree.
+        query_string = scope.get("query_string", b"")
+        query_params = filters.parse_query_params(query_string)
+        try:
+            filters.check_query_size(query_string)
+            filters.check_unique_params(k for k, _ in query_params.multi_items())
+        except filters.InvalidFilterRequestError as e:
+            return await bad_request(str(e))(scope, receive, send)
+
         try:
             filter_expr = await filter_builder(
                 {
                     "req": {
                         "path": request.url.path,
                         "method": request.method,
-                        "query_params": dict(request.query_params),
+                        "query_params": dict(query_params),
                         "path_params": requests.extract_variables(request.url.path),
                         "headers": dict(request.headers),
                     },
@@ -121,6 +132,6 @@ class Cql2BuildFilterMiddleware:
             (self.items_filter_path, self.items_filter),
         ]
         for expr, builder in endpoint_filters:
-            if re.match(expr, path):
+            if match_path(expr, path):
                 return builder
         return None

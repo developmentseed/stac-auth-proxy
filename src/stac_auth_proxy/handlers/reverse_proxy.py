@@ -1,7 +1,9 @@
 """Tooling to manage the reverse proxying of requests to an upstream STAC API."""
 
 import logging
+import re
 import time
+import unicodedata
 from dataclasses import dataclass, field
 from urllib.parse import quote_from_bytes
 
@@ -10,9 +12,37 @@ from fastapi import Request
 from starlette.datastructures import MutableHeaders
 from starlette.responses import Response
 
-from stac_auth_proxy.utils.requests import build_server_timing_header
+from stac_auth_proxy.utils.middleware import bad_request
+from stac_auth_proxy.utils.requests import build_server_timing_header, checked_path
 
 logger = logging.getLogger(__name__)
+
+# Non-empty segments of characters that httpx re-encodes and the upstream decodes
+# back to the same value, plus an optional trailing slash (path rules match "/x/" as
+# "/x"): printable ASCII, space and non-ASCII. Excludes "%" (decoded again
+# upstream), "?" and "#" (truncate the path), ";" (path parameter delimiter for some
+# servers), "\" (treated as "/" by some servers) and control characters.
+_FORWARDABLE_PATH = re.compile(
+    r"(?:/[A-Za-z0-9\-._~!$&'()*+,=:@\"<>\[\]^`{|} \u00a0-\U0010ffff]+)*/?"
+)
+
+
+def is_forwardable(path: str) -> bool:
+    """
+    Whether the upstream will act on the same decoded path the checks matched on.
+
+    The upstream sees a re-encoded and possibly normalized path, so e.g. "%252F"
+    decoded a second time upstream or "..%2F" dot segments collapsed by httpx would
+    let a request skip checks meant for the path it actually reaches. Only an
+    allowlisted, already-normalized form is forwarded.
+    """
+    return (
+        bool(_FORWARDABLE_PATH.fullmatch(path))
+        and not any(segment in (".", "..") for segment in path.split("/"))
+        # An NFKC-normalizing gateway or upstream would act on another path (e.g.
+        # fullwidth "\uff0e\uff0e\uff0f" is "../") than the checks and policies saw
+        and unicodedata.normalize("NFKC", path) == path
+    )
 
 
 @dataclass
@@ -83,13 +113,16 @@ class ReverseProxyHandler:
 
     async def proxy_request(self, request: Request) -> Response:
         """Proxy a request to the upstream STAC API."""
+        path = checked_path(request.scope)
+        if not is_forwardable(path):
+            return bad_request("Invalid request path.")
         headers = self._prepare_headers(request)
 
         # https://github.com/fastapi/fastapi/discussions/7382#discussioncomment-5136466
         rp_req = self.client.build_request(
             request.method,
             url=httpx.URL(
-                path=request.url.path,
+                path=path,
                 # The raw query string, as filter factories saw it: request.url.query
                 # is truncated at a raw "#". Escape only what httpx rejects ("#",
                 # space, non-ASCII), leaving existing escapes and delimiters as-is.

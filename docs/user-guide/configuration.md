@@ -123,6 +123,9 @@ The application is configurable via environment variables.
     - **Required:** Yes
     - **Example:** `https://auth.example.com/.well-known/openid-configuration`
 
+    > [!NOTE]
+    > The `iss` (issuer) claim of every JWT must match the `issuer` named in this document.
+
 ### `OIDC_DISCOVERY_INTERNAL_URL`
 
 : Internal network OpenID Connect discovery document URL

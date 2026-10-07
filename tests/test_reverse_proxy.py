@@ -1,5 +1,7 @@
 """Tests for the reverse proxy handler's header functionality."""
 
+import gzip
+
 import httpx
 import pytest
 from fastapi import Request
@@ -340,3 +342,24 @@ async def test_upstream_transport_errors(exception, expected_status):
     )
     response = await handler.proxy_request(create_request())
     assert response.status_code == expected_status
+
+
+async def test_decompressed_response_content_length():
+    """A body httpx decompressed is sent with its own length, not the upstream's."""
+    body = b'{"conformsTo": []}'
+
+    def gzipped(request):
+        return httpx.Response(
+            200, headers={"Content-Encoding": "gzip"}, content=gzip.compress(body)
+        )
+
+    handler = ReverseProxyHandler(
+        upstream="http://upstream-api.com",
+        client=httpx.AsyncClient(
+            base_url="http://upstream-api.com",
+            transport=httpx.MockTransport(gzipped),
+        ),
+    )
+    response = await handler.proxy_request(create_request())
+    assert response.body == body
+    assert response.headers["content-length"] == str(len(body))

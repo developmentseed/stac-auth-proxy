@@ -38,6 +38,7 @@ Aside from the actual communication with the upstream STAC API, the majority of 
     - Handles authentication and authorization
     - Configurable public/private endpoints via [`PUBLIC_ENDPOINTS`](../../user-guide/configuration#public_endpoints) and [`PRIVATE_ENDPOINTS`](../../user-guide/configuration#private_endpoints)
     - OIDC integration via [`OIDC_DISCOVERY_INTERNAL_URL`](../../user-guide/configuration#oidc_discovery_internal_url)
+    - JWT issuer validation against the discovery document's `issuer`
     - JWT audience validation via [`ALLOWED_JWT_AUDIENCES`](../../user-guide/configuration#allowed_jwt_audiences)
     - Places auth token payload in request state
 

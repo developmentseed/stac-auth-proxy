@@ -6,6 +6,7 @@ from typing import Any, Awaitable, Callable, Optional
 
 from cql2 import Expr, ValidationError
 from fastapi import HTTPException
+from starlette.datastructures import QueryParams
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -30,6 +31,7 @@ class Cql2BuildFilterMiddleware:
     app: ASGIApp
 
     state_key: str = "cql2_filter"
+    read_state_key: str = "cql2_read_filter"
 
     # Filters
     collections_filter: Optional[Callable] = None
@@ -94,16 +96,7 @@ class Cql2BuildFilterMiddleware:
 
         try:
             filter_expr = await filter_builder(
-                {
-                    "req": {
-                        "path": request.url.path,
-                        "method": request.method,
-                        "query_params": dict(query_params),
-                        "path_params": requests.extract_variables(request.url.path),
-                        "headers": dict(request.headers),
-                    },
-                    **scope["state"],
-                }
+                self._context(request, scope, request.method, query_params)
             )
         except HTTPException as e:
             response = JSONResponse(
@@ -121,7 +114,50 @@ class Cql2BuildFilterMiddleware:
 
         setattr(request.state, self.state_key, cql2_filter)
 
+        if request.method.upper() in ("PUT", "PATCH", "DELETE"):
+            # Lets transaction validation tell a record the caller may read but not
+            # modify (403) from one the caller may not see (404).
+            read_filter = await self._build_read_filter(
+                filter_builder, request, scope, query_params
+            )
+            if read_filter is not None:
+                setattr(request.state, self.read_state_key, read_filter)
+
         return await self.app(scope, receive, send)
+
+    @staticmethod
+    def _context(
+        request: Request, scope: Scope, method: str, query_params: QueryParams
+    ) -> dict[str, Any]:
+        """Build the context passed to a filter builder."""
+        return {
+            "req": {
+                "path": request.url.path,
+                "method": method,
+                "query_params": dict(query_params),
+                "path_params": requests.extract_variables(request.url.path),
+                "headers": dict(request.headers),
+            },
+            **scope["state"],
+        }
+
+    async def _build_read_filter(
+        self,
+        filter_builder: Callable[..., Awaitable[str | dict[str, Any]]],
+        request: Request,
+        scope: Scope,
+        query_params: QueryParams,
+    ) -> Optional[Expr]:
+        """Build the filter the caller would get for reading the same path."""
+        try:
+            read_filter = Expr(
+                await filter_builder(self._context(request, scope, "GET", query_params))
+            )
+            read_filter.validate()
+        except (HTTPException, ValidationError) as e:
+            logger.debug("No read filter for %s: %s", request.url.path, e)
+            return None
+        return read_filter
 
     def _get_filter(
         self, path: str

@@ -11,6 +11,9 @@ from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.testclient import TestClient
 
 from stac_auth_proxy.handlers import ReverseProxyHandler
+from stac_auth_proxy.middleware.Cql2ValidateResponseBodyMiddleware import (
+    Cql2ValidateResponseBodyMiddleware,
+)
 from stac_auth_proxy.middleware.Cql2ValidateTransactionMiddleware import (
     Cql2ValidateTransactionMiddleware,
     UpstreamError,
@@ -854,3 +857,44 @@ class TestReadableButNotWritable:
             )
         assert response.status_code == 404
         assert response.json()["code"] == "NotFoundError"
+
+    @pytest.mark.parametrize("method", ["put", "patch", "delete"])
+    @pytest.mark.parametrize(
+        "read_filter,expected_status",
+        [
+            pytest.param(READ_ALL, 403, id="readable"),
+            pytest.param(READ_NONE, 404, id="not-readable"),
+            pytest.param(None, 404, id="no-read-filter"),
+        ],
+    )
+    def test_fetched_through_the_response_check(
+        self, cql2_filter, method, read_filter, expected_status
+    ):
+        """
+        In the full stack the in-process GET passes Cql2ValidateResponseBodyMiddleware,
+        which must read the record with the caller's read filter, not the write filter.
+        """
+        app = FastAPI()
+        app.add_middleware(Cql2ValidateResponseBodyMiddleware)
+        app.add_middleware(Cql2ValidateTransactionMiddleware)
+        _set_cql2_filter(
+            app, cql2_filter, Expr(read_filter) if read_filter is not None else None
+        )
+
+        @app.get("/collections/{collection_id}/items/{item_id}")
+        async def get_item():
+            return {"id": "item1", "collection": "denied", "properties": {}}
+
+        @app.api_route(
+            "/collections/{collection_id}/items/{item_id}",
+            methods=["PUT", "PATCH", "DELETE"],
+        )
+        async def change_item():
+            return {"changed": True}
+
+        response = TestClient(app).request(
+            method.upper(),
+            "/collections/denied/items/item1",
+            **({} if method == "delete" else {"json": {"properties": {}}}),
+        )
+        assert response.status_code == expected_status

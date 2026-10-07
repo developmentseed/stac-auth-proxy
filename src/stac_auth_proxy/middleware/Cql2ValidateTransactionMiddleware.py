@@ -122,7 +122,15 @@ class Cql2ValidateTransactionMiddleware:
         handler; when deployed as middleware, it reaches the STAC API's routes
         directly. Either way the request never re-enters the auth middleware, so no
         credentials need to be forwarded.
+
+        The GET carries the caller's read filter, when there is one, in place of the
+        write filter, so a downstream response check returns a record the caller may
+        read and the write check can refuse it with 403 rather than 404.
         """
+        state = dict(scope.get("state", {}))
+        read_filter = state.get(self.read_state_key)
+        if read_filter is not None:
+            state[self.state_key] = read_filter
         sub_scope = {
             **scope,
             "method": "GET",
@@ -133,7 +141,7 @@ class Cql2ValidateTransactionMiddleware:
             + [(b"accept", b"application/json")],
             # Copy so downstream writes to request.state can't leak into the caller's
             # request.
-            "state": dict(scope.get("state", {})),
+            "state": state,
         }
         status = None
         body = b""

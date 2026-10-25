@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/developmentseed/stac-auth-proxy/compare/v1.3.0...v1.3.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* **deps:** require brotli&gt;=1.2.1 (CVE-2026-111497) ([#224](https://github.com/developmentseed/stac-auth-proxy/issues/224)) ([bbc8f0b](https://github.com/developmentseed/stac-auth-proxy/commit/bbc8f0ba1b9b9b3b19afb6e2aa611fe0a7aad69a))
+
 ## [1.3.0](https://github.com/developmentseed/stac-auth-proxy/compare/v1.2.0...v1.3.0) (2026-10-06)
 
 

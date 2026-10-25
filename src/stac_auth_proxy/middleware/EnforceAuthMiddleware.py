@@ -77,6 +77,7 @@ class EnforceAuthMiddleware:
     default_public: bool
     oidc_discovery_url: HttpUrl
     allowed_jwt_audiences: Optional[Sequence[str]] = None
+    oidc_issuer: Optional[str] = None
     state_key: str = "payload"
 
     _oidc_config: Optional[OidcService] = None
@@ -157,7 +158,9 @@ class EnforceAuthMiddleware:
                 algorithms=["RS256"],
                 # NOTE: Audience validation MUST match audience claim if set in token (https://pyjwt.readthedocs.io/en/stable/changelog.html?highlight=audience#id40)
                 audience=self.allowed_jwt_audiences,
-                issuer=self.oidc_config.issuer,
+                # NOTE: The discovery document's issuer may differ from the token's when it
+                # is fetched from an internal URL, so allow overriding it.
+                issuer=self.oidc_issuer or self.oidc_config.issuer,
             )
         except jwt.InvalidAudienceError as e:
             logger.error("Token audience validation failed: %s", str(e))

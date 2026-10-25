@@ -10,7 +10,7 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
 ]
 dependencies = [
-  "brotli>=1.1.0",
+  "brotli>=1.2.1",
   "cql2>=0.5.3",
   "cryptography>=44.0.1",
   "fastapi>=0.115.5",

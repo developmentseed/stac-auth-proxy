@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/developmentseed/stac-auth-proxy/compare/v1.3.1...v1.4.0) (2026-10-26)
+
+
+### Features
+
+* add OIDC_ISSUER setting to override the expected token issuer ([#226](https://github.com/developmentseed/stac-auth-proxy/issues/226)) ([908b731](https://github.com/developmentseed/stac-auth-proxy/commit/908b731ad696f0636968c86583e06350f2b5a77a))
+
 ## [1.3.1](https://github.com/developmentseed/stac-auth-proxy/compare/v1.3.0...v1.3.1) (2026-10-25)
 
 

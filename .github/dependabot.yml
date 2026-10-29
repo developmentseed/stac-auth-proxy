@@ -3,7 +3,7 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      # Weekly group PRs were mostly replaced by the next week's before anyone merged them.
+      # None of the nine weekly group PRs was merged; each was replaced by a newer one.
       interval: "monthly"
     groups:
       minor-and-patch:
@@ -18,14 +18,11 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "monday"
     allow:
       # Include transitive dependencies (e.g. certifi via httpx): the Docker image installs uv.lock as is.
       - dependency-type: "all"
     cooldown:
       default-days: 7
-    # Above the default 5, so the version group still opens next to open security PRs.
-    open-pull-requests-limit: 10
     groups:
       minor-and-patch:
         applies-to: version-updates
@@ -34,7 +31,7 @@ updates:
         update-types:
           - "minor"
           - "patch"
-      # Without this, each security advisory opens its own PR.
+      # Without this, each vulnerable dependency gets its own security PR.
       security:
         applies-to: security-updates
         patterns:

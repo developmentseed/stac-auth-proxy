@@ -41,6 +41,8 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     ignore:
       # The Dockerfile's COPY paths name python3.13, so a new Python minor needs a hand edit.
       - dependency-name: "python"

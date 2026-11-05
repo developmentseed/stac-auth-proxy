@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Optional
 
-from cql2 import Expr, ValidationError
+from cql2 import Expr
 from fastapi import HTTPException
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -111,10 +111,10 @@ class Cql2BuildFilterMiddleware:
             )
             return await response(scope, receive, send)
 
-        cql2_filter = Expr(filter_expr)
         try:
+            cql2_filter = Expr(filter_expr)
             cql2_filter.validate()
-        except ValidationError:
+        except Exception:  # cql2 raises a bare Exception on parse errors
             logger.error("Invalid CQL2 filter: %s", filter_expr)
             response = JSONResponse({"detail": "Invalid CQL2 filter"}, status_code=502)
             return await response(scope, receive, send)

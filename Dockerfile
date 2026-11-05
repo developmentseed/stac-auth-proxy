@@ -1,5 +1,8 @@
 # https://github.com/astral-sh/uv-docker-example/blob/c16a61fb3e6ab568ac58d94b73a7d79594a5d570/Dockerfile
 
+# A named stage, not COPY --from=<image>: Dependabot only updates FROM lines.
+FROM ghcr.io/astral-sh/uv:0.13.5@sha256:32a7bb39b496babbd997b0a39a4d66c126bdaf5661b302bf6f06abda8deca6ff AS uv
+
 # Build stage
 FROM python:3.13-slim AS builder
 
@@ -9,7 +12,7 @@ ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 ENV UV_PROJECT_ENVIRONMENT=/usr/local
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --from=uv /uv /uvx /bin/
 
 # Install the project's dependencies using the lockfile and settings
 RUN --mount=type=cache,target=/root/.cache/uv \

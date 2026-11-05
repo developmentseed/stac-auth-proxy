@@ -105,7 +105,11 @@ def _set_cql2_filter(app, cql2_filter, cql2_read_filter=None):
     async def set_filter(request, call_next):
         request.state.cql2_filter = cql2_filter
         if cql2_read_filter is not None:
-            request.state.cql2_read_filter = cql2_read_filter
+
+            async def build_read_filter():
+                return cql2_read_filter
+
+            request.state.cql2_read_filter = build_read_filter
         return await call_next(request)
 
 
@@ -898,3 +902,50 @@ class TestReadableButNotWritable:
             **({} if method == "delete" else {"json": {"properties": {}}}),
         )
         assert response.status_code == expected_status
+
+    @pytest.mark.parametrize("method", ["put", "patch", "delete"])
+    def test_write_only_caller_can_modify(self, cql2_filter, method):
+        """A caller whose write filter matches may modify a record it cannot read."""
+        app = FastAPI()
+        app.add_middleware(Cql2ValidateResponseBodyMiddleware)
+        app.add_middleware(Cql2ValidateTransactionMiddleware)
+        _set_cql2_filter(app, cql2_filter, Expr(self.READ_NONE))
+
+        @app.get("/collections/{collection_id}/items/{item_id}")
+        async def get_item():
+            return {"id": "item1", "collection": "allowed", "properties": {}}
+
+        @app.api_route(
+            "/collections/{collection_id}/items/{item_id}",
+            methods=["PUT", "PATCH", "DELETE"],
+        )
+        async def change_item():
+            return {"changed": True}
+
+        body = {"collection": "allowed", "properties": {}}
+        response = TestClient(app).request(
+            method.upper(),
+            "/collections/allowed/items/item1",
+            **({} if method == "delete" else {"json": body}),
+        )
+        assert response.status_code == 200
+
+    @pytest.mark.parametrize("method", ["put", "delete"])
+    def test_write_filter_that_cannot_be_evaluated_is_404(
+        self, app_with_middleware, method
+    ):
+        """A write filter that raises on the existing record fails closed: 404, not 500."""
+        app = app_with_middleware()
+        _set_cql2_filter(app, Expr("tags IN ('a', 'b')"))
+        client = TestClient(app)
+        with patch.object(
+            Cql2ValidateTransactionMiddleware,
+            "_fetch_existing",
+            new_callable=AsyncMock,
+            return_value={"id": "item1", "collection": "denied", "tags": ["a"]},
+        ):
+            response = getattr(client, method)(
+                "/collections/denied/items/item1",
+                **({"json": {"id": "item1"}} if method == "put" else {}),
+            )
+        assert response.status_code == 404

@@ -112,16 +112,24 @@ class Cql2BuildFilterMiddleware:
             response = JSONResponse({"detail": "Invalid CQL2 filter"}, status_code=502)
             return await response(scope, receive, send)
 
-        setattr(request.state, self.state_key, cql2_filter)
-
         if request.method.upper() in ("PUT", "PATCH", "DELETE"):
             # Lets transaction validation tell a record the caller may read but not
-            # modify (403) from one the caller may not see (404).
-            read_filter = await self._build_read_filter(
-                filter_builder, request, scope, query_params
-            )
-            if read_filter is not None:
-                setattr(request.state, self.read_state_key, read_filter)
+            # modify (403) from one they may not see (404). Lazy: only a refused write
+            # pays for it. Context is captured now, before the write filter is in state.
+            read_context = self._context(request, scope, "GET", query_params)
+
+            async def build_read_filter() -> Optional[Expr]:
+                try:
+                    read_filter = Expr(await filter_builder(read_context))
+                    read_filter.validate()
+                    return read_filter
+                except Exception as e:  # any failure just means "answer 404"
+                    logger.debug("No read filter for %s: %s", request.url.path, e)
+                    return None
+
+            setattr(request.state, self.read_state_key, build_read_filter)
+
+        setattr(request.state, self.state_key, cql2_filter)
 
         return await self.app(scope, receive, send)
 
@@ -140,24 +148,6 @@ class Cql2BuildFilterMiddleware:
             },
             **scope["state"],
         }
-
-    async def _build_read_filter(
-        self,
-        filter_builder: Callable[..., Awaitable[str | dict[str, Any]]],
-        request: Request,
-        scope: Scope,
-        query_params: QueryParams,
-    ) -> Optional[Expr]:
-        """Build the filter the caller would get for reading the same path."""
-        try:
-            read_filter = Expr(
-                await filter_builder(self._context(request, scope, "GET", query_params))
-            )
-            read_filter.validate()
-        except (HTTPException, ValidationError) as e:
-            logger.debug("No read filter for %s: %s", request.url.path, e)
-            return None
-        return read_filter
 
     def _get_filter(
         self, path: str

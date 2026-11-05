@@ -1,5 +1,6 @@
 """Test Cql2BuildFilterMiddleware."""
 
+import json
 from urllib.parse import parse_qsl
 
 import pytest
@@ -111,7 +112,8 @@ class TestReadFilterForWrites:
         @app.post("/collections/{collection_id}/items")
         async def endpoint(request: Request):
             cql2_filter = getattr(request.state, "cql2_filter", None)
-            read_filter = getattr(request.state, "cql2_read_filter", None)
+            build_read_filter = getattr(request.state, "cql2_read_filter", None)
+            read_filter = await build_read_filter() if build_read_filter else None
             return {
                 "filter": cql2_filter.to_text() if cql2_filter else None,
                 "read_filter": read_filter.to_text() if read_filter else None,
@@ -163,6 +165,41 @@ class TestReadFilterForWrites:
             "filter": Expr("collection = 'c1'").to_text(),
             "read_filter": None,
         }
+
+    def test_read_filter_any_failure_does_not_fail_the_write(self):
+        """Non-HTTP factory errors (OPA undefined, outage, bugs) also just mean no read filter."""
+
+        async def items_filter(context):
+            if context["req"]["method"] == "GET":
+                raise KeyError("result")
+            return "collection = 'c1'"
+
+        client = TestClient(self._app(items_filter))
+        response = client.put("/collections/c1/items/i1", json={})
+        assert response.status_code == 200
+        assert response.json()["read_filter"] is None
+
+    def test_read_filter_is_lazy_and_its_context_is_json_safe(self):
+        """The GET factory call happens only on demand, without the write filter in its context."""
+        calls = []
+
+        async def items_filter(context):
+            json.dumps(context)  # what the OPA filter does with it
+            calls.append(context["req"]["method"])
+            return "true"
+
+        app = FastAPI()
+        app.add_middleware(Cql2BuildFilterMiddleware, items_filter=items_filter)
+
+        @app.put("/collections/{collection_id}/items/{item_id}")
+        async def endpoint(request: Request):
+            assert calls == ["PUT"]
+            await request.state.cql2_read_filter()
+            return calls
+
+        response = TestClient(app).put("/collections/c1/items/i1", json={})
+        assert response.status_code == 200
+        assert response.json() == ["PUT", "GET"]
 
 
 class TestErrorHandling:

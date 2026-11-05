@@ -22,8 +22,8 @@ app_factory = AppFactory(
     },
 )
 
-ITEMS_FILTER = "(collection = 'allowed')"
-COLLECTIONS_FILTER = "(id = 'allowed')"
+ITEMS_FILTER = "collection = 'allowed'"
+COLLECTIONS_FILTER = "id = 'allowed'"
 
 
 def _forwarded_params(mock_upstream) -> list[tuple[str, str]]:
@@ -64,7 +64,7 @@ def test_encoded_delimiters_cannot_inject_filter(mock_upstream, source_api_serve
         "/search?filter=true&z=%26filter%3Dtrue"
     )
     params = _forwarded_params(mock_upstream)
-    assert [v for k, v in params if k == "filter"] == [f"({ITEMS_FILTER} AND true)"]
+    assert [v for k, v in params if k == "filter"] == [f"{ITEMS_FILTER} AND true"]
     assert ("z", "&filter=true") in params
 
 

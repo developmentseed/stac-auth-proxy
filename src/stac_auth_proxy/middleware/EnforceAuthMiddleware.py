@@ -25,6 +25,7 @@ class OidcService:
     oidc_discovery_url: HttpUrl
     jwks_client: jwt.PyJWKClient = field(init=False)
     metadata: dict[str, Any] = field(init=False)
+    issuer: str = field(init=False)
 
     def __post_init__(self) -> None:
         """Initialize OIDC config and JWKS client."""
@@ -36,6 +37,7 @@ class OidcService:
             response.raise_for_status()
             self.metadata = response.json()
             assert self.metadata, "OIDC metadata is empty"
+            self.issuer = self.metadata["issuer"]
 
             # NOTE: We manually replace the origin of the jwks_uri in the event that
             # the jwks_uri is not available from within the proxy.
@@ -75,6 +77,7 @@ class EnforceAuthMiddleware:
     default_public: bool
     oidc_discovery_url: HttpUrl
     allowed_jwt_audiences: Optional[Sequence[str]] = None
+    oidc_issuer: Optional[str] = None
     state_key: str = "payload"
 
     _oidc_config: Optional[OidcService] = None
@@ -155,6 +158,9 @@ class EnforceAuthMiddleware:
                 algorithms=["RS256"],
                 # NOTE: Audience validation MUST match audience claim if set in token (https://pyjwt.readthedocs.io/en/stable/changelog.html?highlight=audience#id40)
                 audience=self.allowed_jwt_audiences,
+                # NOTE: The discovery document's issuer may differ from the token's when it
+                # is fetched from an internal URL, so allow overriding it.
+                issuer=self.oidc_issuer or self.oidc_config.issuer,
             )
         except jwt.InvalidAudienceError as e:
             logger.error("Token audience validation failed: %s", str(e))

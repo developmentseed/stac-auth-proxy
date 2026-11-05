@@ -33,6 +33,7 @@ def public_key(test_key: jwk.JWK) -> dict[str, Any]:
 def mock_jwks(public_key: dict[str, Any]):
     """Mock JWKS endpoint."""
     mock_oidc_config = {
+        "issuer": "https://example.com",
         "jwks_uri": "https://example.com/jwks",
         "authorization_endpoint": "https://example.com/auth",
         "token_endpoint": "https://example.com/token",
@@ -58,10 +59,12 @@ def mock_jwks(public_key: dict[str, Any]):
 def token_builder(test_key: jwk.JWK):
     """Generate a valid JWT token builder."""
 
-    def build_token(payload: dict[str, Any], key=None) -> str:
+    def build_token(
+        payload: dict[str, Any], key=None, iss: str | None = "https://example.com"
+    ) -> str:
         jwt_token = jwt.JWT(
             header={k: test_key.get(k) for k in ["alg", "kid"]},
-            claims=payload,
+            claims={"iss": iss, **payload} if iss else payload,
         )
         jwt_token.make_signed_token(key or test_key)
         return jwt_token.serialize()

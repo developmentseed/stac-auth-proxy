@@ -123,6 +123,9 @@ The application is configurable via environment variables.
     - **Required:** Yes
     - **Example:** `https://auth.example.com/.well-known/openid-configuration`
 
+    > [!NOTE]
+    > The `iss` (issuer) claim of every JWT must match the `issuer` named in this document, unless [`OIDC_ISSUER`](#oidc_issuer) is set.
+
 ### `OIDC_DISCOVERY_INTERNAL_URL`
 
 : Internal network OpenID Connect discovery document URL
@@ -130,6 +133,17 @@ The application is configurable via environment variables.
     - **Type:** HTTP(S) URL
     - **Required:** No, defaults to the value of `OIDC_DISCOVERY_URL`
     - **Example:** `http://auth/.well-known/openid-configuration`
+
+### `OIDC_ISSUER`
+
+: Expected issuer of incoming JWTs
+
+    - **Type:** string
+    - **Required:** No, defaults to the `issuer` of the OIDC discovery document
+    - **Example:** `https://auth.example.com/realms/example`
+
+    > [!NOTE]
+    > The `iss` (issuer) claim of every JWT must match this value. Set this when the discovery document fetched via [`OIDC_DISCOVERY_INTERNAL_URL`](#oidc_discovery_internal_url) reports a different issuer than the one in issued tokens (e.g. Keycloak deriving the issuer from the request's hostname).
 
 ### `ALLOWED_JWT_AUDIENCES`
 

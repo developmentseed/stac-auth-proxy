@@ -83,6 +83,7 @@ class Settings(BaseSettings):
     upstream_url: HttpUrl
     oidc_discovery_url: HttpUrl
     oidc_discovery_internal_url: HttpUrl
+    oidc_issuer: Optional[str] = None
     allowed_jwt_audiences: Optional[Sequence[str]] = None
 
     root_path: str = ""

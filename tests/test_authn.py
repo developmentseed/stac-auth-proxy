@@ -404,6 +404,31 @@ def test_jwt_audience_validation(
     assert response.status_code == expected_status
 
 
+@pytest.mark.parametrize("iss", ["https://other.example.com", None])
+def test_jwt_issuer_validation(source_api_server, token_builder, iss):
+    """A token whose iss is missing or not the discovery document's issuer is rejected."""
+    token = token_builder({}, iss=iss)
+    client = TestClient(app_factory(upstream_url=source_api_server))
+    response = client.get("/collections", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 401
+
+
+@pytest.mark.parametrize(
+    "iss,expected_status",
+    [("https://public.example.com", 200), ("https://example.com", 401)],
+)
+def test_jwt_issuer_override(source_api_server, token_builder, iss, expected_status):
+    """OIDC_ISSUER replaces the discovery document's issuer."""
+    token = token_builder({}, iss=iss)
+    client = TestClient(
+        app_factory(
+            upstream_url=source_api_server, oidc_issuer="https://public.example.com"
+        )
+    )
+    response = client.get("/collections", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == expected_status
+
+
 @pytest.mark.parametrize(
     "aud_value,scope,expected_status,description",
     [

@@ -190,7 +190,7 @@ class TestQueryParamConsistency:
         assert TestClient(raw_query_app).get("/search").status_code == 200
         [request] = mock_upstream.call_args[0]
         assert request.url.params["collections"] == "café"
-        assert request.url.params["filter"] == "(collection = 'café')"
+        assert request.url.params["filter"] == "collection = 'café'"
 
     @pytest.mark.parametrize(
         "query_string",
@@ -248,7 +248,7 @@ class TestQueryParamConsistency:
 
     @pytest.mark.parametrize(
         "collections, expected_filter",
-        [("public", "true"), ("secret", "(collection = 'public')")],
+        [("public", "true"), ("secret", "collection = 'public'")],
     )
     def test_unique_query_params_allowed(
         self, mock_upstream, source_api_server, collections, expected_filter

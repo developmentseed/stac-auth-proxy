@@ -5,9 +5,24 @@ on:
     types: [opened, synchronize, ready_for_review, reopened]
     paths-ignore:
       - '.github/workflows/**'
+  # Fork PRs get no secrets on `pull_request`, so maintainers opt them in by
+  # adding the `claude-review` label (only users with triage/write access can).
+  # The run is pinned to the head SHA at label time; claude-code-action
+  # restores .claude/, CLAUDE.md, .mcp.json etc. from the base branch, and
+  # Claude is limited to `gh pr diff`/`gh pr view`, so fork code never runs.
+  # Re-review after new pushes: remove and re-add the label.
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
+    types: [labeled]
+    paths-ignore:
+      - '.github/workflows/**'
 
 jobs:
   review:
+    if: >-
+      (github.event_name == 'pull_request'
+        && github.event.pull_request.head.repo.full_name == github.repository)
+      || (github.event_name == 'pull_request_target'
+        && github.event.label.name == 'claude-review')
     uses: developmentseed/.github/.github/workflows/claude-pr-review.yml@cb3a57e9fe3f9c46ab2316a8f7b11fa752903131 # main
     permissions:
       contents: read

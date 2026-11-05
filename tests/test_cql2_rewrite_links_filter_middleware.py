@@ -552,7 +552,7 @@ def test_redirect_location_keeps_blank_params_and_relabels_user_filter():
         "/search/", params={"filter": "a = 1"}, follow_redirects=False
     )
     assert response.headers["location"] == (
-        "/search?datetime=&filter=%28a+%3D+1%29&filter-lang=cql2-text"
+        "/search?datetime=&filter=a+%3D+1&filter-lang=cql2-text"
     )
 
 

@@ -1,7 +1,8 @@
 name: Dependabot automerge
 
 # Enables GitHub auto-merge on low-risk Dependabot PRs; the merge still waits for required checks.
-# Requires "Allow auto-merge" in repo settings and required status checks on main.
+# Relies on repo settings "Allow auto-merge" and "Allow GitHub Actions to approve pull requests",
+# plus the `main` ruleset's required status checks.
 on: pull_request
 
 permissions: {}
@@ -22,7 +23,10 @@ jobs:
           steps.meta.outputs.dependency-group == 'dev' ||
           steps.meta.outputs.dependency-group == 'actions' ||
           steps.meta.outputs.update-type == 'version-update:semver-patch'
-        run: gh pr merge --auto --squash "$PR_URL"
+        # The approval satisfies the main ruleset's 1-review rule; the merge still waits for required checks.
+        run: |
+          gh pr review --approve "$PR_URL"
+          gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ github.token }}

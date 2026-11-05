@@ -165,6 +165,8 @@ class ReverseProxyHandler:
         content = await rp_resp.aread()
         if rp_resp.headers.get("Content-Encoding"):
             del rp_resp.headers["Content-Encoding"]
+            # The upstream length is the compressed one; Response sets the real one
+            rp_resp.headers.pop("Content-Length", None)
 
         return Response(
             content=content,

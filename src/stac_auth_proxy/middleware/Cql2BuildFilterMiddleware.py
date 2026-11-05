@@ -1,7 +1,7 @@
 """Middleware to build the Cql2Filter."""
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Optional
 
 from cql2 import Expr, ValidationError, Validator
@@ -16,8 +16,6 @@ from ..utils.middleware import bad_request, required_conformance
 from ..utils.requests import match_path
 
 logger = logging.getLogger(__name__)
-
-validator = Validator()
 
 
 @required_conformance(
@@ -38,6 +36,8 @@ class Cql2BuildFilterMiddleware:
     collections_filter_path: str = DEFAULT_COLLECTIONS_FILTER_PATH
     items_filter: Optional[Callable] = None
     items_filter_path: str = DEFAULT_ITEMS_FILTER_PATH
+
+    _validator: Validator = field(default_factory=Validator, init=False, repr=False)
 
     def __post_init__(self):
         """Set required conformances based on the filter functions."""
@@ -115,7 +115,7 @@ class Cql2BuildFilterMiddleware:
 
         cql2_filter = Expr(filter_expr)
         try:
-            validator.validate(cql2_filter)
+            self._validator.validate(cql2_filter)
         except ValidationError:
             logger.error("Invalid CQL2 filter: %s", filter_expr)
             response = JSONResponse({"detail": "Invalid CQL2 filter"}, status_code=502)

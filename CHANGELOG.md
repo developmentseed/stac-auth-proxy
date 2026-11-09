@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.4.0](https://github.com/developmentseed/stac-auth-proxy/compare/v1.3.1...v1.4.0) (2026-11-09)
+
+
+### Features
+
+* add OIDC_ISSUER setting to override the expected token issuer ([#226](https://github.com/developmentseed/stac-auth-proxy/issues/226)) ([908b731](https://github.com/developmentseed/stac-auth-proxy/commit/908b731ad696f0636968c86583e06350f2b5a77a))
+
+
+### Bug Fixes
+
+* **deps:** bump certifi to 2026.10.23 (GHSA-6q48-6c7w-9gw2) ([#228](https://github.com/developmentseed/stac-auth-proxy/issues/228)) ([2185853](https://github.com/developmentseed/stac-auth-proxy/commit/218585381d01ce0276c4303a2c9cfaf7c7a61ffd))
+* **docker:** remove pip from the runtime image ([#248](https://github.com/developmentseed/stac-auth-proxy/issues/248)) ([4001939](https://github.com/developmentseed/stac-auth-proxy/commit/4001939994f7fe90fcb706ce43de8b3e3d9ce385))
+* drop the upstream Content-Length when the proxy decompresses the body ([#221](https://github.com/developmentseed/stac-auth-proxy/issues/221)) ([4fe1547](https://github.com/developmentseed/stac-auth-proxy/commit/4fe154781665dfa07910902f9211fb1f945c34a1))
+
+
+### Performance Improvements
+
+* compile the CQL2 schema once, not per request (85 -&gt; 4500 req/s, p99 195 -&gt; 5 ms) ([#231](https://github.com/developmentseed/stac-auth-proxy/issues/231)) ([8d37c40](https://github.com/developmentseed/stac-auth-proxy/commit/8d37c40ad498231038fcf149ffaeca51c167f2d6))
+
 ## [1.3.1](https://github.com/developmentseed/stac-auth-proxy/compare/v1.3.0...v1.3.1) (2026-10-25)
 
 

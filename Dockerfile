@@ -39,7 +39,9 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /app/src/stac_auth_proxy /app/src/stac_auth_proxy
 
 
-RUN useradd -m -u 1001 -s /bin/bash user && \
+# Nothing at runtime uses pip. Images built on this one can run python -m ensurepip, then python -m pip.
+RUN python -m pip uninstall -y pip && \
+    useradd -m -u 1001 -s /bin/bash user && \
     chown -R user:user /app
 
 USER user

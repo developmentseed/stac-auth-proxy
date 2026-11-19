@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.4.0](https://github.com/developmentseed/stac-auth-proxy/compare/v1.3.1...v1.4.0) (2026-11-19)
+
+
+### Features
+
+* add OIDC_ISSUER setting to override the expected token issuer ([#226](https://github.com/developmentseed/stac-auth-proxy/issues/226)) ([908b731](https://github.com/developmentseed/stac-auth-proxy/commit/908b731ad696f0636968c86583e06350f2b5a77a))
+
+
+### Bug Fixes
+
+* answer 403, not 404, when a write is refused on a record the caller can read ([#259](https://github.com/developmentseed/stac-auth-proxy/issues/259)) ([b5fc30c](https://github.com/developmentseed/stac-auth-proxy/commit/b5fc30ce71477c6177d2580abf90e9d5d49ce88a))
+* **deps:** bump certifi to 2026.10.23 (GHSA-6q48-6c7w-9gw2) ([#228](https://github.com/developmentseed/stac-auth-proxy/issues/228)) ([2185853](https://github.com/developmentseed/stac-auth-proxy/commit/218585381d01ce0276c4303a2c9cfaf7c7a61ffd))
+* **deps:** bump mkdocstrings to 1.0.8 for pymdown-extensions 12 compat ([80eebe3](https://github.com/developmentseed/stac-auth-proxy/commit/80eebe3de58bd30f15ccf0cf96474e647e5dcf5f))
+* **docker:** remove pip from the runtime image ([#248](https://github.com/developmentseed/stac-auth-proxy/issues/248)) ([4001939](https://github.com/developmentseed/stac-auth-proxy/commit/4001939994f7fe90fcb706ce43de8b3e3d9ce385))
+* drop the upstream Content-Length when the proxy decompresses the body ([#221](https://github.com/developmentseed/stac-auth-proxy/issues/221)) ([4fe1547](https://github.com/developmentseed/stac-auth-proxy/commit/4fe154781665dfa07910902f9211fb1f945c34a1))
+* return 502, not 500, when a CQL2 filter fails to parse ([#243](https://github.com/developmentseed/stac-auth-proxy/issues/243)) ([67422ff](https://github.com/developmentseed/stac-auth-proxy/commit/67422ff00f6962032f15a45d37715dd9d9851c11))
+
+
+### Performance Improvements
+
+* compile the CQL2 schema once, not per request (85 -&gt; 4500 req/s, p99 195 -&gt; 5 ms) ([#231](https://github.com/developmentseed/stac-auth-proxy/issues/231)) ([8d37c40](https://github.com/developmentseed/stac-auth-proxy/commit/8d37c40ad498231038fcf149ffaeca51c167f2d6))
+
+
+### Documentation
+
+* warn that endpoints outside the filter paths are unfiltered ([#215](https://github.com/developmentseed/stac-auth-proxy/issues/215)) ([6a7289e](https://github.com/developmentseed/stac-auth-proxy/commit/6a7289ea6c3731636c3e127f1c2ff8bbd08cfbb6))
+
 ## [1.3.1](https://github.com/developmentseed/stac-auth-proxy/compare/v1.3.0...v1.3.1) (2026-10-25)
 
 

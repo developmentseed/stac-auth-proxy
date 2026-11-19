@@ -237,6 +237,30 @@ class TestErrorHandling:
         get_response = client.get("/search", params={"user": "good"})
         assert get_response.status_code == 200
 
+    @pytest.mark.parametrize("bad_filter", ["((", {"op": "nope"}])
+    @pytest.mark.parametrize("filter_kind", ["items_filter", "collections_filter"])
+    def test_unparseable_filter_returns_502(self, filter_kind, bad_filter):
+        """A filter cql2 cannot parse fails closed with 502, not an unhandled 500."""
+        app = FastAPI()
+        reached = []
+
+        async def build_filter(context):
+            return bad_filter
+
+        app.add_middleware(Cql2BuildFilterMiddleware, **{filter_kind: build_filter})
+
+        @app.get("/search")
+        @app.get("/collections")
+        async def endpoint(request: Request):
+            reached.append(True)
+            return {}
+
+        path = "/collections" if filter_kind == "collections_filter" else "/search"
+        response = TestClient(app, raise_server_exceptions=False).get(path)
+        assert response.status_code == 502
+        assert response.json() == {"detail": "Invalid CQL2 filter"}
+        assert not reached
+
     def test_exception_headers_are_kept(self):
         """Headers set on the HTTPException, such as WWW-Authenticate, reach the client."""
         app = FastAPI()

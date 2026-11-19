@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+  # Build (but don't deploy) docs on PRs so dependency bumps that break the docs build are caught before merge
+  pull_request:
 
 jobs:
   test:

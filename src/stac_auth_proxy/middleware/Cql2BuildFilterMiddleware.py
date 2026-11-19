@@ -6,6 +6,7 @@ from typing import Any, Awaitable, Callable, Optional
 
 from cql2 import Expr, ValidationError, Validator
 from fastapi import HTTPException
+from starlette.datastructures import QueryParams
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -30,6 +31,7 @@ class Cql2BuildFilterMiddleware:
     app: ASGIApp
 
     state_key: str = "cql2_filter"
+    read_state_key: str = "cql2_read_filter"
 
     # Filters
     collections_filter: Optional[Callable] = None
@@ -96,16 +98,7 @@ class Cql2BuildFilterMiddleware:
 
         try:
             filter_expr = await filter_builder(
-                {
-                    "req": {
-                        "path": request.url.path,
-                        "method": request.method,
-                        "query_params": dict(query_params),
-                        "path_params": requests.extract_variables(request.url.path),
-                        "headers": dict(request.headers),
-                    },
-                    **scope["state"],
-                }
+                self._context(request, scope, request.method, query_params)
             )
         except HTTPException as e:
             response = JSONResponse(
@@ -121,9 +114,42 @@ class Cql2BuildFilterMiddleware:
             response = JSONResponse({"detail": "Invalid CQL2 filter"}, status_code=502)
             return await response(scope, receive, send)
 
+        if request.method.upper() in ("PUT", "PATCH", "DELETE"):
+            # Lets transaction validation tell a record the caller may read but not
+            # modify (403) from one they may not see (404). Lazy: only a refused write
+            # pays for it. Context is captured now, before the write filter is in state.
+            read_context = self._context(request, scope, "GET", query_params)
+
+            async def build_read_filter() -> Optional[Expr]:
+                try:
+                    read_filter = Expr(await filter_builder(read_context))
+                    self._validator.validate(read_filter)
+                    return read_filter
+                except Exception as e:  # any failure just means "answer 404"
+                    logger.debug("No read filter for %s: %s", request.url.path, e)
+                    return None
+
+            setattr(request.state, self.read_state_key, build_read_filter)
+
         setattr(request.state, self.state_key, cql2_filter)
 
         return await self.app(scope, receive, send)
+
+    @staticmethod
+    def _context(
+        request: Request, scope: Scope, method: str, query_params: QueryParams
+    ) -> dict[str, Any]:
+        """Build the context passed to a filter builder."""
+        return {
+            "req": {
+                "path": request.url.path,
+                "method": method,
+                "query_params": dict(query_params),
+                "path_params": requests.extract_variables(request.url.path),
+                "headers": dict(request.headers),
+            },
+            **scope["state"],
+        }
 
     def _get_filter(
         self, path: str

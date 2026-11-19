@@ -6,7 +6,8 @@ updates:
       # None of the nine weekly group PRs was merged; each was replaced by a newer one.
       interval: "monthly"
     groups:
-      minor-and-patch:
+      # Group names are matched by .github/workflows/dependabot-automerge.yaml.
+      actions:
         applies-to: version-updates
         patterns:
           - "*"
@@ -24,10 +25,17 @@ updates:
     cooldown:
       default-days: 7
     groups:
-      minor-and-patch:
+      # Split so a breaking runtime bump (e.g. cql2 0.5 -> 0.6) doesn't block dev tooling updates.
+      # `dev` is automerged once CI passes; `prod` waits for review unless it is patch-only.
+      dev:
         applies-to: version-updates
-        patterns:
-          - "*"
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+      prod:
+        applies-to: version-updates
+        dependency-type: "production"
         update-types:
           - "minor"
           - "patch"

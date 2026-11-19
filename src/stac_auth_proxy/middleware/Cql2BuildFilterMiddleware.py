@@ -123,7 +123,7 @@ class Cql2BuildFilterMiddleware:
             async def build_read_filter() -> Optional[Expr]:
                 try:
                     read_filter = Expr(await filter_builder(read_context))
-                    read_filter.validate()
+                    self._validator.validate(read_filter)
                     return read_filter
                 except Exception as e:  # any failure just means "answer 404"
                     logger.debug("No read filter for %s: %s", request.url.path, e)
